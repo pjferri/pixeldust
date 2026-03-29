@@ -437,6 +437,22 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
   border-color: var(--accent-hover);
 }
 
+/* ── Gradient hint text ── */
+.ctrl-hint {
+  font-size: 9px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* ── Gradient pickers section ── */
+#gradient-pickers {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
 /* ============================================================
    CANVAS AREA — the main center stage
    ============================================================ */
@@ -503,6 +519,8 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
   font-size: 10px;
   color: var(--text-secondary);
   letter-spacing: 0.3px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 /* ============================================================

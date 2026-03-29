@@ -2,52 +2,73 @@
  * particle.js
  * Single particle data and per-frame update logic.
  *
- * Particles are plain objects (no class overhead) so we can pool them easily.
- * All rendering is handled by renderer.js — this file is pure logic.
+ * New in v0.2:
+ *   - Lifetime colour gradient  (sr/sg/sb → er/eg/eb lerp)
+ *   - Turbulence jitter         (per-frame random velocity noise)
  */
 
 /**
  * Create a new particle from a config snapshot.
  *
- * @param {number} x  - spawn X in canvas coords
- * @param {number} y  - spawn Y in canvas coords
+ * @param {number} x   - spawn X in canvas coords
+ * @param {number} y   - spawn Y in canvas coords
  * @param {object} cfg - emitter config snapshot (see emitter.js)
- * @returns {object}  particle state object
+ * @returns {object}   particle state object
  */
 function createParticle(x, y, cfg) {
-  // Direction in radians — base direction ± half spread
-  const halfSpread = (cfg.spread * Math.PI) / 360;           // spread is in degrees
-  const baseAngle  = (cfg.direction * Math.PI) / 180;        // direction in degrees → radians
+  // ── Velocity ──────────────────────────────────────────────────────────────
+  const halfSpread = (cfg.spread * Math.PI) / 360;
+  const baseAngle  = (cfg.direction * Math.PI) / 180;
   const angle      = baseAngle - halfSpread + Math.random() * halfSpread * 2;
+  const speed      = cfg.speed * (0.8 + Math.random() * 0.4);
 
-  // Speed with ±20% jitter for natural variation
-  const speed = cfg.speed * (0.8 + Math.random() * 0.4);
+  // ── Start colour ─────────────────────────────────────────────────────────
+  // Priority: multiColor (random palette) > gradient start > single colour.
+  let startHex;
+  if (cfg.multiColor) {
+    startHex = randomPaletteColor();           // random from active palette
+  } else if (cfg.useGradient) {
+    startHex = cfg.gradientStart || activeColor;
+  } else {
+    startHex = activeColor;
+  }
+  const startRgb = hexToRgb(startHex);
 
-  // Colour: either palette random or the single active colour
-  const color = cfg.multiColor ? randomPaletteColor() : activeColor;
-  const rgb   = hexToRgb(color);
+  // ── End colour (gradient target) ──────────────────────────────────────────
+  // When multiColor + gradient both on, each particle starts at a random
+  // palette colour and fades toward the shared gradient end colour.
+  const endRgb = cfg.useGradient
+    ? hexToRgb(cfg.gradientEnd || '#000000')
+    : startRgb;   // no gradient → end = start → no colour change
 
-  // Pixel size: snapped to integers for crisp pixel art
-  const size  = Math.max(1, Math.round(cfg.particleSize));
+  // ── Size ──────────────────────────────────────────────────────────────────
+  const size = Math.max(1, Math.round(cfg.particleSize));
 
   return {
     x,
     y,
     vx:       Math.cos(angle) * speed,
     vy:       Math.sin(angle) * speed,
-    life:     0,                          // current age in frames
-    maxLife:  cfg.lifetime + Math.floor(Math.random() * cfg.lifetime * 0.2),  // ±10% jitter
+    life:     0,
+    maxLife:  cfg.lifetime + Math.floor(Math.random() * cfg.lifetime * 0.2),
     size,
     baseSize: size,
-    r:  rgb.r,
-    g:  rgb.g,
-    b:  rgb.b,
-    alpha:    1,
-    shape:    cfg.particleShape,
-    fade:     cfg.fade,
-    shrink:   cfg.shrink,
-    gravity:  cfg.gravity,
-    alive:    true,
+    // Start colour
+    r:  startRgb.r,
+    g:  startRgb.g,
+    b:  startRgb.b,
+    // End colour (used by renderer when useGradient is true)
+    er: endRgb.r,
+    eg: endRgb.g,
+    eb: endRgb.b,
+    useGradient: !!cfg.useGradient,
+    alpha:       1,
+    shape:       cfg.particleShape,
+    fade:        cfg.fade,
+    shrink:      cfg.shrink,
+    gravity:     cfg.gravity,
+    turbulence:  cfg.turbulence || 0,
+    alive:       true,
   };
 }
 
@@ -60,25 +81,31 @@ function createParticle(x, y, cfg) {
 function updateParticle(p) {
   p.life++;
 
-  // Kill particle when it has outlived its lifetime
   if (p.life >= p.maxLife) {
     p.alive = false;
     return;
   }
 
-  const t = p.life / p.maxLife;  // normalised [0..1] age
+  const t = p.life / p.maxLife;   // normalised age [0..1]
 
-  // Apply gravity to vertical velocity
+  // ── Gravity ───────────────────────────────────────────────────────────────
   p.vy += p.gravity;
 
-  // Move
+  // ── Turbulence (per-frame random velocity jitter) ─────────────────────────
+  // Adds organic noise so particles don't all follow the same path.
+  if (p.turbulence > 0) {
+    p.vx += (Math.random() - 0.5) * p.turbulence;
+    p.vy += (Math.random() - 0.5) * p.turbulence;
+  }
+
+  // ── Movement ──────────────────────────────────────────────────────────────
   p.x += p.vx;
   p.y += p.vy;
 
-  // Alpha fade (linear)
+  // ── Fade ──────────────────────────────────────────────────────────────────
   p.alpha = p.fade ? Math.max(0, 1 - t) : 1;
 
-  // Size shrink (linear, towards 0)
+  // ── Shrink ────────────────────────────────────────────────────────────────
   if (p.shrink > 0) {
     p.size = Math.max(1, Math.round(p.baseSize * (1 - t * p.shrink)));
   }

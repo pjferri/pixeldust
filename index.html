@@ -14,7 +14,7 @@
       <div id="logo">
         <span class="logo-px">PX</span>
         <span class="logo-name">PixelDust</span>
-        <span class="logo-version">v0.1</span>
+        <span class="logo-version">v0.2</span>
       </div>
       <div id="topbar-controls">
         <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
@@ -28,7 +28,9 @@
     <!-- ===== MAIN LAYOUT ===== -->
     <main id="main">
 
-      <!-- LEFT PANEL: Controls -->
+      <!-- =========================================
+           LEFT PANEL
+           ========================================= -->
       <aside id="panel-left">
 
         <!-- EMITTER -->
@@ -53,10 +55,10 @@
             </select>
           </label>
 
-          <!-- Burst trigger — only visible in burst mode -->
+          <!-- Burst trigger button — shown only in burst mode -->
           <div id="burst-row" class="ctrl-row hidden">
-            <span>Burst</span>
-            <button id="btn-burst" class="btn btn-primary" style="flex:1">&#9654; Fire!</button>
+            <span>Trigger</span>
+            <button id="btn-burst" class="btn btn-primary" style="flex:1">&#9654; Fire! (B)</button>
           </div>
 
           <label class="ctrl-row">
@@ -103,6 +105,15 @@
               <span class="val-display" data-for="gravity">0.15</span>
             </div>
           </label>
+
+          <!-- Feature 3: Turbulence — random per-frame velocity jitter -->
+          <label class="ctrl-row">
+            <span>Turbulence</span>
+            <div class="slider-pair">
+              <input type="range" id="turbulence" min="0" max="3" value="0" step="0.05" />
+              <span class="val-display" data-for="turbulence">0.00</span>
+            </div>
+          </label>
         </section>
 
         <!-- APPEARANCE -->
@@ -117,6 +128,7 @@
             </div>
           </label>
 
+          <!-- Feature 4: star + sparkle added to shape select -->
           <label class="ctrl-row">
             <span>Shape</span>
             <select id="particle-shape">
@@ -124,6 +136,8 @@
               <option value="circle">Circle</option>
               <option value="diamond">Diamond</option>
               <option value="cross">Cross</option>
+              <option value="star">Star ★</option>
+              <option value="sparkle">Sparkle ✦</option>
             </select>
           </label>
 
@@ -169,7 +183,9 @@
 
       </aside>
 
-      <!-- CENTER: Canvas preview -->
+      <!-- =========================================
+           CANVAS
+           ========================================= -->
       <section id="canvas-area">
         <div id="canvas-wrap">
           <canvas id="preview-canvas"></canvas>
@@ -180,31 +196,33 @@
         <div id="canvas-footer">
           <span id="fps-display">60 fps</span>
           <span id="particle-count-live">0 particles</span>
+          <!-- Feature 1: emitter position readout -->
+          <span id="emitter-pos-display">emitter: center</span>
         </div>
       </section>
 
-      <!-- RIGHT PANEL: Color -->
+      <!-- =========================================
+           RIGHT PANEL
+           ========================================= -->
       <aside id="panel-right">
 
+        <!-- COLOR -->
         <section class="ctrl-group">
           <h3 class="group-label">Color</h3>
 
-          <!-- Custom color picker -->
           <div id="color-picker-wrap">
-            <input type="color" id="color-picker" value="#ff6b35" />
+            <input type="color" id="color-picker" value="#ffff00" />
             <div id="color-swatch-current">
-              <div class="swatch-box" id="swatch-current-color" style="background:#ff6b35"></div>
-              <span id="swatch-hex">#ff6b35</span>
+              <div class="swatch-box" id="swatch-current-color" style="background:#ffff00"></div>
+              <span id="swatch-hex">#ffff00</span>
             </div>
           </div>
 
-          <!-- Multi-color mode -->
           <label class="ctrl-row">
             <span>Multi-color</span>
             <input type="checkbox" id="multi-color" class="toggle" checked />
           </label>
 
-          <!-- Palette section -->
           <div id="palette-area">
             <div id="palette-grid"></div>
             <div id="palette-presets">
@@ -219,13 +237,35 @@
           </div>
         </section>
 
-        <!-- BACKGROUND -->
+        <!-- Feature 2: LIFETIME GRADIENT -->
+        <section class="ctrl-group">
+          <h3 class="group-label">Gradient</h3>
+
+          <label class="ctrl-row">
+            <span>Use gradient</span>
+            <input type="checkbox" id="use-gradient" class="toggle" />
+          </label>
+
+          <div id="gradient-pickers" class="hidden">
+            <label class="ctrl-row">
+              <span>Start color</span>
+              <input type="color" id="gradient-start" value="#ffff00" />
+            </label>
+            <label class="ctrl-row">
+              <span>End color</span>
+              <input type="color" id="gradient-end" value="#ff0000" />
+            </label>
+            <p class="ctrl-hint">Particles lerp from start → end over their lifetime. Works with multi-color: start = palette, end = fixed.</p>
+          </div>
+        </section>
+
+        <!-- CANVAS SETTINGS -->
         <section class="ctrl-group">
           <h3 class="group-label">Canvas</h3>
 
           <label class="ctrl-row">
             <span>BG Color</span>
-            <input type="color" id="bg-color" value="#0d0d0f" />
+            <input type="color" id="bg-color" value="#0c0c0e" />
           </label>
 
           <label class="ctrl-row">
@@ -235,9 +275,15 @@
               <span class="val-display" data-for="trail-alpha">0.12</span>
             </div>
           </label>
+
+          <!-- Feature 5: Loop preview -->
+          <label class="ctrl-row">
+            <span>Loop preview</span>
+            <input type="checkbox" id="loop-toggle" class="toggle" />
+          </label>
         </section>
 
-        <!-- EXPORT OPTIONS -->
+        <!-- EXPORT -->
         <section class="ctrl-group">
           <h3 class="group-label">Export</h3>
 
@@ -272,7 +318,7 @@
       </aside>
     </main>
 
-    <!-- Export modal overlay -->
+    <!-- ===== EXPORT MODAL ===== -->
     <div id="export-modal" class="modal hidden">
       <div class="modal-box">
         <h2>Exporting Sprite Sheet…</h2>
