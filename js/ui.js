@@ -1,15 +1,11 @@
 /**
  * ui.js
  * Wires all DOM controls to the emitter/renderer state.
- * Also builds the colour palette UI.
+ * Also builds the colour palette UI and applies the fire preset on startup.
  */
 
 // ── Slider value display sync ──────────────────────────────────────────────
 
-/**
- * For every element with data-for="some-slider-id", sync its text
- * content with the slider's current value on input.
- */
 function initSliderDisplays() {
   document.querySelectorAll('.val-display').forEach(display => {
     const id     = display.dataset.for;
@@ -18,79 +14,70 @@ function initSliderDisplays() {
 
     const update = () => {
       const v = parseFloat(slider.value);
-      // Show decimal places only when meaningful
       display.textContent = Number.isInteger(v) ? v : v.toFixed(2);
     };
 
     slider.addEventListener('input', update);
-    update(); // initialise
+    update(); // set initial text
   });
 }
 
-// ── Build colour palette grid ─────────────────────────────────────────────
+// ── Palette grid ───────────────────────────────────────────────────────────
 
-/**
- * Render the palette swatches into #palette-grid.
- * Clicking a swatch sets it as the active colour and activates multi-colour
- * if more than one swatch is later toggled (handled separately).
- */
 function buildPaletteGrid(colors) {
   const grid = document.getElementById('palette-grid');
   grid.innerHTML = '';
 
-  colors.forEach(hex => {
+  colors.forEach((hex, i) => {
     const div = document.createElement('div');
-    div.className      = 'pal-swatch';
+    div.className        = 'pal-swatch';
     div.style.background = hex;
-    div.title          = hex;
+    div.title            = hex;
 
     div.addEventListener('click', () => {
-      // Update single colour picker + swatch display
-      document.getElementById('color-picker').value = hex;
-      document.getElementById('swatch-current-color').style.background = hex;
-      document.getElementById('swatch-hex').textContent = hex;
-      activeColor = hex;
-
-      // Highlight selected
+      // Update single-colour picker
+      setSingleColor(hex);
+      // Highlight selected swatch
       grid.querySelectorAll('.pal-swatch').forEach(s => s.classList.remove('active'));
       div.classList.add('active');
+      pushConfig();
     });
 
     grid.appendChild(div);
   });
+
+  // Highlight first swatch by default
+  const first = grid.querySelector('.pal-swatch');
+  if (first) first.classList.add('active');
 }
 
-// ── Wire all controls ──────────────────────────────────────────────────────
+/** Update the colour picker input + swatch display + activeColor. */
+function setSingleColor(hex) {
+  activeColor = hex;
+  const picker = document.getElementById('color-picker');
+  picker.value = hex;
+  document.getElementById('swatch-current-color').style.background = hex;
+  document.getElementById('swatch-hex').textContent = hex;
+}
+
+// ── initUI ─────────────────────────────────────────────────────────────────
 
 function initUI() {
   initSliderDisplays();
 
-  // Build initial palette from the fire preset
-  buildPaletteGrid(activePalette);
+  // Apply fire preset on startup for a great first impression
+  applyPreset('fire');
 
   // ── Palette preset buttons ────────────────────────────────────────────
   document.querySelectorAll('.preset-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const key = btn.dataset.preset;
-      if (PALETTES[key]) {
-        activePalette = [...PALETTES[key]];
-        buildPaletteGrid(activePalette);
-        // Auto-set first colour as single picker colour
-        activeColor = activePalette[0];
-        document.getElementById('color-picker').value = activeColor;
-        document.getElementById('swatch-current-color').style.background = activeColor;
-        document.getElementById('swatch-hex').textContent = activeColor;
-        pushConfig();
-      }
+      applyPreset(btn.dataset.preset);
     });
   });
 
   // ── Color picker ──────────────────────────────────────────────────────
-  const colorPicker = document.getElementById('color-picker');
-  colorPicker.addEventListener('input', () => {
-    activeColor = colorPicker.value;
-    document.getElementById('swatch-current-color').style.background = activeColor;
-    document.getElementById('swatch-hex').textContent = activeColor;
+  document.getElementById('color-picker').addEventListener('input', e => {
+    setSingleColor(e.target.value);
     pushConfig();
   });
 
@@ -113,24 +100,37 @@ function initUI() {
     pushConfig();
   });
 
-  // ── All the sliders/selects that map directly to emitter config ───────
+  // ── Emitter mode: show/hide burst button ─────────────────────────────
+  const modeSelect = document.getElementById('emitter-mode');
+  modeSelect.addEventListener('change', () => {
+    updateBurstRowVisibility();
+    pushConfig();
+  });
+
+  // ── Burst trigger button ──────────────────────────────────────────────
+  document.getElementById('btn-burst').addEventListener('click', () => {
+    cfg.burstPending = true;
+  });
+
+  // ── All other sliders/selects → emitter config ────────────────────────
   const directControls = [
-    'emitter-shape', 'emitter-mode',
+    'emitter-shape',
     'particle-count', 'speed', 'spread', 'direction', 'gravity',
     'particle-size', 'particle-shape',
     'lifetime', 'fade', 'shrink',
   ];
   directControls.forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.addEventListener('input', pushConfig);
-    if (el) el.addEventListener('change', pushConfig);
+    if (!el) return;
+    el.addEventListener('input',  pushConfig);
+    el.addEventListener('change', pushConfig);
   });
 
-  // ── Export buttons ────────────────────────────────────────────────────
+  // ── Export ────────────────────────────────────────────────────────────
   document.getElementById('btn-export').addEventListener('click', triggerExport);
   document.getElementById('btn-export-bottom').addEventListener('click', triggerExport);
 
-  // ── Close modal ───────────────────────────────────────────────────────
+  // ── Close export modal ────────────────────────────────────────────────
   document.getElementById('btn-close-modal').addEventListener('click', () => {
     document.getElementById('export-modal').classList.add('hidden');
   });
@@ -145,22 +145,52 @@ function initUI() {
     if (e.code === 'KeyR') {
       document.getElementById('btn-reset').click();
     }
-    if (e.code === 'KeyB' && cfg.emitterMode === 'burst') {
-      cfg.burstPending = true;
+    if (e.code === 'KeyB') {
+      document.getElementById('btn-burst')?.click();
     }
   });
 
-  // Push initial config to emitter
+  // Push initial full config
+  pushConfig();
+  updateBurstRowVisibility();
+}
+
+// ── Preset application ─────────────────────────────────────────────────────
+
+/**
+ * Apply a named preset: update the palette grid, single colour picker,
+ * and push the updated config to the emitter.
+ */
+function applyPreset(name) {
+  const colors = PALETTES[name];
+  if (!colors) return;
+
+  activePalette = [...colors];
+  buildPaletteGrid(activePalette);
+  setSingleColor(activePalette[0]);
   pushConfig();
 }
 
+// ── Burst row visibility ───────────────────────────────────────────────────
+
+function updateBurstRowVisibility() {
+  const mode    = document.getElementById('emitter-mode').value;
+  const burstRow = document.getElementById('burst-row');
+  burstRow.classList.toggle('hidden', mode !== 'burst');
+}
+
+// ── Config push ────────────────────────────────────────────────────────────
+
 /**
- * Read all control values and push them to the emitter & renderer.
+ * Read every control and push the complete config snapshot to the emitter.
+ * Also syncs renderer state (blend mode, trail) that lives outside the emitter.
  */
 function pushConfig() {
-  const v = id => document.getElementById(id)?.value;
-  const n = id => parseFloat(v(id)) || 0;
-  const i = id => parseInt(v(id),   10) || 0;
+  const v = id => document.getElementById(id)?.value ?? '';
+  const n = id => parseFloat(v(id))  || 0;
+  const i = id => parseInt(v(id), 10) || 0;
+
+  const blendVal = v('blend-mode');
 
   setEmitterConfig({
     emitterShape:  v('emitter-shape'),
@@ -174,7 +204,7 @@ function pushConfig() {
 
     particleSize:  i('particle-size'),
     particleShape: v('particle-shape'),
-    blendMode:     v('blend-mode'),
+    blendMode:     blendVal,
 
     lifetime:      i('lifetime'),
     fade:          n('fade'),
@@ -184,20 +214,21 @@ function pushConfig() {
     bgColor:       document.getElementById('bg-color').value,
   });
 
-  setBlendMode(v('blend-mode'));
+  // Sync renderer state
+  setBlendMode(blendVal);
+  setTrailAlpha(n('trail-alpha'));
+  setRendererBg(v('bg-color'));
 }
 
-/**
- * Collect export config and kick off the exporter.
- */
+// ── Export ─────────────────────────────────────────────────────────────────
+
 function triggerExport() {
-  // Take a snapshot of emitter config + extra info for the exporter
   const emitSnap = { ...getEmitterConfig() };
 
   const exportCfg = {
-    frames:    parseInt(document.getElementById('export-frames').value, 10) || 16,
+    frames:    parseInt(document.getElementById('export-frames').value,     10) || 16,
     frameSize: parseInt(document.getElementById('export-frame-size').value, 10) || 128,
-    cols:      parseInt(document.getElementById('export-cols').value, 10) || 4,
+    cols:      parseInt(document.getElementById('export-cols').value,       10) || 4,
   };
 
   startExport(exportCfg, emitSnap);

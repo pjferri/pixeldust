@@ -12,10 +12,10 @@ let canvas, ctx;
 let bgColor = '#0d0d0f';
 
 /** Trail alpha — how much of the old frame bleeds through (0=no trail, 1=full wipe). */
-let trailAlpha = 0.18;
+let trailAlpha = 0.12;
 
-/** Current blend mode for particles. */
-let blendMode = 'source-over';
+/** Current blend mode for particles. Matches the HTML default (Add/Glow). */
+let blendMode = 'lighter';
 
 /**
  * Initialise the renderer against a given <canvas> element.
@@ -29,12 +29,19 @@ function initRenderer(canvasEl) {
 }
 
 /**
- * Fit canvas to container, respecting device pixel ratio.
- * Keeping the canvas square makes sprite-sheet export straightforward.
+ * Fit canvas to the #canvas-area container, keeping it square.
+ * Measures the grandparent (#canvas-area) so the canvas itself
+ * doesn't influence its own size measurement (breaks chicken-and-egg).
  */
 function sizeCanvas() {
-  const wrap = canvas.parentElement;
-  const size = Math.min(wrap.clientWidth, wrap.clientHeight, 512);
+  // Walk up to #canvas-area — the flex container that owns the space
+  const area = canvas.closest('#canvas-area') || canvas.parentElement.parentElement;
+  const pad  = 56; // topbar + footer + breathing room
+  const size = Math.max(256, Math.min(
+    area.clientWidth  - pad,
+    area.clientHeight - pad,
+    720              // cap at 720 px — looks great on any display
+  ));
   canvas.width  = size;
   canvas.height = size;
   // Propagate to emitter so spawn coords are accurate

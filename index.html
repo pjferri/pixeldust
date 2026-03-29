@@ -53,11 +53,17 @@
             </select>
           </label>
 
+          <!-- Burst trigger — only visible in burst mode -->
+          <div id="burst-row" class="ctrl-row hidden">
+            <span>Burst</span>
+            <button id="btn-burst" class="btn btn-primary" style="flex:1">&#9654; Fire!</button>
+          </div>
+
           <label class="ctrl-row">
             <span>Count</span>
             <div class="slider-pair">
-              <input type="range" id="particle-count" min="1" max="500" value="80" step="1" />
-              <span class="val-display" data-for="particle-count">80</span>
+              <input type="range" id="particle-count" min="1" max="500" value="120" step="1" />
+              <span class="val-display" data-for="particle-count">120</span>
             </div>
           </label>
         </section>
@@ -125,7 +131,7 @@
             <span>Blend</span>
             <select id="blend-mode">
               <option value="source-over">Normal</option>
-              <option value="lighter">Add (Glow)</option>
+              <option value="lighter" selected>Add (Glow)</option>
               <option value="multiply">Multiply</option>
               <option value="screen">Screen</option>
             </select>
@@ -195,7 +201,7 @@
           <!-- Multi-color mode -->
           <label class="ctrl-row">
             <span>Multi-color</span>
-            <input type="checkbox" id="multi-color" class="toggle" />
+            <input type="checkbox" id="multi-color" class="toggle" checked />
           </label>
 
           <!-- Palette section -->
@@ -225,8 +231,8 @@
           <label class="ctrl-row">
             <span>Trail fade</span>
             <div class="slider-pair">
-              <input type="range" id="trail-alpha" min="0" max="1" value="0.18" step="0.01" />
-              <span class="val-display" data-for="trail-alpha">0.18</span>
+              <input type="range" id="trail-alpha" min="0" max="1" value="0.12" step="0.01" />
+              <span class="val-display" data-for="trail-alpha">0.12</span>
             </div>
           </label>
         </section>

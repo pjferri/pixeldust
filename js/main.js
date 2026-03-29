@@ -9,32 +9,41 @@ let isRunning = false;
 let rafHandle = null;
 
 // FPS tracking
-let lastTime  = 0;
+let lastTime   = 0;
 let frameCount = 0;
-let fpsAccum  = 0;
+let fpsAccum   = 0;
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 
 window.addEventListener('DOMContentLoaded', () => {
-  // Initialise renderer with the preview canvas
   const canvas = document.getElementById('preview-canvas');
   initRenderer(canvas);
-
-  // Wire all UI controls
   initUI();
 
-  // Play/Pause/Reset buttons
+  // Buttons
   document.getElementById('btn-play').addEventListener('click', play);
   document.getElementById('btn-pause').addEventListener('click', pause);
   document.getElementById('btn-reset').addEventListener('click', reset);
 
-  // Handle window resize
+  // Resize: re-measure container and reset spawn coords
   window.addEventListener('resize', () => {
     sizeCanvas();
     clearCanvas();
+    resetParticles();
   });
 
-  // Auto-play on load
+  // Resume animation automatically when the tab regains visibility
+  // (Chrome throttles rAF in background tabs, which can stall the loop)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && isRunning) {
+      // Re-kick the loop — rAF stops silently in hidden tabs
+      cancelAnimationFrame(rafHandle);
+      lastTime  = performance.now();
+      rafHandle = requestAnimationFrame(loop);
+    }
+  });
+
+  // Auto-play immediately
   play();
 });
 
@@ -46,7 +55,8 @@ function play() {
   document.getElementById('btn-play').classList.add('hidden');
   document.getElementById('btn-pause').classList.remove('hidden');
   document.getElementById('canvas-overlay').classList.add('hidden');
-  lastTime = performance.now();
+  document.getElementById('canvas-wrap').classList.add('running');
+  lastTime  = performance.now();
   rafHandle = requestAnimationFrame(loop);
 }
 
@@ -57,12 +67,16 @@ function pause() {
   document.getElementById('btn-pause').classList.add('hidden');
   document.getElementById('btn-play').classList.remove('hidden');
   document.getElementById('canvas-overlay').classList.remove('hidden');
+  document.getElementById('canvas-wrap').classList.remove('running');
 }
 
 function reset() {
   resetParticles();
   clearCanvas();
-  // If paused, re-prime by staying paused; if running, loop will refill naturally
+  // If we're in burst mode, trigger a fresh burst immediately
+  if (cfg.emitterMode === 'burst') {
+    cfg.burstPending = true;
+  }
 }
 
 function loop(now) {
@@ -74,7 +88,7 @@ function loop(now) {
   fpsAccum += dt;
   frameCount++;
 
-  if (fpsAccum >= 500) { // Update FPS display every 500ms
+  if (fpsAccum >= 500) {
     const fps = Math.round((frameCount / fpsAccum) * 1000);
     document.getElementById('fps-display').textContent = fps + ' fps';
     fpsAccum   = 0;
@@ -84,10 +98,8 @@ function loop(now) {
   // ── Live particle count ──────────────────────────────────────────────────
   document.getElementById('particle-count-live').textContent = liveCount() + ' particles';
 
-  // ── Simulate ─────────────────────────────────────────────────────────────
+  // ── Simulate + Render ─────────────────────────────────────────────────────
   tickEmitter();
-
-  // ── Render ───────────────────────────────────────────────────────────────
   renderFrame();
 
   rafHandle = requestAnimationFrame(loop);
