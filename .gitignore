@@ -1,0 +1,13 @@
+# Node (if Vite is added later)
+node_modules/
+dist/
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.suo
+*.user
