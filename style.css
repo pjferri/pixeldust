@@ -164,6 +164,59 @@ body {
 .hidden { display: none !important; }
 
 /* ============================================================
+   EFFECT PRESET BAR
+   ============================================================ */
+#preset-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.preset-bar-label {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+
+#effect-preset-btns {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.effect-preset-btn {
+  font-size: 11px;
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text-label);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+  white-space: nowrap;
+}
+.effect-preset-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+.effect-preset-btn.active {
+  background: var(--accent);
+  border-color: var(--accent-hover);
+  color: #fff;
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+
+/* ============================================================
    MAIN LAYOUT
    ============================================================ */
 #app {

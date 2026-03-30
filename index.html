@@ -24,8 +24,20 @@
         <div class="topbar-sep"></div>
         <button id="btn-export" class="btn btn-accent" title="Export sprite sheet">&#8659; Export PNG</button>
         <button id="btn-export-gif-top" class="btn btn-accent" title="Export animated GIF">&#9654; GIF</button>
+        <div class="topbar-sep"></div>
+        <button id="btn-save-cfg" class="btn btn-secondary" title="Save config as JSON">&#128190; Save</button>
+        <label class="btn btn-secondary" title="Load config from JSON" style="cursor:pointer">
+          &#128193; Load <input type="file" id="load-cfg-input" accept=".json" style="display:none" />
+        </label>
+        <button id="btn-share" class="btn btn-secondary" title="Copy shareable link">&#128279; Share</button>
       </div>
     </header>
+
+    <!-- ===== EFFECT PRESETS BAR ===== -->
+    <div id="preset-bar">
+      <span class="preset-bar-label">Effects:</span>
+      <div id="effect-preset-btns"></div>
+    </div>
 
     <!-- ===== MAIN LAYOUT ===== -->
     <main id="main">
@@ -396,6 +408,7 @@
   </div>
 
   <script src="js/palettes.js"></script>
+  <script src="js/presets.js"></script>
   <script src="js/particle.js"></script>
   <script src="js/emitter.js"></script>
   <script src="js/renderer.js"></script>
