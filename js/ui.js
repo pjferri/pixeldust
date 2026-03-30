@@ -116,8 +116,8 @@ function initUI() {
   // ── All slider/select controls → emitter config ───────────────────────
   const directControls = [
     'emitter-shape',
-    'particle-count', 'speed', 'spread', 'direction', 'gravity', 'turbulence',
-    'particle-size', 'particle-shape',
+    'particle-count', 'spawn-rate', 'speed', 'spread', 'direction', 'gravity', 'turbulence',
+    'particle-size', 'particle-shape', 'start-alpha',
     'lifetime', 'fade', 'shrink',
   ];
   directControls.forEach(id => {
@@ -132,6 +132,13 @@ function initUI() {
   document.getElementById('btn-export-bottom').addEventListener('click', triggerExport);
   document.getElementById('btn-close-modal').addEventListener('click', () => {
     document.getElementById('export-modal').classList.add('hidden');
+  });
+
+  // ── GIF Export ────────────────────────────────────────────────────────
+  document.getElementById('btn-export-gif-top').addEventListener('click', triggerGifExport);
+  document.getElementById('btn-export-gif').addEventListener('click',     triggerGifExport);
+  document.getElementById('btn-close-gif-modal').addEventListener('click', () => {
+    document.getElementById('gif-modal').classList.add('hidden');
   });
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────
@@ -203,6 +210,7 @@ function pushConfig() {
     emitterShape:  v('emitter-shape'),
     emitterMode:   v('emitter-mode'),
     count:         i('particle-count'),
+    spawnRate:     i('spawn-rate') || 60,
 
     // Movement
     speed:         n('speed'),
@@ -215,6 +223,7 @@ function pushConfig() {
     particleSize:  i('particle-size'),
     particleShape: v('particle-shape'),
     blendMode:     blendVal,
+    startAlpha:    n('start-alpha') || 1,
 
     // Lifetime
     lifetime:      i('lifetime'),
@@ -243,6 +252,12 @@ function pushConfig() {
 }
 
 // ── Export ─────────────────────────────────────────────────────────────────
+
+function triggerGifExport() {
+  const fps      = parseInt(document.getElementById('gif-fps').value, 10)      || 15;
+  const duration = parseFloat(document.getElementById('gif-duration').value)   || 2;
+  startGifExport({ fps, duration }, { ...getEmitterConfig() });
+}
 
 function triggerExport() {
   const emitSnap = { ...getEmitterConfig() };

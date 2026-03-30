@@ -62,7 +62,8 @@ function createParticle(x, y, cfg) {
     eg: endRgb.g,
     eb: endRgb.b,
     useGradient: !!cfg.useGradient,
-    alpha:       1,
+    alpha:       cfg.startAlpha ?? 1,
+    startAlpha:  cfg.startAlpha ?? 1,
     shape:       cfg.particleShape,
     fade:        cfg.fade,
     shrink:      cfg.shrink,
@@ -103,7 +104,7 @@ function updateParticle(p) {
   p.y += p.vy;
 
   // ── Fade ──────────────────────────────────────────────────────────────────
-  p.alpha = p.fade ? Math.max(0, 1 - t) : 1;
+  p.alpha = p.fade ? Math.max(0, p.startAlpha * (1 - t)) : p.startAlpha;
 
   // ── Shrink ────────────────────────────────────────────────────────────────
   if (p.shrink > 0) {

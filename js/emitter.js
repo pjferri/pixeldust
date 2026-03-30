@@ -37,6 +37,7 @@ let cfg = {
   emitterShape:  'point',       // 'point' | 'line' | 'circle'
   emitterMode:   'continuous',  // 'continuous' | 'burst' | 'trail'
   count:         120,
+  spawnRate:     60,            // particles per second (continuous/trail modes)
 
   // Movement
   speed:         3,
@@ -49,6 +50,7 @@ let cfg = {
   particleSize:  3,
   particleShape: 'square',
   blendMode:     'lighter',
+  startAlpha:    1,             // starting opacity of each particle
 
   // Lifetime
   lifetime:      60,
@@ -136,17 +138,26 @@ function tickEmitter() {
   let toSpawn = 0;
 
   if (cfg.emitterMode === 'continuous') {
-    toSpawn = Math.max(0, cfg.count - live);
-    // Throttle to ~30 frames to fill — prevents one-frame burst on load
-    toSpawn = Math.min(toSpawn, Math.ceil(cfg.count / 30));
+    // Spawn at most `spawnRate/60` particles per frame, capped at max count
+    if (live < cfg.count) {
+      toSpawn = Math.min(
+        cfg.count - live,
+        Math.max(1, Math.round(cfg.spawnRate / 60))
+      );
+    }
   } else if (cfg.emitterMode === 'burst') {
     if (cfg.burstPending) {
       toSpawn = cfg.count;
       cfg.burstPending = false;
     }
   } else if (cfg.emitterMode === 'trail') {
-    // Constant light trickle
-    toSpawn = Math.min(3, Math.max(0, cfg.count - live));
+    // Trickle at spawnRate/60 per frame, capped at count
+    if (live < cfg.count) {
+      toSpawn = Math.min(
+        cfg.count - live,
+        Math.max(1, Math.round(cfg.spawnRate / 60))
+      );
+    }
   }
 
   for (let i = 0; i < toSpawn; i++) {

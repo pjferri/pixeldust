@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PixelDust — Pixel Particle Creator</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
 </head>
 <body>
   <div id="app">
@@ -22,6 +23,7 @@
         <button id="btn-reset" class="btn btn-secondary" title="Reset (R)">&#8635; Reset</button>
         <div class="topbar-sep"></div>
         <button id="btn-export" class="btn btn-accent" title="Export sprite sheet">&#8659; Export PNG</button>
+        <button id="btn-export-gif-top" class="btn btn-accent" title="Export animated GIF">&#9654; GIF</button>
       </div>
     </header>
 
@@ -66,6 +68,14 @@
             <div class="slider-pair">
               <input type="range" id="particle-count" min="1" max="500" value="120" step="1" />
               <span class="val-display" data-for="particle-count">120</span>
+            </div>
+          </label>
+
+          <label class="ctrl-row">
+            <span>Rate (p/s)</span>
+            <div class="slider-pair">
+              <input type="range" id="spawn-rate" min="1" max="300" value="60" step="1" />
+              <span class="val-display" data-for="spawn-rate">60</span>
             </div>
           </label>
         </section>
@@ -139,6 +149,14 @@
               <option value="star">Star ★</option>
               <option value="sparkle">Sparkle ✦</option>
             </select>
+          </label>
+
+          <label class="ctrl-row">
+            <span>Opacity</span>
+            <div class="slider-pair">
+              <input type="range" id="start-alpha" min="0.1" max="1" value="1" step="0.05" />
+              <span class="val-display" data-for="start-alpha">1.00</span>
+            </div>
           </label>
 
           <label class="ctrl-row">
@@ -227,12 +245,12 @@
             <div id="palette-grid"></div>
             <div id="palette-presets">
               <span class="preset-label">Presets:</span>
-              <button class="preset-btn" data-preset="fire">Fire</button>
-              <button class="preset-btn" data-preset="ice">Ice</button>
-              <button class="preset-btn" data-preset="magic">Magic</button>
-              <button class="preset-btn" data-preset="nature">Nature</button>
-              <button class="preset-btn" data-preset="mono">Mono</button>
-              <button class="preset-btn" data-preset="sunset">Sunset</button>
+              <button class="preset-btn" data-preset="fire">🔥 Fire</button>
+              <button class="preset-btn" data-preset="ice">🧊 Ice</button>
+              <button class="preset-btn" data-preset="magic">✨ Magic</button>
+              <button class="preset-btn" data-preset="nature">🌿 Nature</button>
+              <button class="preset-btn" data-preset="mono">⬜ Mono</button>
+              <button class="preset-btn" data-preset="sunset">🌅 Sunset</button>
             </div>
           </div>
         </section>
@@ -313,6 +331,26 @@
           </label>
 
           <button id="btn-export-bottom" class="btn btn-accent full-width">&#8659; Export Sprite Sheet</button>
+
+          <div class="export-sep"></div>
+
+          <label class="ctrl-row">
+            <span>GIF fps</span>
+            <div class="slider-pair">
+              <input type="range" id="gif-fps" min="5" max="30" value="15" step="1" />
+              <span class="val-display" data-for="gif-fps">15</span>
+            </div>
+          </label>
+
+          <label class="ctrl-row">
+            <span>GIF dur (s)</span>
+            <div class="slider-pair">
+              <input type="range" id="gif-duration" min="1" max="5" value="2" step="0.5" />
+              <span class="val-display" data-for="gif-duration">2.0</span>
+            </div>
+          </label>
+
+          <button id="btn-export-gif" class="btn btn-accent full-width">&#9654; Export GIF</button>
         </section>
 
       </aside>
@@ -337,6 +375,24 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- GIF Export Modal -->
+  <div id="gif-modal" class="modal hidden">
+    <div class="modal-box">
+      <h2>Exporting GIF…</h2>
+      <div id="gif-progress-wrap">
+        <div id="gif-progress-bar"></div>
+      </div>
+      <p id="gif-status">Capturing frames…</p>
+      <div id="gif-result" class="hidden">
+        <img id="gif-preview-img" alt="GIF preview" />
+        <div class="export-actions">
+          <a id="gif-download-link" class="btn btn-accent" download="pixeldust.gif">Download GIF</a>
+          <button id="btn-close-gif-modal" class="btn btn-secondary">Close</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="js/palettes.js"></script>
