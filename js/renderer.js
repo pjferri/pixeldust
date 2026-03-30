@@ -100,6 +100,17 @@ function drawParticle(ctx, p) {
   const y = Math.round(p.y);
   const s = p.size;
 
+  // Apply rotation transform for shapes that benefit from it
+  const hasRotation = p.spin !== 0 && p.angle !== undefined &&
+    (p.shape === 'square' || p.shape === 'diamond' || p.shape === 'star' ||
+     p.shape === 'sparkle' || p.shape === 'cross');
+  if (hasRotation) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(p.angle);
+    ctx.translate(-x, -y);
+  }
+
   switch (p.shape) {
     // ── Circle (pixel-art at small sizes, arc at large) ────────────────
     case 'circle':
@@ -175,6 +186,7 @@ function drawParticle(ctx, p) {
       ctx.fillRect(x - Math.floor(s / 2), y - Math.floor(s / 2), s, s);
   }
 
+  if (hasRotation) ctx.restore();
   ctx.globalAlpha = 1;
 }
 

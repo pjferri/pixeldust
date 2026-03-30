@@ -51,6 +51,7 @@ let cfg = {
   particleShape: 'square',
   blendMode:     'lighter',
   startAlpha:    1,             // starting opacity of each particle
+  rotation:      0,             // max rotation speed in degrees/frame (0 = no spin)
 
   // Lifetime
   lifetime:      60,

@@ -656,6 +656,40 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
   margin: 8px 0;
 }
 
+/* ============================================================
+   SHORTCUTS MODAL
+   ============================================================ */
+.shortcuts-box {
+  min-width: 280px;
+  max-width: 380px;
+}
+
+.shortcuts-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 2px 6px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.shortcuts-grid span {
+  font-size: 11px;
+  color: var(--text-label);
+}
+
 /* GIF modal reuses export modal styles; just need preview img */
 #gif-preview-img {
   max-width: 100%;

@@ -15,7 +15,7 @@
       <div id="logo">
         <span class="logo-px">PX</span>
         <span class="logo-name">PixelDust</span>
-        <span class="logo-version">v0.2</span>
+        <span class="logo-version">v0.3</span>
       </div>
       <div id="topbar-controls">
         <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
@@ -30,6 +30,8 @@
           &#128193; Load <input type="file" id="load-cfg-input" accept=".json" style="display:none" />
         </label>
         <button id="btn-share" class="btn btn-secondary" title="Copy shareable link">&#128279; Share</button>
+        <div class="topbar-sep"></div>
+        <button id="btn-shortcuts" class="btn btn-secondary" title="Keyboard shortcuts">⌨ Keys</button>
       </div>
     </header>
 
@@ -176,6 +178,14 @@
             <div class="slider-pair">
               <input type="range" id="start-alpha" min="0.1" max="1" value="1" step="0.05" />
               <span class="val-display" data-for="start-alpha">1.00</span>
+            </div>
+          </label>
+
+          <label class="ctrl-row">
+            <span>Spin (°/f)</span>
+            <div class="slider-pair">
+              <input type="range" id="rotation" min="0" max="20" value="0" step="0.5" />
+              <span class="val-display" data-for="rotation">0</span>
             </div>
           </label>
 
@@ -395,6 +405,27 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- Keyboard Shortcuts Modal -->
+  <div id="shortcuts-modal" class="modal hidden">
+    <div class="modal-box shortcuts-box">
+      <h2>Keyboard Shortcuts</h2>
+      <div class="shortcuts-grid">
+        <kbd>Space</kbd><span>Play / Pause</span>
+        <kbd>R</kbd><span>Reset particles</span>
+        <kbd>B</kbd><span>Fire burst</span>
+        <kbd>1</kbd><span>🔥 Fire preset</span>
+        <kbd>2</kbd><span>❄️ Snow preset</span>
+        <kbd>3</kbd><span>💥 Explosion preset</span>
+        <kbd>4</kbd><span>✨ Sparkle preset</span>
+        <kbd>5</kbd><span>🔮 Magic preset</span>
+        <kbd>6</kbd><span>💨 Smoke preset</span>
+        <kbd>7</kbd><span>🎊 Confetti preset</span>
+        <kbd>8</kbd><span>🌀 Portal preset</span>
+      </div>
+      <button id="btn-close-shortcuts" class="btn btn-secondary" style="margin-top:16px;width:100%">Close</button>
+    </div>
   </div>
 
   <!-- GIF Export Modal -->

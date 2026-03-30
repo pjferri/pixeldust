@@ -64,6 +64,8 @@ function createParticle(x, y, cfg) {
     useGradient: !!cfg.useGradient,
     alpha:       cfg.startAlpha ?? 1,
     startAlpha:  cfg.startAlpha ?? 1,
+    angle:       Math.random() * Math.PI * 2,
+    spin:        (Math.random() - 0.5) * 2 * ((cfg.rotation || 0) * Math.PI / 180),
     shape:       cfg.particleShape,
     fade:        cfg.fade,
     shrink:      cfg.shrink,
@@ -102,6 +104,9 @@ function updateParticle(p) {
   // ── Movement ──────────────────────────────────────────────────────────────
   p.x += p.vx;
   p.y += p.vy;
+
+  // ── Rotation ──────────────────────────────────────────────────────────────
+  if (p.spin !== 0) p.angle += p.spin;
 
   // ── Fade ──────────────────────────────────────────────────────────────────
   p.alpha = p.fade ? Math.max(0, p.startAlpha * (1 - t)) : p.startAlpha;

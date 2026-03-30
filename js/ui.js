@@ -122,7 +122,7 @@ function initUI() {
   const directControls = [
     'emitter-shape',
     'particle-count', 'spawn-rate', 'speed', 'spread', 'direction', 'gravity', 'turbulence',
-    'particle-size', 'particle-shape', 'start-alpha',
+    'particle-size', 'particle-shape', 'start-alpha', 'rotation',
     'lifetime', 'fade', 'shrink',
   ];
   directControls.forEach(id => {
@@ -150,6 +150,14 @@ function initUI() {
   document.getElementById('btn-save-cfg').addEventListener('click', saveConfig);
   document.getElementById('load-cfg-input').addEventListener('change', loadConfig);
   document.getElementById('btn-share').addEventListener('click', shareConfig);
+
+  // ── Keyboard shortcuts help ───────────────────────────────────────────
+  document.getElementById('btn-shortcuts').addEventListener('click', () => {
+    document.getElementById('shortcuts-modal').classList.remove('hidden');
+  });
+  document.getElementById('btn-close-shortcuts').addEventListener('click', () => {
+    document.getElementById('shortcuts-modal').classList.add('hidden');
+  });
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────
   const presetKeys = Object.keys(EFFECT_PRESETS); // ordered by insertion
@@ -223,6 +231,7 @@ function applyEffectPreset(name) {
   set('particle-shape', c.particleShape);
   set('blend-mode',     c.blendMode);
   set('start-alpha',    c.startAlpha);
+  set('rotation',       c.rotation ?? 0);
   set('lifetime',       c.lifetime);
   set('fade',           c.fade);
   set('shrink',         c.shrink);
@@ -315,6 +324,7 @@ function pushConfig() {
     particleShape: v('particle-shape'),
     blendMode:     blendVal,
     startAlpha:    n('start-alpha') || 1,
+    rotation:      n('rotation'),
     lifetime:      i('lifetime'),
     fade:          n('fade'),
     shrink:        n('shrink'),
@@ -352,6 +362,7 @@ function getFullSnapshot() {
     particleShape: v('particle-shape'),
     blendMode:     v('blend-mode'),
     startAlpha:    n('start-alpha'),
+    rotation:      n('rotation'),
     lifetime:      i('lifetime'),
     fade:          n('fade'),
     shrink:        n('shrink'),
@@ -383,6 +394,7 @@ function applySnapshot(snap) {
   set('particle-shape', snap.particleShape);
   set('blend-mode',     snap.blendMode);
   set('start-alpha',    snap.startAlpha);
+  set('rotation',       snap.rotation ?? 0);
   set('lifetime',       snap.lifetime);
   set('fade',           snap.fade);
   set('shrink',         snap.shrink);
