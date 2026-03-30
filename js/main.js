@@ -8,6 +8,12 @@
 let isRunning = false;
 let rafHandle = null;
 
+// Speed multiplier: accumulate fractional ticks to support slow-mo
+let speedMult = 1;
+let tickAccum = 0;
+
+function setSpeedMult(v) { speedMult = Math.max(0.05, v); }
+
 // FPS tracking
 let lastTime   = 0;
 let frameCount = 0;
@@ -99,7 +105,11 @@ function loop(now) {
   document.getElementById('particle-count-live').textContent = liveCount() + ' particles';
 
   // ── Simulate + Render ─────────────────────────────────────────────────────
-  tickEmitter();
+  // Accumulate ticks so fractional speeds work (e.g. 0.5× = 1 tick per 2 frames)
+  tickAccum += speedMult;
+  const ticks = Math.floor(tickAccum);
+  tickAccum -= ticks;
+  for (let t = 0; t < ticks; t++) tickEmitter();
   renderFrame();
 
   rafHandle = requestAnimationFrame(loop);

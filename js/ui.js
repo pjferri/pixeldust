@@ -101,6 +101,11 @@ function initUI() {
   document.getElementById('gradient-start').addEventListener('input', pushConfig);
   document.getElementById('gradient-end').addEventListener('input',   pushConfig);
 
+  // ── Speed multiplier ─────────────────────────────────────────────────
+  document.getElementById('speed-mult').addEventListener('input', e => {
+    setSpeedMult(parseFloat(e.target.value));
+  });
+
   // ── Loop toggle ───────────────────────────────────────────────────────
   document.getElementById('loop-toggle').addEventListener('change', pushConfig);
 
@@ -147,11 +152,17 @@ function initUI() {
   document.getElementById('btn-share').addEventListener('click', shareConfig);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────
+  const presetKeys = Object.keys(EFFECT_PRESETS); // ordered by insertion
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
     if (e.code === 'Space') { e.preventDefault(); document.getElementById(isRunning ? 'btn-pause' : 'btn-play').click(); }
     if (e.code === 'KeyR')  document.getElementById('btn-reset').click();
     if (e.code === 'KeyB')  document.getElementById('btn-burst')?.click();
+    // 1–8: switch effect preset
+    const digit = parseInt(e.key, 10);
+    if (digit >= 1 && digit <= presetKeys.length) {
+      applyEffectPreset(presetKeys[digit - 1]);
+    }
   });
 
   pushConfig();
@@ -163,10 +174,11 @@ function initUI() {
 
 function buildEffectPresetBar() {
   const container = document.getElementById('effect-preset-btns');
-  Object.entries(EFFECT_PRESETS).forEach(([key, preset]) => {
+  Object.entries(EFFECT_PRESETS).forEach(([key, preset], idx) => {
     const btn = document.createElement('button');
     btn.className   = 'effect-preset-btn';
     btn.textContent = preset.label;
+    btn.title       = `${preset.label} (key: ${idx + 1})`;
     btn.dataset.key = key;
     btn.addEventListener('click', () => applyEffectPreset(key));
     container.appendChild(btn);
