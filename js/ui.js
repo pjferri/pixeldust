@@ -1,8 +1,45 @@
 /**
  * ui.js
  * Wires all DOM controls to the emitter/renderer state.
- * v0.3: effect presets, save/load JSON, shareable URL.
+ * v0.5: undo/redo, air drag, 13 presets, 9 palettes.
  */
+
+// ── Undo / Redo ────────────────────────────────────────────────────────────
+
+const _history = [];
+let _historyIdx = -1;
+const _MAX_HISTORY = 60;
+let _pushDebounceTimer = null;
+
+function _commitHistory() {
+  // Truncate any forward-redo states
+  _history.splice(_historyIdx + 1);
+  _history.push(getFullSnapshot());
+  if (_history.length > _MAX_HISTORY) _history.shift();
+  _historyIdx = _history.length - 1;
+}
+
+function _schedulePush() {
+  clearTimeout(_pushDebounceTimer);
+  _pushDebounceTimer = setTimeout(_commitHistory, 400);
+}
+
+function undo() {
+  if (_historyIdx <= 0) return;
+  _historyIdx--;
+  _applyHistoryEntry(_history[_historyIdx]);
+}
+
+function redo() {
+  if (_historyIdx >= _history.length - 1) return;
+  _historyIdx++;
+  _applyHistoryEntry(_history[_historyIdx]);
+}
+
+function _applyHistoryEntry(snap) {
+  clearTimeout(_pushDebounceTimer); // don't re-push while restoring
+  applySnapshot(snap);
+}
 
 // ── Slider display sync ────────────────────────────────────────────────────
 
@@ -54,10 +91,14 @@ function setSingleColor(hex) {
 function initUI() {
   initSliderDisplays();
   buildEffectPresetBar();
+  document.getElementById('speed-mult').closest('.slider-pair').previousElementSibling.textContent = 'Preview speed';
+  document.getElementById('loop-toggle').closest('.ctrl-row').title = 'Restarts the effect periodically so you can preview seamless loops.';
 
-  // Load from URL hash if present, else default fire preset
+  // Load from URL hash if present, else keep the neutral point-emitter defaults
   if (!loadFromHash()) {
-    applyEffectPreset('fire');
+    applyPalette('fire');
+    document.querySelectorAll('.effect-preset-btn').forEach(b => b.classList.remove('active'));
+    clearCanvas();
   }
 
   // ── Palette colour presets (right-panel swatches) ─────────────────────
@@ -83,11 +124,16 @@ function initUI() {
   // ── Trail alpha ───────────────────────────────────────────────────────
   document.getElementById('trail-alpha').addEventListener('input', e => {
     setTrailAlpha(parseFloat(e.target.value));
+    pushConfig();
   });
 
   // ── Blend mode ────────────────────────────────────────────────────────
   document.getElementById('blend-mode').addEventListener('change', e => {
     setBlendMode(e.target.value);
+    pushConfig();
+  });
+  document.getElementById('effect-strength').addEventListener('input', e => {
+    setEffectStrength(parseFloat(e.target.value));
     pushConfig();
   });
 
@@ -121,8 +167,8 @@ function initUI() {
   // ── All slider/select controls → emitter config ───────────────────────
   const directControls = [
     'emitter-shape',
-    'particle-count', 'spawn-rate', 'speed', 'spread', 'direction', 'gravity', 'turbulence',
-    'particle-size', 'size-variance', 'particle-shape', 'start-alpha', 'rotation',
+    'particle-count', 'spawn-rate', 'speed', 'spread', 'direction', 'gravity', 'turbulence', 'drag',
+    'particle-size', 'size-variance', 'particle-shape', 'start-alpha', 'rotation', 'effect-strength',
     'lifetime', 'fade', 'shrink',
   ];
   directControls.forEach(id => {
@@ -158,6 +204,11 @@ function initUI() {
   const shortcutsModal = document.getElementById('shortcuts-modal');
   const openShortcuts  = () => shortcutsModal.classList.remove('hidden');
   const closeShortcuts = () => shortcutsModal.classList.add('hidden');
+  const closeOverlays  = () => {
+    closeShortcuts();
+    document.getElementById('export-modal').classList.add('hidden');
+    document.getElementById('gif-modal').classList.add('hidden');
+  };
   document.getElementById('btn-shortcuts').addEventListener('click', openShortcuts);
   document.getElementById('btn-close-shortcuts').addEventListener('click', closeShortcuts);
   shortcutsModal.addEventListener('click', e => { if (e.target === shortcutsModal) closeShortcuts(); });
@@ -165,18 +216,31 @@ function initUI() {
   // ── Keyboard shortcuts ────────────────────────────────────────────────
   const presetKeys = Object.keys(EFFECT_PRESETS); // ordered by insertion
   document.addEventListener('keydown', e => {
+    // Undo / Redo — handle before input check so Ctrl+Z works globally
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ' && !e.shiftKey) {
+      e.preventDefault(); undo(); return;
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyY' || (e.code === 'KeyZ' && e.shiftKey))) {
+      e.preventDefault(); redo(); return;
+    }
+    // Copy canvas snapshot to clipboard (Ctrl+C)
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyC') {
+      copyCanvasToClipboard(); return;
+    }
+
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
     if (e.code === 'Space')  { e.preventDefault(); document.getElementById(isRunning ? 'btn-pause' : 'btn-play').click(); }
     if (e.code === 'KeyR')   document.getElementById('btn-reset').click();
     if (e.code === 'KeyB')   document.getElementById('btn-burst')?.click();
     if (e.code === 'KeyF')   toggleFullscreen();
-    if (e.key  === '?')      { shortcutsModal.classList.contains('hidden') ? openShortcuts() : closeShortcuts(); }
-    if (e.code === 'Escape') closeShortcuts();
+    if (e.key  === '?')      { e.preventDefault(); shortcutsModal.classList.contains('hidden') ? openShortcuts() : closeShortcuts(); }
+    if (e.code === 'Escape') { e.preventDefault(); closeOverlays(); }
     if (e.code === 'KeyE')   triggerExport();
     if (e.code === 'KeyG')   triggerGifExport();
     if (e.code === 'KeyZ')   randomizeSettings();
-    if (e.code === 'KeyS')   saveConfig();
-    // 1–8: switch effect preset
+    if (e.code === 'KeyS')   { e.preventDefault(); saveConfig(); }
+    if (e.code === 'KeyC')   copyCanvasToClipboard();
+    // 1–9: switch effect preset
     const digit = parseInt(e.key, 10);
     if (digit >= 1 && digit <= presetKeys.length) {
       applyEffectPreset(presetKeys[digit - 1]);
@@ -186,6 +250,9 @@ function initUI() {
   pushConfig();
   updateBurstRowVisibility();
   startEmitterPosHUD();
+
+  // Seed undo history with initial state
+  setTimeout(_commitHistory, 100);
 }
 
 // ── Effect preset bar ──────────────────────────────────────────────────────
@@ -230,6 +297,7 @@ function applyEffectPreset(name) {
 
   set('emitter-shape',  c.emitterShape);
   set('emitter-mode',   c.emitterMode);
+  set('speed-mult',     c.speedMult ?? 1);
   set('particle-count', c.count);
   set('spawn-rate',     c.spawnRate);
   set('speed',          c.speed);
@@ -237,9 +305,11 @@ function applyEffectPreset(name) {
   set('direction',      c.direction);
   set('gravity',        c.gravity);
   set('turbulence',     c.turbulence);
+  set('drag',           c.drag ?? 1);
   set('particle-size',  c.particleSize);
   set('particle-shape', c.particleShape);
   set('blend-mode',     c.blendMode);
+  set('effect-strength', c.effectStrength ?? 1);
   set('size-variance',  c.sizeVariance ?? 0);
   set('start-alpha',    c.startAlpha);
   set('rotation',       c.rotation ?? 0);
@@ -253,7 +323,7 @@ function applyEffectPreset(name) {
 
   setCheck('multi-color',   c.multiColor);
   setCheck('use-gradient',  c.useGradient);
-  setCheck('loop-toggle',   false);
+  setCheck('loop-toggle',   c.loop ?? false);
 
   // Show/hide gradient pickers
   document.getElementById('gradient-pickers').classList.toggle('hidden', !c.useGradient);
@@ -324,6 +394,7 @@ function pushConfig() {
   setEmitterConfig({
     emitterShape:  v('emitter-shape'),
     emitterMode:   v('emitter-mode'),
+    speedMult:     n('speed-mult') || 1,
     count:         i('particle-count'),
     spawnRate:     i('spawn-rate') || 60,
     speed:         n('speed'),
@@ -331,10 +402,12 @@ function pushConfig() {
     direction:     n('direction'),
     gravity:       n('gravity'),
     turbulence:    n('turbulence'),
+    drag:          parseFloat(document.getElementById('drag')?.value ?? '1') || 1,
     particleSize:  i('particle-size'),
     sizeVariance:  i('size-variance'),
     particleShape: v('particle-shape'),
     blendMode:     blendVal,
+    effectStrength: n('effect-strength') || 1,
     startAlpha:    n('start-alpha') || 1,
     rotation:      n('rotation'),
     lifetime:      i('lifetime'),
@@ -346,11 +419,17 @@ function pushConfig() {
     gradientEnd:   v('gradient-end'),
     loop:          b('loop-toggle'),
     bgColor:       v('bg-color'),
+    trailAlpha:    n('trail-alpha'),
   });
 
+  setSpeedMult(n('speed-mult') || 1);
   setBlendMode(blendVal);
+  setEffectStrength(n('effect-strength') || 1);
   setTrailAlpha(n('trail-alpha'));
   setRendererBg(v('bg-color'));
+
+  // Queue a history snapshot (debounced so fast slider drags collapse)
+  _schedulePush();
 }
 
 // ── Save / Load / Share ────────────────────────────────────────────────────
@@ -363,6 +442,7 @@ function getFullSnapshot() {
   return {
     emitterShape:  v('emitter-shape'),
     emitterMode:   v('emitter-mode'),
+    speedMult:     n('speed-mult'),
     count:         i('particle-count'),
     spawnRate:     i('spawn-rate'),
     speed:         n('speed'),
@@ -370,10 +450,12 @@ function getFullSnapshot() {
     direction:     n('direction'),
     gravity:       n('gravity'),
     turbulence:    n('turbulence'),
+    drag:          n('drag') || 1,
     particleSize:  i('particle-size'),
     sizeVariance:  i('size-variance'),
     particleShape: v('particle-shape'),
     blendMode:     v('blend-mode'),
+    effectStrength: n('effect-strength'),
     startAlpha:    n('start-alpha'),
     rotation:      n('rotation'),
     lifetime:      i('lifetime'),
@@ -387,6 +469,7 @@ function getFullSnapshot() {
     gradientEnd:   v('gradient-end'),
     loop:          b('loop-toggle'),
     palette:       activePalette,
+    singleColor:   activeColor,
   };
 }
 
@@ -396,6 +479,7 @@ function applySnapshot(snap) {
 
   set('emitter-shape',  snap.emitterShape);
   set('emitter-mode',   snap.emitterMode);
+  set('speed-mult',     snap.speedMult ?? 1);
   set('particle-count', snap.count);
   set('spawn-rate',     snap.spawnRate);
   set('speed',          snap.speed);
@@ -403,9 +487,11 @@ function applySnapshot(snap) {
   set('direction',      snap.direction);
   set('gravity',        snap.gravity);
   set('turbulence',     snap.turbulence);
+  set('drag',           snap.drag ?? 1);
   set('particle-size',  snap.particleSize);
   set('particle-shape', snap.particleShape);
   set('blend-mode',     snap.blendMode);
+  set('effect-strength', snap.effectStrength ?? 1);
   set('size-variance',  snap.sizeVariance ?? 0);
   set('start-alpha',    snap.startAlpha);
   set('rotation',       snap.rotation ?? 0);
@@ -426,8 +512,8 @@ function applySnapshot(snap) {
   if (snap.palette && snap.palette.length) {
     activePalette = [...snap.palette];
     buildPaletteGrid(activePalette);
-    setSingleColor(activePalette[0]);
   }
+  setSingleColor(snap.singleColor || activePalette[0] || activeColor);
 
   document.querySelectorAll('.val-display').forEach(display => {
     const slider = document.getElementById(display.dataset.for);
@@ -498,6 +584,24 @@ function loadFromHash() {
   }
 }
 
+// ── Copy canvas to clipboard ───────────────────────────────────────────────
+
+function copyCanvasToClipboard() {
+  const canvas = getCanvas();
+  if (!canvas) return;
+  canvas.toBlob(blob => {
+    if (!blob) return;
+    try {
+      navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(() => {
+        const el = document.getElementById('fps-display');
+        const orig = el.textContent;
+        el.textContent = '✓ Copied!';
+        setTimeout(() => { el.textContent = orig; }, 1500);
+      }).catch(() => { /* clipboard permission denied — silent fail */ });
+    } catch (_) { /* ClipboardItem not supported */ }
+  });
+}
+
 // ── Export ─────────────────────────────────────────────────────────────────
 
 // ── Fullscreen preview ─────────────────────────────────────────────────────
@@ -524,6 +628,7 @@ function triggerExport() {
     frames:    parseInt(document.getElementById('export-frames').value,     10) || 16,
     frameSize: parseInt(document.getElementById('export-frame-size').value, 10) || 128,
     cols:      parseInt(document.getElementById('export-cols').value,       10) || 4,
+    transparentBg: document.getElementById('export-transparent')?.checked ?? false,
   }, { ...getEmitterConfig() });
 }
 
@@ -542,6 +647,7 @@ function randomizeSettings() {
   // Sane ranges that still produce interesting results
   set('emitter-shape',  pick(['point', 'line', 'circle']));
   set('emitter-mode',   pick(['continuous', 'continuous', 'continuous', 'burst', 'trail'])); // weight continuous
+  set('speed-mult',     rng(0.5, 2, 0.05));
   set('particle-count', rng(30, 300, 10));
   set('spawn-rate',     rng(20, 200, 10));
   set('speed',          rng(0.5, 8, 0.5));
@@ -549,19 +655,20 @@ function randomizeSettings() {
   set('direction',      rng(0, 359, 1));
   set('gravity',        rng(-0.5, 0.5, 0.05));
   set('turbulence',     rng(0, 1.5, 0.05));
+  set('drag',           rng(0.88, 1.0, 0.005));
   set('particle-size',  rng(1, 10, 1));
   set('size-variance',  rng(0, 4, 1));
   set('particle-shape', pick(['square', 'circle', 'diamond', 'cross', 'star', 'sparkle']));
-  set('blend-mode',     pick(['source-over', 'lighter', 'lighter', 'screen'])); // weight lighter
-  set('start-alpha',    rng(0.4, 1, 0.05));
-  set('rotation',       rng(0, 12, 1));
-  set('lifetime',       rng(20, 200, 10));
-  set('fade',           rng(0, 1, 0.1));
-  set('shrink',         rng(0, 0.8, 0.1));
-  set('trail-alpha',    rng(0.05, 0.3, 0.01));
+  set('blend-mode',     pick(['normal', 'glow', 'neon', 'screen', 'shadow']));
+  set('effect-strength', rng(0.4, 1.8, 0.05));
+  set('start-alpha',    rng(0.3, 1, 0.05));
+  set('rotation',       rng(0, 15, 0.5));
+  set('lifetime',       rng(20, 200, 5));
+  set('fade',           rng(0.2, 1, 0.05));
+  set('shrink',         rng(0, 0.8, 0.05));
+  set('trail-alpha',    rng(0.03, 0.25, 0.01));
 
-  // Random gradient
-  const useGrad = Math.random() > 0.4;
+  const useGrad = Math.random() < 0.4;
   setCheck('use-gradient', useGrad);
   document.getElementById('gradient-pickers').classList.toggle('hidden', !useGrad);
   if (useGrad) {
@@ -570,11 +677,12 @@ function randomizeSettings() {
     set('gradient-end',   randomHex());
   }
 
-  // Random palette
-  const paletteNames = Object.keys(PALETTES);
-  applyPalette(pick(paletteNames));
+  setCheck('multi-color', Math.random() > 0.25);
+  setCheck('loop-toggle', false);
 
-  // Sync val-display spans
+  updateBurstRowVisibility();
+
+  // Re-sync all val-display spans
   document.querySelectorAll('.val-display').forEach(display => {
     const slider = document.getElementById(display.dataset.for);
     if (slider) {
@@ -583,10 +691,6 @@ function randomizeSettings() {
     }
   });
 
-  // Clear active preset highlight — this is a custom random state
-  document.querySelectorAll('.effect-preset-btn').forEach(b => b.classList.remove('active'));
-
-  updateBurstRowVisibility();
   resetParticles();
   clearCanvas();
   pushConfig();

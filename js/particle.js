@@ -72,6 +72,7 @@ function createParticle(x, y, cfg) {
     shrink:      cfg.shrink,
     gravity:     cfg.gravity,
     turbulence:  cfg.turbulence || 0,
+    drag:        Math.max(0.5, Math.min(1, cfg.drag ?? 1)),
     alive:       true,
   };
 }
@@ -95,6 +96,13 @@ function updateParticle(p) {
   // ── Gravity ───────────────────────────────────────────────────────────────
   p.vy += p.gravity;
 
+  // ── Air drag (velocity dampening) ────────────────────────────────────────
+  // drag=1 means no dampening, drag<1 means particles slow over time.
+  if (p.drag < 1) {
+    p.vx *= p.drag;
+    p.vy *= p.drag;
+  }
+
   // ── Turbulence (per-frame random velocity jitter) ─────────────────────────
   // Adds organic noise so particles don't all follow the same path.
   if (p.turbulence > 0) {
@@ -110,7 +118,8 @@ function updateParticle(p) {
   if (p.spin !== 0) p.angle += p.spin;
 
   // ── Fade ──────────────────────────────────────────────────────────────────
-  p.alpha = p.fade ? Math.max(0, p.startAlpha * (1 - t)) : p.startAlpha;
+  // fade=0: no fade; fade=1: fully transparent at end of life (continuous).
+  p.alpha = Math.max(0, p.startAlpha * (1 - t * p.fade));
 
   // ── Shrink ────────────────────────────────────────────────────────────────
   if (p.shrink > 0) {

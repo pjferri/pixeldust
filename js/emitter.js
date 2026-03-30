@@ -27,6 +27,7 @@ let emitterY = -1;
 
 /** True while the user is dragging the emitter on the canvas. */
 let emitterDragging = false;
+let emitterJustMoved = false;
 
 /** Frames elapsed since the last loop-reset (used by the loop feature). */
 let _loopTimer = 0;
@@ -45,6 +46,7 @@ let cfg = {
   direction:     270,           // degrees (270 = upward in canvas coords)
   gravity:       0.15,
   turbulence:    0,             // random velocity jitter per frame
+  drag:          1,             // velocity multiplier per frame (1=no drag, 0.95=strong drag)
 
   // Appearance
   particleSize:  3,
@@ -75,6 +77,9 @@ let cfg = {
 
   // Export helpers
   bgColor:       '#0c0c0e',
+  trailAlpha:    0.12,
+  speedMult:     1,
+  effectStrength: 1,
 };
 
 // ── Public API ─────────────────────────────────────────────────────────────
@@ -109,6 +114,11 @@ function liveCount() {
 function setEmitterPos(x, y) {
   emitterX = Math.round(x);
   emitterY = Math.round(y);
+  emitterJustMoved = true;
+}
+
+function setEmitterDragging(isDragging) {
+  emitterDragging = !!isDragging;
 }
 
 /**
@@ -153,8 +163,8 @@ function tickEmitter() {
       cfg.burstPending = false;
     }
   } else if (cfg.emitterMode === 'trail') {
-    // Trickle at spawnRate/60 per frame, capped at count
-    if (live < cfg.count) {
+    // Only emit while the user is dragging / moving the emitter.
+    if ((emitterDragging || emitterJustMoved) && live < cfg.count) {
       toSpawn = Math.min(
         cfg.count - live,
         Math.max(1, Math.round(cfg.spawnRate / 60))
@@ -177,9 +187,12 @@ function tickEmitter() {
     if (_loopTimer >= interval) {
       _loopTimer = 0;
       resetParticles();
+      clearCanvas();
       if (cfg.emitterMode === 'burst') cfg.burstPending = true;
     }
   }
+
+  emitterJustMoved = false;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────

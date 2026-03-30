@@ -30,6 +30,18 @@ const PALETTES = {
     '#ff9966', '#ff6644', '#ff3366', '#ff0066',
     '#ffcc44', '#ff8844', '#dd4422', '#ffaa22',
   ],
+  ocean: [
+    '#00eeff', '#00bbcc', '#0088aa', '#006688',
+    '#004466', '#aaeeff', '#55ddee', '#0044aa',
+  ],
+  lava: [
+    '#ff2200', '#dd1100', '#880000', '#660000',
+    '#ff5500', '#aa2200', '#ff8800', '#331100',
+  ],
+  neon: [
+    '#ff00ff', '#00ffff', '#ff0066', '#00ff66',
+    '#6600ff', '#ff6600', '#ffff00', '#0066ff',
+  ],
 };
 
 // Default single colour when multi-colour is off

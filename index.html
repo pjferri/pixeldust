@@ -15,7 +15,7 @@
       <div id="logo">
         <span class="logo-px">PX</span>
         <span class="logo-name">PixelDust</span>
-        <span class="logo-version">v0.4</span>
+        <span class="logo-version">v0.5</span>
       </div>
       <div id="topbar-controls">
         <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
@@ -148,6 +148,14 @@
               <span class="val-display" data-for="turbulence">0.00</span>
             </div>
           </label>
+
+          <label class="ctrl-row">
+            <span>Air drag</span>
+            <div class="slider-pair">
+              <input type="range" id="drag" min="0.85" max="1" value="1" step="0.005" />
+              <span class="val-display" data-for="drag">1.00</span>
+            </div>
+          </label>
         </section>
 
         <!-- APPEARANCE -->
@@ -200,13 +208,30 @@
           </label>
 
           <label class="ctrl-row">
-            <span>Blend</span>
+            <span>Effect</span>
             <select id="blend-mode">
-              <option value="source-over">Normal</option>
-              <option value="lighter" selected>Add (Glow)</option>
-              <option value="multiply">Multiply</option>
+              <option value="normal">Normal</option>
+              <option value="glow" selected>Glow</option>
+              <option value="neon">Neon</option>
               <option value="screen">Screen</option>
+              <option value="shadow">Shadow</option>
             </select>
+          </label>
+
+          <label class="ctrl-row">
+            <span>Effect amt</span>
+            <div class="slider-pair">
+              <input type="range" id="effect-strength" min="0" max="2" value="1" step="0.05" />
+              <span class="val-display" data-for="effect-strength">1.00</span>
+            </div>
+          </label>
+
+          <label class="ctrl-row">
+            <span>Trail fade</span>
+            <div class="slider-pair">
+              <input type="range" id="trail-alpha" min="0" max="1" value="0.12" step="0.01" />
+              <span class="val-display" data-for="trail-alpha">0.12</span>
+            </div>
           </label>
         </section>
 
@@ -291,6 +316,9 @@
               <button class="preset-btn" data-preset="nature">🌿 Nature</button>
               <button class="preset-btn" data-preset="mono">⬜ Mono</button>
               <button class="preset-btn" data-preset="sunset">🌅 Sunset</button>
+              <button class="preset-btn" data-preset="ocean">🌊 Ocean</button>
+              <button class="preset-btn" data-preset="lava">🌋 Lava</button>
+              <button class="preset-btn" data-preset="neon">💡 Neon</button>
             </div>
           </div>
         </section>
@@ -324,14 +352,6 @@
           <label class="ctrl-row">
             <span>BG Color</span>
             <input type="color" id="bg-color" value="#0c0c0e" />
-          </label>
-
-          <label class="ctrl-row">
-            <span>Trail fade</span>
-            <div class="slider-pair">
-              <input type="range" id="trail-alpha" min="0" max="1" value="0.12" step="0.01" />
-              <span class="val-display" data-for="trail-alpha">0.12</span>
-            </div>
           </label>
 
           <!-- Feature 5: Loop preview -->
@@ -368,6 +388,11 @@
               <input type="range" id="export-cols" min="1" max="16" value="4" step="1" />
               <span class="val-display" data-for="export-cols">4</span>
             </div>
+          </label>
+
+          <label class="ctrl-row">
+            <span>Transparent BG</span>
+            <input type="checkbox" id="export-transparent" class="toggle" />
           </label>
 
           <button id="btn-export-bottom" class="btn btn-accent full-width">&#8659; Export Sprite Sheet</button>
@@ -430,16 +455,20 @@
         <kbd>E</kbd><span>Export sprite sheet</span>
         <kbd>G</kbd><span>Export GIF</span>
         <kbd>S</kbd><span>Save config JSON</span>
+        <kbd>C</kbd><span>Copy canvas to clipboard</span>
         <kbd>?</kbd><span>Toggle shortcuts panel</span>
         <kbd>Esc</kbd><span>Close modal / panel</span>
-        <kbd>1</kbd><span>🔥 Fire preset</span>
-        <kbd>2</kbd><span>❄️ Snow preset</span>
-        <kbd>3</kbd><span>💥 Explosion preset</span>
-        <kbd>4</kbd><span>✨ Sparkle preset</span>
-        <kbd>5</kbd><span>🔮 Magic preset</span>
-        <kbd>6</kbd><span>💨 Smoke preset</span>
-        <kbd>7</kbd><span>🎊 Confetti preset</span>
-        <kbd>8</kbd><span>🌀 Portal preset</span>
+        <kbd>Ctrl+Z</kbd><span>Undo</span>
+        <kbd>Ctrl+Y</kbd><span>Redo</span>
+        <kbd>1</kbd><span>Fire preset</span>
+        <kbd>2</kbd><span>Snow preset</span>
+        <kbd>3</kbd><span>Explosion preset</span>
+        <kbd>4</kbd><span>Sparkle preset</span>
+        <kbd>5</kbd><span>Magic preset</span>
+        <kbd>6</kbd><span>Smoke preset</span>
+        <kbd>7</kbd><span>Confetti preset</span>
+        <kbd>8</kbd><span>Portal preset</span>
+        <kbd>9</kbd><span>Rain preset</span>
       </div>
       <button id="btn-close-shortcuts" class="btn btn-secondary" style="margin-top:16px;width:100%">Close</button>
     </div>
@@ -463,9 +492,10 @@
     </div>
   </div>
 
+  <!-- JS modules (order matters: dependencies before dependents) -->
   <script src="js/palettes.js"></script>
-  <script src="js/presets.js"></script>
   <script src="js/particle.js"></script>
+  <script src="js/presets.js"></script>
   <script src="js/emitter.js"></script>
   <script src="js/renderer.js"></script>
   <script src="js/exporter.js"></script>

@@ -6,31 +6,34 @@ A browser-based **pixel particle effect creator** for game developers. Design fi
 
 ## Features
 
-### Particle Controls
-- **Count** — Max simultaneous particles (1-500)
+### Particle Physics
+- **Count** — Max simultaneous particles (1–500)
 - **Rate (p/s)** — Spawn rate in particles per second
 - **Speed** — Initial velocity magnitude
 - **Spread** — Cone angle for velocity direction
 - **Direction** — Base direction (270 = up, 90 = down)
 - **Gravity** — Per-frame Y acceleration (negative = float up)
 - **Turbulence** — Random velocity jitter for organic feel
-- **Speed multiplier** — Slow-motion to 3x speed
+- **Air drag** — Velocity dampening per frame (0.85–1.0); makes smoke and rain feel right
+- **Speed multiplier** — Slow-motion to 3× fast-forward
 
 ### Appearance
 - **Shape** — Square, Circle, Diamond, Cross, Star, Sparkle
 - **Size (px)** — Particle diameter in pixels
 - **Size variance** — Random size offset per particle
-- **Opacity** — Starting alpha (0.1-1.0)
+- **Opacity** — Starting alpha (0.1–1.0)
 - **Spin** — Per-frame rotation speed
-- **Blend mode** — Normal, Add (Glow), Multiply, Screen
-- **Fade** — Alpha decay over lifetime
+- **Effect mode** — Normal, Glow, Neon, Screen, Shadow (multi-pass rendering)
+- **Effect amount** — Intensity of the chosen effect mode
+- **Trail fade** — Controls motion persistence (lower = longer trails)
+- **Fade** — Continuous alpha decay over lifetime (0 = none, 1 = full)
 - **Shrink** — Size decay over lifetime
 
 ### Color
-- **Color picker** — single color for all particles
-- **Multi-color** — pick randomly from the active palette each spawn
-- **Gradient** — lerp each particle from start color to end color over its lifetime
-- **Palette presets** — Fire, Ice, Magic, Nature, Mono, Sunset
+- **Color picker** — Single color for all particles
+- **Multi-color** — Pick randomly from the active palette each spawn
+- **Gradient** — Lerp each particle from start color to end color over its lifetime
+- **Palette presets** — Fire, Ice, Magic, Nature, Mono, Sunset, Ocean, Lava, Neon
 
 ### Emitter
 - **Shape** — Point, Line, Circle
@@ -38,14 +41,13 @@ A browser-based **pixel particle effect creator** for game developers. Design fi
 - **Click or drag** the canvas to reposition the emitter
 
 ### Canvas
-- **BG Color** — canvas background
-- **Trail fade** — lower = longer motion trails
-- **Loop preview** — auto-resets the effect for seamless looping
-- **Fullscreen** — press F to hide panels for distraction-free preview
+- **BG Color** — Canvas background
+- **Loop preview** — Auto-resets the effect for seamless looping
+- **Fullscreen** — Press F to hide panels for distraction-free preview
 
 ### Export
-- **Sprite Sheet PNG** — Grid of frames at 64/128/256 px, up to 64 frames
-- **Animated GIF** — Up to 5 seconds at up to 30 fps, 256x256 px
+- **Sprite Sheet PNG** — Grid of frames at 64/128/256 px, up to 64 frames, optional transparent background
+- **Animated GIF** — Up to 5 seconds at up to 30 fps, 256×256 px
 - **JSON config** — Save / load full effect settings
 - **Shareable URL** — Base64-encoded config in the URL hash
 
@@ -53,7 +55,7 @@ A browser-based **pixel particle effect creator** for game developers. Design fi
 
 ## Effect Presets
 
-Press 1-8 to quickly load a preset:
+Press 1–9 to quickly load a preset. All 13 are accessible via the preset bar:
 
 1. Fire
 2. Snow
@@ -63,6 +65,11 @@ Press 1-8 to quickly load a preset:
 6. Smoke
 7. Confetti
 8. Portal
+9. Rain
+10. Healing
+11. Electric
+12. Waterfall
+13. Firework
 
 ---
 
@@ -78,9 +85,12 @@ Press 1-8 to quickly load a preset:
 | `E` | Export sprite sheet |
 | `G` | Export GIF |
 | `S` | Save config JSON |
+| `C` | Copy canvas to clipboard |
+| `Ctrl+Z` | Undo |
+| `Ctrl+Y` | Redo |
 | `?` | Toggle shortcuts panel |
 | `Esc` | Close modal / panel |
-| `1`-`8` | Select effect preset |
+| `1`–`9` | Select effect preset |
 | Click/drag canvas | Move emitter |
 
 ---
@@ -113,10 +123,10 @@ pixeldust/
 └── js/
     ├── main.js         # Boot + animation loop
     ├── emitter.js      # Particle pool and spawn logic
-    ├── particle.js     # Per-particle data + update tick
-    ├── renderer.js     # Canvas drawing, crosshair, interaction
-    ├── ui.js           # DOM wiring, presets, save/load, randomize
-    ├── presets.js      # Effect preset definitions
-    ├── palettes.js     # Color palette presets
+    ├── particle.js     # Per-particle data + update tick (drag, fade, turbulence)
+    ├── renderer.js     # Canvas drawing, multi-pass glow/neon/screen/shadow
+    ├── ui.js           # DOM wiring, presets, undo/redo, save/load, randomize
+    ├── presets.js      # 13 effect preset definitions
+    ├── palettes.js     # 9 color palette presets
     └── exporter.js     # Sprite sheet PNG + animated GIF export
 ```
