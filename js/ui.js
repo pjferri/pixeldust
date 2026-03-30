@@ -122,7 +122,7 @@ function initUI() {
   const directControls = [
     'emitter-shape',
     'particle-count', 'spawn-rate', 'speed', 'spread', 'direction', 'gravity', 'turbulence',
-    'particle-size', 'particle-shape', 'start-alpha', 'rotation',
+    'particle-size', 'size-variance', 'particle-shape', 'start-alpha', 'rotation',
     'lifetime', 'fade', 'shrink',
   ];
   directControls.forEach(id => {
@@ -166,6 +166,7 @@ function initUI() {
     if (e.code === 'Space') { e.preventDefault(); document.getElementById(isRunning ? 'btn-pause' : 'btn-play').click(); }
     if (e.code === 'KeyR')  document.getElementById('btn-reset').click();
     if (e.code === 'KeyB')  document.getElementById('btn-burst')?.click();
+    if (e.code === 'KeyF')  toggleFullscreen();
     // 1–8: switch effect preset
     const digit = parseInt(e.key, 10);
     if (digit >= 1 && digit <= presetKeys.length) {
@@ -230,6 +231,7 @@ function applyEffectPreset(name) {
   set('particle-size',  c.particleSize);
   set('particle-shape', c.particleShape);
   set('blend-mode',     c.blendMode);
+  set('size-variance',  c.sizeVariance ?? 0);
   set('start-alpha',    c.startAlpha);
   set('rotation',       c.rotation ?? 0);
   set('lifetime',       c.lifetime);
@@ -321,6 +323,7 @@ function pushConfig() {
     gravity:       n('gravity'),
     turbulence:    n('turbulence'),
     particleSize:  i('particle-size'),
+    sizeVariance:  i('size-variance'),
     particleShape: v('particle-shape'),
     blendMode:     blendVal,
     startAlpha:    n('start-alpha') || 1,
@@ -359,6 +362,7 @@ function getFullSnapshot() {
     gravity:       n('gravity'),
     turbulence:    n('turbulence'),
     particleSize:  i('particle-size'),
+    sizeVariance:  i('size-variance'),
     particleShape: v('particle-shape'),
     blendMode:     v('blend-mode'),
     startAlpha:    n('start-alpha'),
@@ -393,6 +397,7 @@ function applySnapshot(snap) {
   set('particle-size',  snap.particleSize);
   set('particle-shape', snap.particleShape);
   set('blend-mode',     snap.blendMode);
+  set('size-variance',  snap.sizeVariance ?? 0);
   set('start-alpha',    snap.startAlpha);
   set('rotation',       snap.rotation ?? 0);
   set('lifetime',       snap.lifetime);
@@ -485,6 +490,19 @@ function loadFromHash() {
 }
 
 // ── Export ─────────────────────────────────────────────────────────────────
+
+// ── Fullscreen preview ─────────────────────────────────────────────────────
+
+let _fullscreen = false;
+function toggleFullscreen() {
+  _fullscreen = !_fullscreen;
+  document.getElementById('panel-left').style.display  = _fullscreen ? 'none' : '';
+  document.getElementById('panel-right').style.display = _fullscreen ? 'none' : '';
+  document.getElementById('preset-bar').style.display  = _fullscreen ? 'none' : '';
+  document.getElementById('topbar').style.display      = _fullscreen ? 'none' : '';
+  // Wait one frame for CSS layout to reflow before resizing canvas
+  requestAnimationFrame(() => { sizeCanvas(); clearCanvas(); });
+}
 
 function triggerGifExport() {
   const fps      = parseInt(document.getElementById('gif-fps').value, 10)    || 15;

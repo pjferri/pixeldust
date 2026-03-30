@@ -52,6 +52,7 @@ let cfg = {
   blendMode:     'lighter',
   startAlpha:    1,             // starting opacity of each particle
   rotation:      0,             // max rotation speed in degrees/frame (0 = no spin)
+  sizeVariance:  0,             // ±px random size offset per particle
 
   // Lifetime
   lifetime:      60,

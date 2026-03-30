@@ -42,7 +42,8 @@ function createParticle(x, y, cfg) {
     : startRgb;   // no gradient → end = start → no colour change
 
   // ── Size ──────────────────────────────────────────────────────────────────
-  const size = Math.max(1, Math.round(cfg.particleSize));
+  const variance = cfg.sizeVariance || 0;
+  const size = Math.max(1, Math.round(cfg.particleSize + (Math.random() * 2 - 1) * variance));
 
   return {
     x,
