@@ -11,3 +11,6 @@ Thumbs.db
 .vscode/
 *.suo
 *.user
+
+# Local AI tooling / worktrees
+.claude/

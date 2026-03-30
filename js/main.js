@@ -102,7 +102,7 @@ function loop(now) {
   }
 
   // ── Live particle count ──────────────────────────────────────────────────
-  document.getElementById('particle-count-live').textContent = liveCount() + ' particles';
+  document.getElementById('particle-count-live').textContent = liveCount() + ' / ' + cfg.count + ' particles';
 
   // ── Simulate + Render ─────────────────────────────────────────────────────
   // Accumulate ticks so fractional speeds work (e.g. 0.5× = 1 tick per 2 frames)

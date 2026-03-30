@@ -151,22 +151,31 @@ function initUI() {
   document.getElementById('load-cfg-input').addEventListener('change', loadConfig);
   document.getElementById('btn-share').addEventListener('click', shareConfig);
 
-  // ── Keyboard shortcuts help ───────────────────────────────────────────
-  document.getElementById('btn-shortcuts').addEventListener('click', () => {
-    document.getElementById('shortcuts-modal').classList.remove('hidden');
-  });
-  document.getElementById('btn-close-shortcuts').addEventListener('click', () => {
-    document.getElementById('shortcuts-modal').classList.add('hidden');
-  });
+  // ── Randomize ──────────────────────────────────────────────────────────
+  document.getElementById('btn-randomize').addEventListener('click', randomizeSettings);
+
+  // ── Keyboard shortcuts panel ──────────────────────────────────────────
+  const shortcutsModal = document.getElementById('shortcuts-modal');
+  const openShortcuts  = () => shortcutsModal.classList.remove('hidden');
+  const closeShortcuts = () => shortcutsModal.classList.add('hidden');
+  document.getElementById('btn-shortcuts').addEventListener('click', openShortcuts);
+  document.getElementById('btn-close-shortcuts').addEventListener('click', closeShortcuts);
+  shortcutsModal.addEventListener('click', e => { if (e.target === shortcutsModal) closeShortcuts(); });
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────
   const presetKeys = Object.keys(EFFECT_PRESETS); // ordered by insertion
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-    if (e.code === 'Space') { e.preventDefault(); document.getElementById(isRunning ? 'btn-pause' : 'btn-play').click(); }
-    if (e.code === 'KeyR')  document.getElementById('btn-reset').click();
-    if (e.code === 'KeyB')  document.getElementById('btn-burst')?.click();
-    if (e.code === 'KeyF')  toggleFullscreen();
+    if (e.code === 'Space')  { e.preventDefault(); document.getElementById(isRunning ? 'btn-pause' : 'btn-play').click(); }
+    if (e.code === 'KeyR')   document.getElementById('btn-reset').click();
+    if (e.code === 'KeyB')   document.getElementById('btn-burst')?.click();
+    if (e.code === 'KeyF')   toggleFullscreen();
+    if (e.key  === '?')      { shortcutsModal.classList.contains('hidden') ? openShortcuts() : closeShortcuts(); }
+    if (e.code === 'Escape') closeShortcuts();
+    if (e.code === 'KeyE')   triggerExport();
+    if (e.code === 'KeyG')   triggerGifExport();
+    if (e.code === 'KeyZ')   randomizeSettings();
+    if (e.code === 'KeyS')   saveConfig();
     // 1–8: switch effect preset
     const digit = parseInt(e.key, 10);
     if (digit >= 1 && digit <= presetKeys.length) {
@@ -516,4 +525,73 @@ function triggerExport() {
     frameSize: parseInt(document.getElementById('export-frame-size').value, 10) || 128,
     cols:      parseInt(document.getElementById('export-cols').value,       10) || 4,
   }, { ...getEmitterConfig() });
+}
+
+// ── Randomize ─────────────────────────────────────────────────────────────
+
+function randomizeSettings() {
+  const pick  = arr => arr[Math.floor(Math.random() * arr.length)];
+  const rng   = (lo, hi, step) => {
+    const steps = Math.round((hi - lo) / step);
+    return lo + Math.round(Math.random() * steps) * step;
+  };
+
+  const set      = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  const setCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+
+  // Sane ranges that still produce interesting results
+  set('emitter-shape',  pick(['point', 'line', 'circle']));
+  set('emitter-mode',   pick(['continuous', 'continuous', 'continuous', 'burst', 'trail'])); // weight continuous
+  set('particle-count', rng(30, 300, 10));
+  set('spawn-rate',     rng(20, 200, 10));
+  set('speed',          rng(0.5, 8, 0.5));
+  set('spread',         rng(5, 360, 5));
+  set('direction',      rng(0, 359, 1));
+  set('gravity',        rng(-0.5, 0.5, 0.05));
+  set('turbulence',     rng(0, 1.5, 0.05));
+  set('particle-size',  rng(1, 10, 1));
+  set('size-variance',  rng(0, 4, 1));
+  set('particle-shape', pick(['square', 'circle', 'diamond', 'cross', 'star', 'sparkle']));
+  set('blend-mode',     pick(['source-over', 'lighter', 'lighter', 'screen'])); // weight lighter
+  set('start-alpha',    rng(0.4, 1, 0.05));
+  set('rotation',       rng(0, 12, 1));
+  set('lifetime',       rng(20, 200, 10));
+  set('fade',           rng(0, 1, 0.1));
+  set('shrink',         rng(0, 0.8, 0.1));
+  set('trail-alpha',    rng(0.05, 0.3, 0.01));
+
+  // Random gradient
+  const useGrad = Math.random() > 0.4;
+  setCheck('use-gradient', useGrad);
+  document.getElementById('gradient-pickers').classList.toggle('hidden', !useGrad);
+  if (useGrad) {
+    const randomHex = () => '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+    set('gradient-start', randomHex());
+    set('gradient-end',   randomHex());
+  }
+
+  // Random palette
+  const paletteNames = Object.keys(PALETTES);
+  applyPalette(pick(paletteNames));
+
+  // Sync val-display spans
+  document.querySelectorAll('.val-display').forEach(display => {
+    const slider = document.getElementById(display.dataset.for);
+    if (slider) {
+      const v = parseFloat(slider.value);
+      display.textContent = Number.isInteger(v) ? v : v.toFixed(2);
+    }
+  });
+
+  // Clear active preset highlight — this is a custom random state
+  document.querySelectorAll('.effect-preset-btn').forEach(b => b.classList.remove('active'));
+
+  updateBurstRowVisibility();
+  resetParticles();
+  clearCanvas();
+  pushConfig();
+
+  if (document.getElementById('emitter-mode').value === 'burst') {
+    setTimeout(() => { cfg.burstPending = true; }, 100);
+  }
 }
