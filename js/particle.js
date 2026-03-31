@@ -127,6 +127,7 @@ function createParticle(x, y, cfg) {
     wind:        cfg.wind || 0,      // constant horizontal force per frame
     turbulence:  cfg.turbulence || 0,
     drag:        Math.max(0.5, Math.min(1, cfg.drag ?? 1)),
+    bounce:      !!cfg.bounce,
     alive:       true,
   };
 }
@@ -168,6 +169,15 @@ function updateParticle(p) {
   // ── Movement ──────────────────────────────────────────────────────────────
   p.x += p.vx;
   p.y += p.vy;
+
+  // ── Bounce off walls ──────────────────────────────────────────────────────
+  if (p.bounce) {
+    const hs = Math.floor(p.size / 2);
+    if (p.x - hs < 0)          { p.x = hs;          p.vx = Math.abs(p.vx); }
+    if (p.x + hs > canvasW)    { p.x = canvasW - hs; p.vx = -Math.abs(p.vx); }
+    if (p.y - hs < 0)          { p.y = hs;           p.vy = Math.abs(p.vy); }
+    if (p.y + hs > canvasH)    { p.y = canvasH - hs; p.vy = -Math.abs(p.vy); }
+  }
 
   // ── Rotation ──────────────────────────────────────────────────────────────
   if (p.spin !== 0) p.angle += p.spin;

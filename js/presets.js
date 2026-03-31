@@ -240,7 +240,37 @@ const EFFECT_PRESETS = {
       blendMode: 'screen', effectStrength: 1.1, startAlpha: 0.5, rotation: 0,
       lifetime: 200, fade: 0.6, shrink: 0,
       multiColor: true, useGradient: true, gradientStart: '#88eeff', gradientEnd: '#0044aa',
-      bgColor: '#02080f', trailAlpha: 0.06, loop: false,
+      bgColor: '#02080f', trailAlpha: 0.06, loop: false, bounce: false,
+    },
+  },
+
+  billiards: {
+    label: 'Billiards',
+    palette: 'neon',
+    cfg: {
+      emitterShape: 'point', emitterMode: 'burst', speedMult: 1,
+      count: 40, spawnRate: 40, speed: 6, spread: 360, direction: 270,
+      gravity: 0, turbulence: 0, drag: 0.998, wind: 0,
+      particleSize: 7, particleShape: 'circle', sizeVariance: 2, hueVariation: 40,
+      blendMode: 'glow', effectStrength: 1.2, startAlpha: 1, rotation: 0,
+      lifetime: 300, fade: 0, shrink: 0,
+      multiColor: true, useGradient: false, gradientStart: '#ffffff', gradientEnd: '#ff8800',
+      bgColor: '#0a1a0a', trailAlpha: 0.08, loop: false, bounce: true,
+    },
+  },
+
+  laser: {
+    label: 'Laser',
+    palette: 'neon',
+    cfg: {
+      emitterShape: 'point', emitterMode: 'continuous', speedMult: 2,
+      count: 80, spawnRate: 80, speed: 10, spread: 8, direction: 0,
+      gravity: 0, turbulence: 0, drag: 1, wind: 0,
+      particleSize: 2, particleShape: 'square', sizeVariance: 0, hueVariation: 10,
+      blendMode: 'neon', effectStrength: 1.6, startAlpha: 1, rotation: 0,
+      lifetime: 200, fade: 0, shrink: 0,
+      multiColor: true, useGradient: true, gradientStart: '#ff0066', gradientEnd: '#6600ff',
+      bgColor: '#060010', trailAlpha: 0.35, loop: false, bounce: true,
     },
   },
 };

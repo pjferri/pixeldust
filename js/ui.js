@@ -175,7 +175,7 @@ function initUI() {
   // ── All slider/select controls → emitter config ───────────────────────
   const directControls = [
     'emitter-shape',
-    'particle-count', 'spawn-rate', 'speed', 'spread', 'direction', 'gravity', 'turbulence', 'drag', 'wind',
+    'particle-count', 'spawn-rate', 'speed', 'spread', 'direction', 'gravity', 'turbulence', 'drag', 'wind', 'bounce',
     'particle-size', 'size-variance', 'particle-shape', 'start-alpha', 'rotation', 'hue-variation', 'effect-strength',
     'lifetime', 'fade', 'shrink',
   ];
@@ -204,6 +204,24 @@ function initUI() {
   document.getElementById('btn-save-cfg').addEventListener('click', saveConfig);
   document.getElementById('load-cfg-input').addEventListener('change', loadConfig);
   document.getElementById('btn-share').addEventListener('click', shareConfig);
+
+  // ── Background color presets ─────────────────────────────────────────────
+  document.querySelectorAll('.bg-swatch').forEach(swatch => {
+    swatch.addEventListener('click', () => {
+      const color = swatch.dataset.color;
+      document.getElementById('bg-color').value = color;
+      setRendererBg(color);
+      clearCanvas();
+      document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
+      swatch.classList.add('active');
+      pushConfig();
+    });
+  });
+
+  // ── Center emitter ────────────────────────────────────────────────────────
+  document.getElementById('btn-center-emitter').addEventListener('click', () => {
+    centerEmitter();
+  });
 
   // ── Randomize ──────────────────────────────────────────────────────────
   document.getElementById('btn-randomize').addEventListener('click', randomizeSettings);
@@ -248,6 +266,7 @@ function initUI() {
     if (e.code === 'KeyZ')   randomizeSettings();
     if (e.code === 'KeyS')   { e.preventDefault(); saveConfig(); }
     if (e.code === 'KeyC')   copyCanvasToClipboard();
+    if (e.code === 'Home')   { e.preventDefault(); centerEmitter(); }
     // 1–9: switch effect preset
     const digit = parseInt(e.key, 10);
     if (digit >= 1 && digit <= presetKeys.length) {
@@ -334,6 +353,7 @@ function applyEffectPreset(name) {
   setCheck('multi-color',   c.multiColor);
   setCheck('use-gradient',  c.useGradient);
   setCheck('loop-toggle',   c.loop ?? false);
+  setCheck('bounce',        c.bounce ?? false);
 
   // Show/hide gradient pickers
   document.getElementById('gradient-pickers').classList.toggle('hidden', !c.useGradient);
@@ -414,6 +434,7 @@ function pushConfig() {
     turbulence:    n('turbulence'),
     drag:          parseFloat(document.getElementById('drag')?.value ?? '1') || 1,
     wind:          n('wind'),
+    bounce:        b('bounce'),
     particleSize:  i('particle-size'),
     sizeVariance:  i('size-variance'),
     particleShape: v('particle-shape'),
@@ -464,6 +485,7 @@ function getFullSnapshot() {
     turbulence:    n('turbulence'),
     drag:          n('drag') || 1,
     wind:          n('wind'),
+    bounce:        b('bounce'),
     particleSize:  i('particle-size'),
     sizeVariance:  i('size-variance'),
     particleShape: v('particle-shape'),
@@ -503,6 +525,7 @@ function applySnapshot(snap) {
   set('turbulence',     snap.turbulence);
   set('drag',           snap.drag ?? 1);
   set('wind',           snap.wind ?? 0);
+  setCheck('bounce',    snap.bounce ?? false);
   set('particle-size',  snap.particleSize);
   set('particle-shape', snap.particleShape);
   set('hue-variation',  snap.hueVariation ?? 0);
@@ -703,6 +726,11 @@ function randomizeSettings() {
 
   setCheck('multi-color', Math.random() > 0.25);
   setCheck('loop-toggle', false);
+  setCheck('bounce', Math.random() < 0.3);
+
+  // Random palette
+  const paletteNames = Object.keys(PALETTES);
+  applyPalette(pick(paletteNames));
 
   updateBurstRowVisibility();
 

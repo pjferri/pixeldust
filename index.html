@@ -15,7 +15,7 @@
       <div id="logo">
         <span class="logo-px">PX</span>
         <span class="logo-name">PixelDust</span>
-        <span class="logo-version">v0.6</span>
+        <span class="logo-version">v0.7</span>
       </div>
       <div id="topbar-controls">
         <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
@@ -164,6 +164,11 @@
               <span class="val-display" data-for="wind">0.00</span>
             </div>
           </label>
+
+          <label class="ctrl-row">
+            <span>Bounce walls</span>
+            <input type="checkbox" id="bounce" class="toggle" />
+          </label>
         </section>
 
         <!-- APPEARANCE -->
@@ -296,8 +301,8 @@
         <div id="canvas-footer">
           <span id="fps-display">60 fps</span>
           <span id="particle-count-live">0 particles</span>
-          <!-- Feature 1: emitter position readout -->
           <span id="emitter-pos-display">emitter: center</span>
+          <button id="btn-center-emitter" class="btn btn-secondary" title="Center emitter (Home)">&#8982; Center</button>
         </div>
       </section>
 
@@ -371,7 +376,17 @@
             <input type="color" id="bg-color" value="#0c0c0e" />
           </label>
 
-          <!-- Feature 5: Loop preview -->
+          <div class="ctrl-row">
+            <span>BG presets</span>
+            <div id="bg-presets">
+              <div class="bg-swatch active" data-color="#0a0a0a" title="Near Black" style="background:#0a0a0a"></div>
+              <div class="bg-swatch" data-color="#0a0f1e" title="Dark Navy" style="background:#0a0f1e"></div>
+              <div class="bg-swatch" data-color="#0f0a1e" title="Deep Purple" style="background:#0f0a1e"></div>
+              <div class="bg-swatch" data-color="#0a1a0a" title="Dark Forest" style="background:#0a1a0a"></div>
+              <div class="bg-swatch checker" data-color="#f0f0f0" title="Light (transparent test)"></div>
+            </div>
+          </div>
+
           <label class="ctrl-row">
             <span>Loop preview</span>
             <input type="checkbox" id="loop-toggle" class="toggle" />
@@ -474,6 +489,7 @@
         <kbd>S</kbd><span>Save config JSON</span>
         <kbd>C</kbd><span>Copy canvas to clipboard</span>
         <kbd>?</kbd><span>Toggle shortcuts panel</span>
+        <kbd>Home</kbd><span>Center emitter on canvas</span>
         <kbd>Esc</kbd><span>Close modal / panel</span>
         <kbd>Ctrl+Z</kbd><span>Undo</span>
         <kbd>Ctrl+Y</kbd><span>Redo</span>

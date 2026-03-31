@@ -48,6 +48,7 @@ let cfg = {
   turbulence:    0,             // random velocity jitter per frame
   drag:          1,             // velocity multiplier per frame (1=no drag, 0.95=strong drag)
   wind:          0,             // constant horizontal force per frame (negative = left)
+  bounce:        false,         // particles reverse velocity when hitting canvas edges
   hueVariation:  0,             // ±degrees of random hue shift per particle (0 = off)
 
   // Appearance
