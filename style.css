@@ -546,11 +546,20 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
   font-style: italic;
 }
 
-/* ── Gradient pickers section ── */
-#gradient-pickers {
+/* ── Gradient pickers rows (inline inside Color section) ── */
+#gradient-start-row,
+#gradient-end-row {
   margin-top: 4px;
-  padding-top: 6px;
-  border-top: 1px solid var(--border);
+}
+
+/* ── Export section sub-labels ── */
+.export-sub-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  margin: 6px 0 4px;
 }
 
 /* ============================================================
@@ -756,53 +765,3 @@ kbd {
 .shortcuts-grid span {
   font-size: 11px;
   color: var(--text-label);
-}
-
-/* GIF modal reuses export modal styles; just need preview img */
-#gif-preview-img {
-  max-width: 100%;
-  max-height: 260px;
-  border: 1px solid var(--border-light);
-  background: #000;
-}
-
-#gif-progress-wrap {
-  height: 4px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 10px;
-}
-
-#gif-progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
-  width: 0%;
-  transition: width 0.15s;
-  border-radius: 2px;
-}
-
-#gif-status {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-bottom: 16px;
-}
-
-#gif-result {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-/* ============================================================
-   RESPONSIVE
-   ============================================================ */
-@media (max-width: 900px) {
-  :root { --panel-w: 190px; }
-}
-@media (max-width: 720px) {
-  #panel-right { display: none; }
-}

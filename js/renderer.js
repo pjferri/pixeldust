@@ -58,11 +58,19 @@ function sizeCanvas() {
 function renderFrame() {
   const w = canvas.width;
   const h = canvas.height;
+  const { r, g, b } = hexToRgb(bgColor);
 
   ctx.globalCompositeOperation = 'source-over';
-  const { r, g, b } = hexToRgb(bgColor);
-  ctx.fillStyle = `rgba(${r},${g},${b},${1 - trailAlpha})`;
-  ctx.fillRect(0, 0, w, h);
+
+  // If no particles are alive, do a full opaque clear so any residual
+  // glow/lighter-composite brightness from previous frames is instantly erased.
+  if (liveCount() === 0) {
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(0, 0, w, h);
+  } else {
+    ctx.fillStyle = `rgba(${r},${g},${b},${1 - trailAlpha})`;
+    ctx.fillRect(0, 0, w, h);
+  }
 
   for (const p of particles) {
     if (p.alive) drawParticle(ctx, p);

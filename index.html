@@ -15,7 +15,7 @@
       <div id="logo">
         <span class="logo-px">PX</span>
         <span class="logo-name">PixelDust</span>
-        <span class="logo-version">v0.7</span>
+        <span class="logo-version">v0.8</span>
       </div>
       <div id="topbar-controls">
         <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
@@ -315,6 +315,18 @@
         <section class="ctrl-group">
           <h3 class="group-label">Color</h3>
 
+          <!-- Color source dropdown — replaces confusing multi-color + gradient checkboxes -->
+          <label class="ctrl-row">
+            <span>Source</span>
+            <select id="color-mode">
+              <option value="single">Single color</option>
+              <option value="palette" selected>Palette</option>
+              <option value="gradient">Gradient</option>
+              <option value="palette-fade">Palette → Fade</option>
+            </select>
+          </label>
+
+          <!-- Single color picker — visible in "single" mode only -->
           <div id="color-picker-wrap">
             <input type="color" id="color-picker" value="#ffff00" />
             <div id="color-swatch-current">
@@ -323,11 +335,7 @@
             </div>
           </div>
 
-          <label class="ctrl-row">
-            <span>Multi-color</span>
-            <input type="checkbox" id="multi-color" class="toggle" checked />
-          </label>
-
+          <!-- Palette grid — visible in "palette" and "palette-fade" modes -->
           <div id="palette-area">
             <div id="palette-grid"></div>
             <div id="palette-presets">
@@ -343,28 +351,27 @@
               <button class="preset-btn" data-preset="neon">💡 Neon</button>
             </div>
           </div>
-        </section>
 
-        <!-- Feature 2: LIFETIME GRADIENT -->
-        <section class="ctrl-group">
-          <h3 class="group-label">Gradient</h3>
-
-          <label class="ctrl-row">
-            <span>Use gradient</span>
-            <input type="checkbox" id="use-gradient" class="toggle" />
-          </label>
-
-          <div id="gradient-pickers" class="hidden">
+          <!-- Gradient start — visible in "gradient" mode only -->
+          <div id="gradient-start-row" class="hidden">
             <label class="ctrl-row">
               <span>Start color</span>
               <input type="color" id="gradient-start" value="#ffff00" />
             </label>
+          </div>
+
+          <!-- Gradient end — visible in "gradient" and "palette-fade" modes -->
+          <div id="gradient-end-row" class="hidden">
             <label class="ctrl-row">
-              <span>End color</span>
+              <span>Fade to</span>
               <input type="color" id="gradient-end" value="#ff0000" />
             </label>
-            <p class="ctrl-hint">Particles lerp from start → end over their lifetime. Works with multi-color: start = palette, end = fixed.</p>
+            <p class="ctrl-hint" id="gradient-hint"></p>
           </div>
+
+          <!-- Hidden checkboxes kept for config serialization compatibility -->
+          <input type="checkbox" id="multi-color" style="display:none" />
+          <input type="checkbox" id="use-gradient" style="display:none" />
         </section>
 
         <!-- CANVAS SETTINGS -->
@@ -397,6 +404,9 @@
         <section class="ctrl-group">
           <h3 class="group-label">Export</h3>
 
+          <!-- PNG Sprite Sheet -->
+          <p class="export-sub-label">PNG Sprite Sheet</p>
+
           <label class="ctrl-row">
             <span>Frames</span>
             <div class="slider-pair">
@@ -422,17 +432,19 @@
             </div>
           </label>
 
-          <label class="ctrl-row">
+          <label class="ctrl-row" title="Removes background — PNG only">
             <span>Transparent BG</span>
             <input type="checkbox" id="export-transparent" class="toggle" />
           </label>
 
           <button id="btn-export-bottom" class="btn btn-accent full-width">&#8659; Export Sprite Sheet</button>
 
+          <!-- Animated GIF -->
           <div class="export-sep"></div>
+          <p class="export-sub-label">Animated GIF</p>
 
           <label class="ctrl-row">
-            <span>GIF fps</span>
+            <span>FPS</span>
             <div class="slider-pair">
               <input type="range" id="gif-fps" min="5" max="30" value="15" step="1" />
               <span class="val-display" data-for="gif-fps">15</span>
@@ -440,7 +452,7 @@
           </label>
 
           <label class="ctrl-row">
-            <span>GIF dur (s)</span>
+            <span>Duration (s)</span>
             <div class="slider-pair">
               <input type="range" id="gif-duration" min="1" max="5" value="2" step="0.5" />
               <span class="val-display" data-for="gif-duration">2.0</span>
@@ -510,29 +522,3 @@
   <!-- GIF Export Modal -->
   <div id="gif-modal" class="modal hidden">
     <div class="modal-box">
-      <h2>Exporting GIF…</h2>
-      <div id="gif-progress-wrap">
-        <div id="gif-progress-bar"></div>
-      </div>
-      <p id="gif-status">Capturing frames…</p>
-      <div id="gif-result" class="hidden">
-        <img id="gif-preview-img" alt="GIF preview" />
-        <div class="export-actions">
-          <a id="gif-download-link" class="btn btn-accent" download="pixeldust.gif">Download GIF</a>
-          <button id="btn-close-gif-modal" class="btn btn-secondary">Close</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- JS modules (order matters: dependencies before dependents) -->
-  <script src="js/palettes.js"></script>
-  <script src="js/particle.js"></script>
-  <script src="js/presets.js"></script>
-  <script src="js/emitter.js"></script>
-  <script src="js/renderer.js"></script>
-  <script src="js/exporter.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/main.js"></script>
-</body>
-</html>

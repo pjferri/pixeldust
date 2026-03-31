@@ -1,7 +1,7 @@
 /**
  * ui.js
  * Wires all DOM controls to the emitter/renderer state.
- * v0.6: redo fix, toast copy, wind force, hue variation, 16 presets.
+ * v0.8: color-mode dropdown, ghost glow fix, export UX improvements.
  */
 
 // ── Undo / Redo ────────────────────────────────────────────────────────────
@@ -94,6 +94,61 @@ function setSingleColor(hex) {
   document.getElementById('swatch-hex').textContent                 = hex;
 }
 
+// ── Color mode ─────────────────────────────────────────────────────────────
+// Maps the "Color source" dropdown to the underlying multiColor + useGradient flags.
+
+/**
+ * Read the color-mode dropdown and return the corresponding flag values.
+ */
+function getColorModeFlags() {
+  const mode = document.getElementById('color-mode')?.value || 'palette';
+  return {
+    multiColor:  mode === 'palette' || mode === 'palette-fade',
+    useGradient: mode === 'gradient' || mode === 'palette-fade',
+  };
+}
+
+/**
+ * Derive the color-mode dropdown value from flag values (for undo/load/preset restore).
+ */
+function colorModeFromFlags(multiColor, useGradient) {
+  if (multiColor && useGradient) return 'palette-fade';
+  if (multiColor)                return 'palette';
+  if (useGradient)               return 'gradient';
+  return 'single';
+}
+
+/**
+ * Show/hide the relevant color sub-controls based on the current color-mode.
+ */
+function updateColorModeUI() {
+  const mode = document.getElementById('color-mode')?.value || 'palette';
+  const showSingle   = mode === 'single';
+  const showPalette  = mode === 'palette' || mode === 'palette-fade';
+  const showGradStart = mode === 'gradient';
+  const showGradEnd  = mode === 'gradient' || mode === 'palette-fade';
+
+  document.getElementById('color-picker-wrap').classList.toggle('hidden', !showSingle);
+  document.getElementById('palette-area').classList.toggle('hidden', !showPalette);
+  document.getElementById('gradient-start-row').classList.toggle('hidden', !showGradStart);
+  document.getElementById('gradient-end-row').classList.toggle('hidden', !showGradEnd);
+
+  // Update hint text
+  const hint = document.getElementById('gradient-hint');
+  if (hint) {
+    hint.textContent = mode === 'palette-fade'
+      ? 'Each particle picks a palette color and fades to the end color over its lifetime.'
+      : 'Particles lerp from start color → end color over their lifetime.';
+  }
+
+  // Sync hidden checkboxes so pushConfig reads correct values
+  const flags = getColorModeFlags();
+  const mcEl = document.getElementById('multi-color');
+  const ugEl = document.getElementById('use-gradient');
+  if (mcEl) mcEl.checked = flags.multiColor;
+  if (ugEl) ugEl.checked = flags.useGradient;
+}
+
 // ── initUI ─────────────────────────────────────────────────────────────────
 
 function initUI() {
@@ -120,8 +175,14 @@ function initUI() {
     pushConfig();
   });
 
-  // ── Multi-colour toggle ───────────────────────────────────────────────
-  document.getElementById('multi-color').addEventListener('change', pushConfig);
+  // ── Color mode dropdown ───────────────────────────────────────────────
+  const colorModeEl = document.getElementById('color-mode');
+  colorModeEl.addEventListener('change', () => {
+    updateColorModeUI();
+    pushConfig();
+  });
+  // Initial visibility sync
+  updateColorModeUI();
 
   // ── BG colour ─────────────────────────────────────────────────────────
   document.getElementById('bg-color').addEventListener('input', e => {
@@ -145,13 +206,7 @@ function initUI() {
     pushConfig();
   });
 
-  // ── Gradient ─────────────────────────────────────────────────────────
-  const useGradientEl     = document.getElementById('use-gradient');
-  const gradientPickersEl = document.getElementById('gradient-pickers');
-  useGradientEl.addEventListener('change', () => {
-    gradientPickersEl.classList.toggle('hidden', !useGradientEl.checked);
-    pushConfig();
-  });
+  // ── Gradient pickers (always wired; visibility controlled by color-mode) ──
   document.getElementById('gradient-start').addEventListener('input', pushConfig);
   document.getElementById('gradient-end').addEventListener('input',   pushConfig);
 
@@ -350,13 +405,12 @@ function applyEffectPreset(name) {
   set('gradient-start', c.gradientStart || '#ffff00');
   set('gradient-end',   c.gradientEnd   || '#ff0000');
 
-  setCheck('multi-color',   c.multiColor);
-  setCheck('use-gradient',  c.useGradient);
   setCheck('loop-toggle',   c.loop ?? false);
   setCheck('bounce',        c.bounce ?? false);
 
-  // Show/hide gradient pickers
-  document.getElementById('gradient-pickers').classList.toggle('hidden', !c.useGradient);
+  // Sync color-mode dropdown from preset flags, then update visibility
+  set('color-mode', colorModeFromFlags(!!c.multiColor, !!c.useGradient));
+  updateColorModeUI();
 
   // Apply palette
   if (palette && PALETTES[palette]) applyPalette(palette);
@@ -446,8 +500,8 @@ function pushConfig() {
     lifetime:      i('lifetime'),
     fade:          n('fade'),
     shrink:        n('shrink'),
-    multiColor:    b('multi-color'),
-    useGradient:   b('use-gradient'),
+    multiColor:    getColorModeFlags().multiColor,
+    useGradient:   getColorModeFlags().useGradient,
     gradientStart: v('gradient-start'),
     gradientEnd:   v('gradient-end'),
     loop:          b('loop-toggle'),
@@ -499,8 +553,9 @@ function getFullSnapshot() {
     shrink:        n('shrink'),
     bgColor:       v('bg-color'),
     trailAlpha:    n('trail-alpha'),
-    multiColor:    b('multi-color'),
-    useGradient:   b('use-gradient'),
+    colorMode:     v('color-mode'),
+    multiColor:    getColorModeFlags().multiColor,
+    useGradient:   getColorModeFlags().useGradient,
     gradientStart: v('gradient-start'),
     gradientEnd:   v('gradient-end'),
     loop:          b('loop-toggle'),
@@ -542,11 +597,13 @@ function applySnapshot(snap) {
   set('gradient-start', snap.gradientStart);
   set('gradient-end',   snap.gradientEnd);
 
-  setCheck('multi-color',  snap.multiColor);
-  setCheck('use-gradient', snap.useGradient);
   setCheck('loop-toggle',  snap.loop);
 
-  document.getElementById('gradient-pickers').classList.toggle('hidden', !snap.useGradient);
+  // Restore color-mode dropdown from snapshot flags
+  const restoredMode = snap.colorMode || colorModeFromFlags(!!snap.multiColor, !!snap.useGradient);
+  const cmEl = document.getElementById('color-mode');
+  if (cmEl) cmEl.value = restoredMode;
+  updateColorModeUI();
 
   if (snap.palette && snap.palette.length) {
     activePalette = [...snap.palette];
@@ -715,16 +772,17 @@ function randomizeSettings() {
   set('shrink',         rng(0, 0.8, 0.05));
   set('trail-alpha',    rng(0.03, 0.25, 0.01));
 
-  const useGrad = Math.random() < 0.4;
-  setCheck('use-gradient', useGrad);
-  document.getElementById('gradient-pickers').classList.toggle('hidden', !useGrad);
-  if (useGrad) {
+  // Randomize color mode (weighted: palette most common, gradient and palette-fade less so)
+  const colorModes = ['single', 'palette', 'palette', 'palette', 'gradient', 'palette-fade'];
+  const chosenMode = pick(colorModes);
+  set('color-mode', chosenMode);
+  if (chosenMode === 'gradient' || chosenMode === 'palette-fade') {
     const randomHex = () => '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
     set('gradient-start', randomHex());
     set('gradient-end',   randomHex());
   }
+  updateColorModeUI();
 
-  setCheck('multi-color', Math.random() > 0.25);
   setCheck('loop-toggle', false);
   setCheck('bounce', Math.random() < 0.3);
 
