@@ -2,6 +2,7 @@
  * ui.js
  * Wires all DOM controls to the emitter/renderer state.
  * v0.8: color-mode dropdown, ghost glow fix, export UX improvements.
+ * v0.9: speed variance, velocity decay, death particles, grow mode.
  */
 
 // ── Undo / Redo ────────────────────────────────────────────────────────────
@@ -149,6 +150,14 @@ function updateColorModeUI() {
   if (ugEl) ugEl.checked = flags.useGradient;
 }
 
+// ── Death params visibility ────────────────────────────────────────────────
+
+function updateDeathParamsVisibility() {
+  const count = parseInt(document.getElementById('death-count')?.value || '0', 10);
+  const row   = document.getElementById('death-params-row');
+  if (row) row.classList.toggle('hidden', count === 0);
+}
+
 // ── initUI ─────────────────────────────────────────────────────────────────
 
 function initUI() {
@@ -231,8 +240,10 @@ function initUI() {
   const directControls = [
     'emitter-shape',
     'particle-count', 'spawn-rate', 'speed', 'spread', 'direction', 'gravity', 'turbulence', 'drag', 'wind', 'bounce',
+    'speed-variance', 'velocity-decay',
     'particle-size', 'size-variance', 'particle-shape', 'start-alpha', 'rotation', 'hue-variation', 'effect-strength',
     'lifetime', 'fade', 'shrink',
+    'death-count', 'death-speed', 'death-size',
   ];
   directControls.forEach(id => {
     const el = document.getElementById(id);
@@ -240,6 +251,13 @@ function initUI() {
     el.addEventListener('input',  pushConfig);
     el.addEventListener('change', pushConfig);
   });
+
+  // ── Death params visibility ───────────────────────────────────────────────
+  const deathCountEl = document.getElementById('death-count');
+  if (deathCountEl) {
+    deathCountEl.addEventListener('input', updateDeathParamsVisibility);
+    updateDeathParamsVisibility();
+  }
 
   // ── Sprite sheet export ───────────────────────────────────────────────
   document.getElementById('btn-export').addEventListener('click',        triggerExport);
@@ -405,6 +423,12 @@ function applyEffectPreset(name) {
   set('gradient-start', c.gradientStart || '#ffff00');
   set('gradient-end',   c.gradientEnd   || '#ff0000');
 
+  set('speed-variance',  c.speedVariance ?? 0);
+  set('velocity-decay',  c.velocityDecay ?? 0);
+  set('death-count',     c.deathCount ?? 0);
+  set('death-speed',     c.deathSpeed ?? 2);
+  set('death-size',      c.deathSize ?? 2);
+
   setCheck('loop-toggle',   c.loop ?? false);
   setCheck('bounce',        c.bounce ?? false);
 
@@ -425,6 +449,7 @@ function applyEffectPreset(name) {
   });
 
   updateBurstRowVisibility();
+  updateDeathParamsVisibility();
   resetParticles();
   clearCanvas();
   pushConfig();
@@ -507,6 +532,11 @@ function pushConfig() {
     loop:          b('loop-toggle'),
     bgColor:       v('bg-color'),
     trailAlpha:    n('trail-alpha'),
+    speedVariance: n('speed-variance'),
+    velocityDecay: n('velocity-decay'),
+    deathCount:    i('death-count'),
+    deathSpeed:    parseFloat(document.getElementById('death-speed')?.value ?? '2') || 2,
+    deathSize:     i('death-size') || 2,
   });
 
   setSpeedMult(n('speed-mult') || 1);
@@ -561,6 +591,11 @@ function getFullSnapshot() {
     loop:          b('loop-toggle'),
     palette:       activePalette,
     singleColor:   activeColor,
+    speedVariance: n('speed-variance'),
+    velocityDecay: n('velocity-decay'),
+    deathCount:    i('death-count'),
+    deathSpeed:    parseFloat(v('death-speed')) || 2,
+    deathSize:     i('death-size') || 2,
   };
 }
 
@@ -581,6 +616,11 @@ function applySnapshot(snap) {
   set('drag',           snap.drag ?? 1);
   set('wind',           snap.wind ?? 0);
   setCheck('bounce',    snap.bounce ?? false);
+  set('speed-variance',  snap.speedVariance ?? 0);
+  set('velocity-decay',  snap.velocityDecay ?? 0);
+  set('death-count',     snap.deathCount ?? 0);
+  set('death-speed',     snap.deathSpeed ?? 2);
+  set('death-size',      snap.deathSize ?? 2);
   set('particle-size',  snap.particleSize);
   set('particle-shape', snap.particleShape);
   set('hue-variation',  snap.hueVariation ?? 0);
@@ -620,6 +660,7 @@ function applySnapshot(snap) {
   });
 
   updateBurstRowVisibility();
+  updateDeathParamsVisibility();
   resetParticles();
   clearCanvas();
   pushConfig();
@@ -783,6 +824,12 @@ function randomizeSettings() {
   }
   updateColorModeUI();
 
+  set('speed-variance', rng(0, 0.6, 0.05));
+  set('velocity-decay', rng(0, 0.5, 0.05));
+  set('death-count',    Math.random() < 0.2 ? rng(1, 4, 1) : 0); // 20% chance of death sparks
+  set('death-speed',    rng(1, 4, 0.5));
+  set('death-size',     rng(1, 4, 1));
+
   setCheck('loop-toggle', false);
   setCheck('bounce', Math.random() < 0.3);
 
@@ -791,6 +838,7 @@ function randomizeSettings() {
   applyPalette(pick(paletteNames));
 
   updateBurstRowVisibility();
+  updateDeathParamsVisibility();
 
   // Re-sync all val-display spans
   document.querySelectorAll('.val-display').forEach(display => {

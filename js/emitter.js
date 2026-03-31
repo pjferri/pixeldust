@@ -2,11 +2,7 @@
  * emitter.js
  * Manages the particle pool, spawn logic, and emitter position.
  *
- * New in v0.2:
- *   - emitterX / emitterY   — user-draggable spawn point
- *   - turbulence             — velocity noise amount passed to particles
- *   - useGradient            — lifetime colour gradient
- *   - loop                   — auto-reset for seamless looping
+ * v0.9: death particles (sub-emitters), speedVariance, velocityDecay cfg defaults
  */
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -50,6 +46,8 @@ let cfg = {
   wind:          0,             // constant horizontal force per frame (negative = left)
   bounce:        false,         // particles reverse velocity when hitting canvas edges
   hueVariation:  0,             // ±degrees of random hue shift per particle (0 = off)
+  speedVariance: 0,             // 0 = consistent speed; 1 = ±50% range per particle
+  velocityDecay: 0,             // 0 = no decay; 1 = velocity fades out over lifetime
 
   // Appearance
   particleSize:  3,
@@ -63,6 +61,11 @@ let cfg = {
   lifetime:      60,
   fade:          1,
   shrink:        0,
+
+  // Death particles (sub-emitters spawned when a particle expires)
+  deathCount:    0,             // mini-particles per death (0 = off)
+  deathSpeed:    2,             // speed of death particles
+  deathSize:     2,             // size of death particles
 
   // Colour
   multiColor:    true,
@@ -143,9 +146,28 @@ function tickEmitter() {
   // ── Initialise emitter position on very first tick ────────────────────
   if (emitterX < 0) centerEmitter();
 
-  // ── Update live particles ─────────────────────────────────────────────
+  // ── Update live particles + detect deaths ─────────────────────────────
+  const deathSparks = cfg.deathCount > 0 ? [] : null;
+
   for (const p of particles) {
-    if (p.alive) updateParticle(p);
+    if (p.alive) {
+      updateParticle(p);
+      // If particle just died and death sparks are enabled, record its position
+      if (!p.alive && deathSparks && !p.isDeathParticle) {
+        deathSparks.push({ x: p.x, y: p.y });
+      }
+    }
+  }
+
+  // ── Spawn death particles outside the update loop ─────────────────────
+  // (avoids iterating over newly-added particles in the same frame)
+  if (deathSparks) {
+    for (const { x, y } of deathSparks) {
+      const n = Math.min(cfg.deathCount, 8); // hard cap for safety
+      for (let d = 0; d < n; d++) {
+        _spawnDeathParticle(x, y);
+      }
+    }
   }
 
   // ── Spawn new particles ───────────────────────────────────────────────
@@ -223,6 +245,47 @@ function spawnPoint() {
 /** Place a new particle into the pool, reusing a dead slot if available. */
 function spawnParticle(x, y) {
   const p = createParticle(x, y, cfg);
+  for (let i = 0; i < particles.length; i++) {
+    if (!particles[i].alive) { particles[i] = p; return; }
+  }
+  particles.push(p);
+}
+
+/**
+ * Spawn a death particle at (x, y) — a mini-particle emitted when
+ * a normal particle expires. Death particles do NOT trigger further deaths
+ * (no cascade), are short-lived, and fly in random directions.
+ */
+function _spawnDeathParticle(x, y) {
+  const angle = Math.random() * Math.PI * 2;
+  const spd   = cfg.deathSpeed * (0.6 + Math.random() * 0.8);
+
+  // Build a temporary override cfg for the mini-particle.
+  // Uses the current palette/color scheme but shorter life and fixed spread.
+  const miniCfg = {
+    ...cfg,
+    speed:         spd,
+    speedVariance: 0,       // we already randomised the speed above
+    spread:        360,
+    direction:     0,
+    particleSize:  Math.max(1, cfg.deathSize),
+    sizeVariance:  0,
+    lifetime:      20 + Math.floor(Math.random() * 12),
+    fade:          1,
+    shrink:        0.6,
+    turbulence:    0,
+    drag:          0.9,
+    bounce:        false,
+    velocityDecay: 0,
+    deathCount:    0,       // prevent cascade
+    _isDeathParticle: true,
+  };
+
+  const p  = createParticle(x, y, miniCfg);
+  // Override velocity with true random direction (createParticle uses spread/direction)
+  p.vx = Math.cos(angle) * spd;
+  p.vy = Math.sin(angle) * spd;
+
   for (let i = 0; i < particles.length; i++) {
     if (!particles[i].alive) { particles[i] = p; return; }
   }

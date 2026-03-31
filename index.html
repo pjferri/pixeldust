@@ -15,7 +15,7 @@
       <div id="logo">
         <span class="logo-px">PX</span>
         <span class="logo-name">PixelDust</span>
-        <span class="logo-version">v0.8</span>
+        <span class="logo-version">v0.9</span>
       </div>
       <div id="topbar-controls">
         <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
@@ -166,6 +166,22 @@
           </label>
 
           <label class="ctrl-row">
+            <span>Speed var.</span>
+            <div class="slider-pair">
+              <input type="range" id="speed-variance" min="0" max="1" value="0" step="0.05" />
+              <span class="val-display" data-for="speed-variance">0.00</span>
+            </div>
+          </label>
+
+          <label class="ctrl-row" title="Gradually decelerates particles toward end of life">
+            <span>Vel. decay</span>
+            <div class="slider-pair">
+              <input type="range" id="velocity-decay" min="0" max="1" value="0" step="0.05" />
+              <span class="val-display" data-for="velocity-decay">0.00</span>
+            </div>
+          </label>
+
+          <label class="ctrl-row">
             <span>Bounce walls</span>
             <input type="checkbox" id="bounce" class="toggle" />
           </label>
@@ -276,13 +292,39 @@
             </div>
           </label>
 
-          <label class="ctrl-row">
-            <span>Shrink</span>
+          <label class="ctrl-row" title="Negative values: particles grow over their lifetime">
+            <span>Shrink/Grow</span>
             <div class="slider-pair">
-              <input type="range" id="shrink" min="0" max="1" value="0" step="0.05" />
+              <input type="range" id="shrink" min="-1" max="1" value="0" step="0.05" />
               <span class="val-display" data-for="shrink">0.00</span>
             </div>
           </label>
+
+          <!-- Death particles: mini-sparks emitted when each particle expires -->
+          <label class="ctrl-row" title="Spawn small sparks when each particle expires">
+            <span>Death sparks</span>
+            <div class="slider-pair">
+              <input type="range" id="death-count" min="0" max="8" value="0" step="1" />
+              <span class="val-display" data-for="death-count">0</span>
+            </div>
+          </label>
+
+          <div id="death-params-row" class="hidden">
+            <label class="ctrl-row">
+              <span>Spark speed</span>
+              <div class="slider-pair">
+                <input type="range" id="death-speed" min="0.5" max="6" value="2" step="0.5" />
+                <span class="val-display" data-for="death-speed">2.0</span>
+              </div>
+            </label>
+            <label class="ctrl-row">
+              <span>Spark size</span>
+              <div class="slider-pair">
+                <input type="range" id="death-size" min="1" max="8" value="2" step="1" />
+                <span class="val-display" data-for="death-size">2</span>
+              </div>
+            </label>
+          </div>
         </section>
 
       </aside>

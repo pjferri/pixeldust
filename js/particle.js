@@ -4,6 +4,7 @@
  *
  * v0.5: air drag, continuous fade
  * v0.6: wind force, hue variation
+ * v0.9: speedVariance, velocityDecay, grow mode (negative shrink)
  */
 
 // ── Colour helpers ─────────────────────────────────────────────────────────
@@ -73,7 +74,12 @@ function createParticle(x, y, cfg) {
   const halfSpread = (cfg.spread * Math.PI) / 360;
   const baseAngle  = (cfg.direction * Math.PI) / 180;
   const angle      = baseAngle - halfSpread + Math.random() * halfSpread * 2;
-  const speed      = cfg.speed * (0.8 + Math.random() * 0.4);
+
+  // Speed variance: 0 = consistent speed, 1 = ±50% range
+  // Falls back to legacy 20% jitter when speedVariance is not set
+  const sv = cfg.speedVariance ?? 0.2;
+  const speedMult = 1 - sv * 0.5 + Math.random() * sv;
+  const speed = cfg.speed * Math.max(0.01, speedMult);
 
   // ── Start colour ─────────────────────────────────────────────────────────
   // Priority: multiColor (random palette) > gradient start > single colour.
@@ -103,32 +109,34 @@ function createParticle(x, y, cfg) {
   return {
     x,
     y,
-    vx:          Math.cos(angle) * speed,
-    vy:          Math.sin(angle) * speed,
-    life:        0,
-    maxLife:     cfg.lifetime + Math.floor(Math.random() * cfg.lifetime * 0.2),
+    vx:            Math.cos(angle) * speed,
+    vy:            Math.sin(angle) * speed,
+    life:          0,
+    maxLife:       cfg.lifetime + Math.floor(Math.random() * cfg.lifetime * 0.2),
     size,
-    baseSize:    size,
+    baseSize:      size,
     r:  startRgb.r,
     g:  startRgb.g,
     b:  startRgb.b,
     er: endRgb.r,
     eg: endRgb.g,
     eb: endRgb.b,
-    useGradient: !!cfg.useGradient,
-    alpha:       cfg.startAlpha ?? 1,
-    startAlpha:  cfg.startAlpha ?? 1,
-    angle:       Math.random() * Math.PI * 2,
-    spin:        (Math.random() - 0.5) * 2 * ((cfg.rotation || 0) * Math.PI / 180),
-    shape:       cfg.particleShape,
-    fade:        cfg.fade,
-    shrink:      cfg.shrink,
-    gravity:     cfg.gravity,
-    wind:        cfg.wind || 0,      // constant horizontal force per frame
-    turbulence:  cfg.turbulence || 0,
-    drag:        Math.max(0.5, Math.min(1, cfg.drag ?? 1)),
-    bounce:      !!cfg.bounce,
-    alive:       true,
+    useGradient:   !!cfg.useGradient,
+    alpha:         cfg.startAlpha ?? 1,
+    startAlpha:    cfg.startAlpha ?? 1,
+    angle:         Math.random() * Math.PI * 2,
+    spin:          (Math.random() - 0.5) * 2 * ((cfg.rotation || 0) * Math.PI / 180),
+    shape:         cfg.particleShape,
+    fade:          cfg.fade,
+    shrink:        cfg.shrink,
+    gravity:       cfg.gravity,
+    wind:          cfg.wind || 0,
+    turbulence:    cfg.turbulence || 0,
+    drag:          Math.max(0.5, Math.min(1, cfg.drag ?? 1)),
+    bounce:        !!cfg.bounce,
+    velocityDecay: cfg.velocityDecay || 0,
+    alive:         true,
+    isDeathParticle: cfg._isDeathParticle || false,
   };
 }
 
@@ -160,6 +168,14 @@ function updateParticle(p) {
     p.vy *= p.drag;
   }
 
+  // ── Velocity decay over lifetime (gradual deceleration) ──────────────────
+  // Applies an exponential-like slowdown toward end of life.
+  if (p.velocityDecay > 0) {
+    const decayFactor = 1 - (p.velocityDecay / p.maxLife);
+    p.vx *= decayFactor;
+    p.vy *= decayFactor;
+  }
+
   // ── Turbulence ────────────────────────────────────────────────────────────
   if (p.turbulence > 0) {
     p.vx += (Math.random() - 0.5) * p.turbulence;
@@ -185,8 +201,8 @@ function updateParticle(p) {
   // ── Fade ──────────────────────────────────────────────────────────────────
   p.alpha = Math.max(0, p.startAlpha * (1 - t * p.fade));
 
-  // ── Shrink ────────────────────────────────────────────────────────────────
-  if (p.shrink > 0) {
+  // ── Shrink / Grow (shrink > 0 = shrinks, shrink < 0 = grows) ─────────────
+  if (p.shrink !== 0) {
     p.size = Math.max(1, Math.round(p.baseSize * (1 - t * p.shrink)));
   }
 }
