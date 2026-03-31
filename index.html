@@ -522,3 +522,29 @@
   <!-- GIF Export Modal -->
   <div id="gif-modal" class="modal hidden">
     <div class="modal-box">
+      <h2>Exporting GIF…</h2>
+      <div id="gif-progress-wrap">
+        <div id="gif-progress-bar"></div>
+      </div>
+      <p id="gif-status">Capturing frames…</p>
+      <div id="gif-result" class="hidden">
+        <img id="gif-preview-img" alt="GIF preview" />
+        <div class="export-actions">
+          <a id="gif-download-link" class="btn btn-accent" download="pixeldust.gif">Download GIF</a>
+          <button id="btn-close-gif-modal" class="btn btn-secondary">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS modules (order matters: dependencies before dependents) -->
+  <script src="js/palettes.js"></script>
+  <script src="js/particle.js"></script>
+  <script src="js/presets.js"></script>
+  <script src="js/emitter.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/exporter.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
