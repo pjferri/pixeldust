@@ -239,6 +239,7 @@ function initUI() {
 
   // ── Loop toggle ───────────────────────────────────────────────────────
   document.getElementById('loop-toggle').addEventListener('change', pushConfig);
+  document.getElementById('show-crosshair').addEventListener('change', () => { /* renderer reads this live */ });
 
   // ── Emitter mode / burst ──────────────────────────────────────────────
   document.getElementById('emitter-mode').addEventListener('change', () => {

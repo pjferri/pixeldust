@@ -74,7 +74,7 @@ function renderFrame() {
   }
 
   ctx.globalCompositeOperation = 'source-over';
-  drawEmitterCrosshair();
+  if (document.getElementById('show-crosshair')?.checked) drawEmitterCrosshair();
 }
 
 function drawParticle(ctx, p) {
