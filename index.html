@@ -15,7 +15,7 @@
       <div id="logo">
         <span class="logo-px">PX</span>
         <span class="logo-name">PixelDust</span>
-        <span class="logo-version">v0.5</span>
+        <span class="logo-version">v0.6</span>
       </div>
       <div id="topbar-controls">
         <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
@@ -156,6 +156,14 @@
               <span class="val-display" data-for="drag">1.00</span>
             </div>
           </label>
+
+          <label class="ctrl-row">
+            <span>Wind</span>
+            <div class="slider-pair">
+              <input type="range" id="wind" min="-0.5" max="0.5" value="0" step="0.01" />
+              <span class="val-display" data-for="wind">0.00</span>
+            </div>
+          </label>
         </section>
 
         <!-- APPEARANCE -->
@@ -204,6 +212,14 @@
             <div class="slider-pair">
               <input type="range" id="rotation" min="0" max="20" value="0" step="0.5" />
               <span class="val-display" data-for="rotation">0</span>
+            </div>
+          </label>
+
+          <label class="ctrl-row">
+            <span>Hue var.</span>
+            <div class="slider-pair">
+              <input type="range" id="hue-variation" min="0" max="90" value="0" step="1" />
+              <span class="val-display" data-for="hue-variation">0</span>
             </div>
           </label>
 
@@ -275,6 +291,7 @@
           <div id="canvas-overlay" class="hidden">
             <span>PAUSED</span>
           </div>
+          <div id="copy-toast">✓ Copied!</div>
         </div>
         <div id="canvas-footer">
           <span id="fps-display">60 fps</span>
@@ -468,7 +485,7 @@
         <kbd>6</kbd><span>Smoke preset</span>
         <kbd>7</kbd><span>Confetti preset</span>
         <kbd>8</kbd><span>Portal preset</span>
-        <kbd>9</kbd><span>Rain preset</span>
+        <kbd>9</kbd><span>Rain preset (+ more in preset bar)</span>
       </div>
       <button id="btn-close-shortcuts" class="btn btn-secondary" style="margin-top:16px;width:100%">Close</button>
     </div>

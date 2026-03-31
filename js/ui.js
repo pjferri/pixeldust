@@ -1,7 +1,7 @@
 /**
  * ui.js
  * Wires all DOM controls to the emitter/renderer state.
- * v0.5: undo/redo, air drag, 13 presets, 9 palettes.
+ * v0.6: redo fix, toast copy, wind force, hue variation, 16 presets.
  */
 
 // ── Undo / Redo ────────────────────────────────────────────────────────────
@@ -10,8 +10,10 @@ const _history = [];
 let _historyIdx = -1;
 const _MAX_HISTORY = 60;
 let _pushDebounceTimer = null;
+let _restoringHistory = false;   // guard: blocks _schedulePush during undo/redo
 
 function _commitHistory() {
+  if (_restoringHistory) return;  // never overwrite history during a restore
   // Truncate any forward-redo states
   _history.splice(_historyIdx + 1);
   _history.push(getFullSnapshot());
@@ -20,6 +22,7 @@ function _commitHistory() {
 }
 
 function _schedulePush() {
+  if (_restoringHistory) return;  // ignore pushConfig calls triggered by applySnapshot
   clearTimeout(_pushDebounceTimer);
   _pushDebounceTimer = setTimeout(_commitHistory, 400);
 }
@@ -37,8 +40,13 @@ function redo() {
 }
 
 function _applyHistoryEntry(snap) {
-  clearTimeout(_pushDebounceTimer); // don't re-push while restoring
-  applySnapshot(snap);
+  clearTimeout(_pushDebounceTimer);
+  _restoringHistory = true;
+  try {
+    applySnapshot(snap);
+  } finally {
+    _restoringHistory = false;
+  }
 }
 
 // ── Slider display sync ────────────────────────────────────────────────────
@@ -167,8 +175,8 @@ function initUI() {
   // ── All slider/select controls → emitter config ───────────────────────
   const directControls = [
     'emitter-shape',
-    'particle-count', 'spawn-rate', 'speed', 'spread', 'direction', 'gravity', 'turbulence', 'drag',
-    'particle-size', 'size-variance', 'particle-shape', 'start-alpha', 'rotation', 'effect-strength',
+    'particle-count', 'spawn-rate', 'speed', 'spread', 'direction', 'gravity', 'turbulence', 'drag', 'wind',
+    'particle-size', 'size-variance', 'particle-shape', 'start-alpha', 'rotation', 'hue-variation', 'effect-strength',
     'lifetime', 'fade', 'shrink',
   ];
   directControls.forEach(id => {
@@ -306,8 +314,10 @@ function applyEffectPreset(name) {
   set('gravity',        c.gravity);
   set('turbulence',     c.turbulence);
   set('drag',           c.drag ?? 1);
+  set('wind',           c.wind ?? 0);
   set('particle-size',  c.particleSize);
   set('particle-shape', c.particleShape);
+  set('hue-variation',  c.hueVariation ?? 0);
   set('blend-mode',     c.blendMode);
   set('effect-strength', c.effectStrength ?? 1);
   set('size-variance',  c.sizeVariance ?? 0);
@@ -403,9 +413,11 @@ function pushConfig() {
     gravity:       n('gravity'),
     turbulence:    n('turbulence'),
     drag:          parseFloat(document.getElementById('drag')?.value ?? '1') || 1,
+    wind:          n('wind'),
     particleSize:  i('particle-size'),
     sizeVariance:  i('size-variance'),
     particleShape: v('particle-shape'),
+    hueVariation:  n('hue-variation'),
     blendMode:     blendVal,
     effectStrength: n('effect-strength') || 1,
     startAlpha:    n('start-alpha') || 1,
@@ -451,9 +463,11 @@ function getFullSnapshot() {
     gravity:       n('gravity'),
     turbulence:    n('turbulence'),
     drag:          n('drag') || 1,
+    wind:          n('wind'),
     particleSize:  i('particle-size'),
     sizeVariance:  i('size-variance'),
     particleShape: v('particle-shape'),
+    hueVariation:  n('hue-variation'),
     blendMode:     v('blend-mode'),
     effectStrength: n('effect-strength'),
     startAlpha:    n('start-alpha'),
@@ -488,8 +502,10 @@ function applySnapshot(snap) {
   set('gravity',        snap.gravity);
   set('turbulence',     snap.turbulence);
   set('drag',           snap.drag ?? 1);
+  set('wind',           snap.wind ?? 0);
   set('particle-size',  snap.particleSize);
   set('particle-shape', snap.particleShape);
+  set('hue-variation',  snap.hueVariation ?? 0);
   set('blend-mode',     snap.blendMode);
   set('effect-strength', snap.effectStrength ?? 1);
   set('size-variance',  snap.sizeVariance ?? 0);
@@ -586,19 +602,25 @@ function loadFromHash() {
 
 // ── Copy canvas to clipboard ───────────────────────────────────────────────
 
+let _copyToastTimer = null;
+function _showCopyToast() {
+  const toast = document.getElementById('copy-toast');
+  if (!toast) return;
+  clearTimeout(_copyToastTimer);
+  toast.classList.add('show');
+  _copyToastTimer = setTimeout(() => toast.classList.remove('show'), 1600);
+}
+
 function copyCanvasToClipboard() {
   const canvas = getCanvas();
   if (!canvas) return;
   canvas.toBlob(blob => {
     if (!blob) return;
     try {
-      navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(() => {
-        const el = document.getElementById('fps-display');
-        const orig = el.textContent;
-        el.textContent = '✓ Copied!';
-        setTimeout(() => { el.textContent = orig; }, 1500);
-      }).catch(() => { /* clipboard permission denied — silent fail */ });
-    } catch (_) { /* ClipboardItem not supported */ }
+      navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+        .then(_showCopyToast)
+        .catch(() => { /* clipboard permission denied — silent fail */ });
+    } catch (_) { /* ClipboardItem not supported in this browser */ }
   });
 }
 
@@ -656,6 +678,8 @@ function randomizeSettings() {
   set('gravity',        rng(-0.5, 0.5, 0.05));
   set('turbulence',     rng(0, 1.5, 0.05));
   set('drag',           rng(0.88, 1.0, 0.005));
+  set('wind',           rng(-0.2, 0.2, 0.01));
+  set('hue-variation',  rng(0, 45, 1));
   set('particle-size',  rng(1, 10, 1));
   set('size-variance',  rng(0, 4, 1));
   set('particle-shape', pick(['square', 'circle', 'diamond', 'cross', 'star', 'sparkle']));

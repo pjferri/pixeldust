@@ -565,6 +565,27 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
   pointer-events: none;
 }
 
+#copy-toast {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 20, 30, 0.92);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #aaffaa;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 14px;
+  border-radius: 20px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+#copy-toast.show { opacity: 1; }
+
 #canvas-footer {
   display: flex;
   gap: 20px;

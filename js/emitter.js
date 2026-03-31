@@ -47,6 +47,8 @@ let cfg = {
   gravity:       0.15,
   turbulence:    0,             // random velocity jitter per frame
   drag:          1,             // velocity multiplier per frame (1=no drag, 0.95=strong drag)
+  wind:          0,             // constant horizontal force per frame (negative = left)
+  hueVariation:  0,             // ±degrees of random hue shift per particle (0 = off)
 
   // Appearance
   particleSize:  3,
