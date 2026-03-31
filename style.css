@@ -815,3 +815,18 @@ kbd {
 @media (max-width: 720px) {
   #panel-right { display: none; }
 }
+
+/* ── Death sparks sub-controls (indented under death-count slider) ── */
+#death-params-row {
+  border-left: 2px solid rgba(255,255,255,0.10);
+  margin-left: 8px;
+  padding-left: 6px;
+}
+
+/* ── Emitter shape size/angle sub-controls ── */
+#emitter-size-row,
+#emitter-angle-row {
+  border-left: 2px solid rgba(255,255,255,0.10);
+  margin-left: 8px;
+  padding-left: 6px;
+}

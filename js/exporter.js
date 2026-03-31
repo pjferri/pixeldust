@@ -1,6 +1,8 @@
 /**
  * exporter.js
  * Offline PNG and GIF export that mirrors the live simulation closely.
+ *
+ * v0.1.0: death particle simulation in local simulator; emitterSize/Angle support
  */
 
 function createLocalSimulator(emitCfg, frameSize) {
@@ -16,37 +18,74 @@ function createLocalSimulator(emitCfg, frameSize) {
   const centerY = frameSize / 2;
   let loopTimer = 0;
 
-  const trailAlpha = Number.isFinite(emitCfg.trailAlpha) ? emitCfg.trailAlpha : 0.12;
-  const bgHex = emitCfg.bgColor || '#0c0c0e';
+  const trailAlpha  = Number.isFinite(emitCfg.trailAlpha) ? emitCfg.trailAlpha : 0.12;
+  const bgHex       = emitCfg.bgColor || '#0c0c0e';
   const transparentBg = !!emitCfg.transparentBg;
 
+  // ── Spawn point (mirrors emitter.js spawnPoint) ─────────────────────────
   function spawnPoint() {
+    const size = Math.max(1, emitCfg.emitterSize || 18);
     switch (emitCfg.emitterShape) {
       case 'line': {
-        const halfWidth = frameSize * 0.18;
-        return [centerX - halfWidth + Math.random() * halfWidth * 2, centerY];
+        const hw    = frameSize * (size / 100);
+        const angle = ((emitCfg.emitterAngle || 0) * Math.PI) / 180;
+        const t     = (Math.random() * 2 - 1) * hw;
+        return [centerX + t * Math.cos(angle), centerY + t * Math.sin(angle)];
       }
       case 'circle': {
-        const radius = frameSize * 0.16;
-        const angle = Math.random() * Math.PI * 2;
-        return [centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius];
+        const radius = frameSize * (size / 100);
+        const a = Math.random() * Math.PI * 2;
+        return [centerX + Math.cos(a) * radius, centerY + Math.sin(a) * radius];
       }
       default:
         return [centerX, centerY];
     }
   }
 
+  // ── Spawn helpers ────────────────────────────────────────────────────────
   function spawnParticleToPool(x, y) {
     const particle = createParticle(x, y, emitCfg);
     for (let i = 0; i < pool.length; i++) {
-      if (!pool[i].alive) {
-        pool[i] = particle;
-        return;
-      }
+      if (!pool[i].alive) { pool[i] = particle; return; }
     }
     pool.push(particle);
   }
 
+  /**
+   * Death particle — mirrors _spawnDeathParticle in emitter.js.
+   * Uses the local pool and emitCfg, never touches global particles[].
+   */
+  function spawnDeathParticle(x, y) {
+    const angle = Math.random() * Math.PI * 2;
+    const spd   = emitCfg.deathSpeed * (0.6 + Math.random() * 0.8);
+    const miniCfg = {
+      ...emitCfg,
+      speed:         spd,
+      speedVariance: 0,
+      spread:        360,
+      direction:     0,
+      particleSize:  Math.max(1, emitCfg.deathSize || 2),
+      sizeVariance:  0,
+      lifetime:      20 + Math.floor(Math.random() * 12),
+      fade:          1,
+      shrink:        0.6,
+      turbulence:    0,
+      drag:          0.9,
+      bounce:        false,
+      velocityDecay: 0,
+      deathCount:    0,           // prevent cascade
+      _isDeathParticle: true,
+    };
+    const p = createParticle(x, y, miniCfg);
+    p.vx = Math.cos(angle) * spd;
+    p.vy = Math.sin(angle) * spd;
+    for (let i = 0; i < pool.length; i++) {
+      if (!pool[i].alive) { pool[i] = p; return; }
+    }
+    pool.push(p);
+  }
+
+  // ── Simulation ────────────────────────────────────────────────────────────
   function resetPool() {
     for (const particle of pool) particle.alive = false;
     loopTimer = 0;
@@ -54,17 +93,32 @@ function createLocalSimulator(emitCfg, frameSize) {
 
   function liveCountLocal() {
     let count = 0;
-    for (const particle of pool) {
-      if (particle.alive) count++;
-    }
+    for (const particle of pool) { if (particle.alive) count++; }
     return count;
   }
 
   function tick() {
+    // Update existing particles; collect positions of those that just died
+    const deathSparks = (emitCfg.deathCount > 0) ? [] : null;
+
     for (const particle of pool) {
-      if (particle.alive) updateParticle(particle);
+      if (particle.alive) {
+        updateParticle(particle);
+        if (!particle.alive && deathSparks && !particle.isDeathParticle) {
+          deathSparks.push({ x: particle.x, y: particle.y });
+        }
+      }
     }
 
+    // Spawn death particles (outside update loop to avoid iterating new entries)
+    if (deathSparks) {
+      for (const { x, y } of deathSparks) {
+        const n = Math.min(emitCfg.deathCount, 8);
+        for (let d = 0; d < n; d++) spawnDeathParticle(x, y);
+      }
+    }
+
+    // Spawn new main particles
     const live = liveCountLocal();
     let toSpawn = 0;
 
@@ -97,6 +151,7 @@ function createLocalSimulator(emitCfg, frameSize) {
     }
   }
 
+  // ── Rendering ─────────────────────────────────────────────────────────────
   function drawFrame() {
     frameCtx.globalCompositeOperation = 'source-over';
     frameCtx.globalAlpha = 1;
@@ -129,12 +184,7 @@ function createLocalSimulator(emitCfg, frameSize) {
 
   clearFrame();
 
-  return {
-    canvas: frameCanvas,
-    tick,
-    drawFrame,
-    resetPool,
-  };
+  return { canvas: frameCanvas, tick, drawFrame, resetPool };
 }
 
 /**
@@ -142,16 +192,16 @@ function createLocalSimulator(emitCfg, frameSize) {
  */
 async function startExport(exportCfg, emitCfg) {
   const { frames, frameSize, cols, transparentBg } = exportCfg;
-  const rows = Math.ceil(frames / cols);
+  const rows  = Math.ceil(frames / cols);
   const sheetW = cols * frameSize;
   const sheetH = rows * frameSize;
 
-  const modal = document.getElementById('export-modal');
+  const modal       = document.getElementById('export-modal');
   const progressBar = document.getElementById('export-progress-bar');
-  const statusEl = document.getElementById('export-status');
-  const resultEl = document.getElementById('export-result');
-  const previewImg = document.getElementById('export-preview-img');
-  const dlLink = document.getElementById('export-download-link');
+  const statusEl    = document.getElementById('export-status');
+  const resultEl    = document.getElementById('export-result');
+  const previewImg  = document.getElementById('export-preview-img');
+  const dlLink      = document.getElementById('export-download-link');
   const exportCanvas = document.getElementById('export-canvas');
 
   modal.classList.remove('hidden');
@@ -204,7 +254,7 @@ async function startExport(exportCfg, emitCfg) {
   dlLink.href = dataUrl;
   dlLink.download = `pixeldust_sprite_${frameSize}x${frameSize}_${frames}f.png`;
   resultEl.classList.remove('hidden');
-  statusEl.textContent = `Done! ${frames} frames at ${frameSize}x${frameSize}px (${cols} cols)`;
+  statusEl.textContent = `Done! ${frames} frames at ${frameSize}×${frameSize}px (${cols} cols)`;
 }
 
 function yieldFrame() {
@@ -215,12 +265,12 @@ function yieldFrame() {
  * Capture the effect as an animated GIF.
  */
 async function startGifExport(gifCfg, emitCfg) {
-  const modal = document.getElementById('gif-modal');
+  const modal       = document.getElementById('gif-modal');
   const progressBar = document.getElementById('gif-progress-bar');
-  const statusEl = document.getElementById('gif-status');
-  const resultEl = document.getElementById('gif-result');
-  const previewImg = document.getElementById('gif-preview-img');
-  const dlLink = document.getElementById('gif-download-link');
+  const statusEl    = document.getElementById('gif-status');
+  const resultEl    = document.getElementById('gif-result');
+  const previewImg  = document.getElementById('gif-preview-img');
+  const dlLink      = document.getElementById('gif-download-link');
 
   modal.classList.remove('hidden');
   resultEl.classList.add('hidden');
@@ -234,8 +284,8 @@ async function startGifExport(gifCfg, emitCfg) {
 
   const { fps, duration } = gifCfg;
   const totalFrames = Math.round(fps * duration);
-  const delay = Math.round(1000 / fps);
-  const frameSize = 256;
+  const delay       = Math.round(1000 / fps);
+  const frameSize   = 256;
 
   const simCfg = { ...emitCfg };
   if (simCfg.emitterMode === 'burst') simCfg.burstPending = true;
@@ -248,10 +298,10 @@ async function startGifExport(gifCfg, emitCfg) {
   for (let tick = 0; tick < primeTicks; tick++) sim.tick();
 
   const gif = new GIF({
-    workers: 2,
-    quality: 8,
-    width: frameSize,
-    height: frameSize,
+    workers:      2,
+    quality:      8,
+    width:        frameSize,
+    height:       frameSize,
     workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js',
   });
 

@@ -2,7 +2,8 @@
  * emitter.js
  * Manages the particle pool, spawn logic, and emitter position.
  *
- * v0.9: death particles (sub-emitters), speedVariance, velocityDecay cfg defaults
+ * v0.9:   death particles (sub-emitters), speedVariance, velocityDecay cfg defaults
+ * v0.1.0: emitterSize (line width / circle radius %), emitterAngle (line rotation)
  */
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -33,6 +34,8 @@ let cfg = {
   // Emitter
   emitterShape:  'point',       // 'point' | 'line' | 'circle'
   emitterMode:   'continuous',  // 'continuous' | 'burst' | 'trail'
+  emitterSize:   18,            // % of canvas (line half-width or circle radius)
+  emitterAngle:  0,             // degrees — rotation of line emitter
   count:         120,
   spawnRate:     60,            // particles per second (continuous/trail modes)
 
@@ -203,11 +206,8 @@ function tickEmitter() {
   }
 
   // ── Loop auto-reset ───────────────────────────────────────────────────
-  // Increments every frame. When the interval elapses, kill all particles
-  // so the effect restarts from scratch — creating a seamless loop.
   if (cfg.loop) {
     _loopTimer++;
-    // Interval = 1.5× lifetime + 20 frames breathing room
     const interval = Math.ceil(cfg.lifetime * 1.5) + 20;
     if (_loopTimer >= interval) {
       _loopTimer = 0;
@@ -222,18 +222,28 @@ function tickEmitter() {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-/** Pick a spawn coordinate relative to the current emitter origin. */
+/**
+ * Pick a spawn coordinate relative to the current emitter origin.
+ * emitterSize is a percentage of canvas width/height (1–50).
+ * emitterAngle rotates the line emitter (0 = horizontal).
+ */
 function spawnPoint() {
   const cx = emitterX >= 0 ? emitterX : canvasW / 2;
   const cy = emitterY >= 0 ? emitterY : canvasH / 2;
+  const size = Math.max(1, cfg.emitterSize || 18);
 
   switch (cfg.emitterShape) {
     case 'line': {
-      const hw = canvasW * 0.18;
-      return [cx - hw + Math.random() * hw * 2, cy];
+      const hw    = canvasW * (size / 100);
+      const angle = ((cfg.emitterAngle || 0) * Math.PI) / 180;
+      const t     = (Math.random() * 2 - 1) * hw;
+      return [
+        cx + t * Math.cos(angle),
+        cy + t * Math.sin(angle),
+      ];
     }
     case 'circle': {
-      const radius = Math.min(canvasW, canvasH) * 0.16;
+      const radius = Math.min(canvasW, canvasH) * (size / 100);
       const a = Math.random() * Math.PI * 2;
       return [cx + Math.cos(a) * radius, cy + Math.sin(a) * radius];
     }
@@ -260,12 +270,10 @@ function _spawnDeathParticle(x, y) {
   const angle = Math.random() * Math.PI * 2;
   const spd   = cfg.deathSpeed * (0.6 + Math.random() * 0.8);
 
-  // Build a temporary override cfg for the mini-particle.
-  // Uses the current palette/color scheme but shorter life and fixed spread.
   const miniCfg = {
     ...cfg,
     speed:         spd,
-    speedVariance: 0,       // we already randomised the speed above
+    speedVariance: 0,
     spread:        360,
     direction:     0,
     particleSize:  Math.max(1, cfg.deathSize),
@@ -282,7 +290,7 @@ function _spawnDeathParticle(x, y) {
   };
 
   const p  = createParticle(x, y, miniCfg);
-  // Override velocity with true random direction (createParticle uses spread/direction)
+  // Override velocity with true random direction
   p.vx = Math.cos(angle) * spd;
   p.vy = Math.sin(angle) * spd;
 

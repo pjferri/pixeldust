@@ -1,7 +1,8 @@
 /**
  * presets.js
- * Full effect presets — v0.9
- * New fields: speedVariance, velocityDecay, deathCount, deathSpeed, deathSize
+ * Full effect presets — v0.1.0
+ * All presets now include: speedVariance, velocityDecay, deathCount/Speed/Size,
+ * emitterSize (% of canvas), emitterAngle (line rotation degrees).
  */
 
 const EFFECT_PRESETS = {
@@ -10,6 +11,7 @@ const EFFECT_PRESETS = {
     palette: 'fire',
     cfg: {
       emitterShape: 'line', emitterMode: 'continuous', speedMult: 1,
+      emitterSize: 22, emitterAngle: 0,
       count: 220, spawnRate: 130, speed: 2.5, spread: 20, direction: 270,
       gravity: -0.09, turbulence: 0.2, drag: 0.97, wind: 0,
       particleSize: 3, particleShape: 'square', sizeVariance: 1, hueVariation: 15,
@@ -27,6 +29,7 @@ const EFFECT_PRESETS = {
     palette: 'ice',
     cfg: {
       emitterShape: 'line', emitterMode: 'continuous', speedMult: 1,
+      emitterSize: 45, emitterAngle: 0,
       count: 200, spawnRate: 60, speed: 1.2, spread: 15, direction: 90,
       gravity: 0.02, turbulence: 0.25, drag: 0.98, wind: 0.03,
       particleSize: 2, particleShape: 'circle', sizeVariance: 1, hueVariation: 5,
@@ -44,6 +47,7 @@ const EFFECT_PRESETS = {
     palette: 'fire',
     cfg: {
       emitterShape: 'point', emitterMode: 'burst', speedMult: 1,
+      emitterSize: 18, emitterAngle: 0,
       count: 220, spawnRate: 220, speed: 7, spread: 360, direction: 270,
       gravity: 0.22, turbulence: 0.35, drag: 0.94, wind: 0,
       particleSize: 4, particleShape: 'square', sizeVariance: 2, hueVariation: 20,
@@ -61,6 +65,7 @@ const EFFECT_PRESETS = {
     palette: 'magic',
     cfg: {
       emitterShape: 'circle', emitterMode: 'continuous', speedMult: 1,
+      emitterSize: 16, emitterAngle: 0,
       count: 80, spawnRate: 40, speed: 1.8, spread: 360, direction: 270,
       gravity: 0.02, turbulence: 0.1, drag: 1, wind: 0,
       particleSize: 5, particleShape: 'sparkle', sizeVariance: 2, hueVariation: 25,
@@ -78,6 +83,7 @@ const EFFECT_PRESETS = {
     palette: 'magic',
     cfg: {
       emitterShape: 'point', emitterMode: 'continuous', speedMult: 1,
+      emitterSize: 18, emitterAngle: 0,
       count: 120, spawnRate: 50, speed: 2.5, spread: 80, direction: 270,
       gravity: -0.1, turbulence: 0.3, drag: 0.98, wind: 0,
       particleSize: 4, particleShape: 'star', sizeVariance: 1, hueVariation: 30,
@@ -95,6 +101,7 @@ const EFFECT_PRESETS = {
     palette: 'mono',
     cfg: {
       emitterShape: 'line', emitterMode: 'continuous', speedMult: 1,
+      emitterSize: 12, emitterAngle: 0,
       count: 60, spawnRate: 20, speed: 0.8, spread: 20, direction: 270,
       gravity: -0.04, turbulence: 0.12, drag: 0.96, wind: 0.02,
       particleSize: 8, particleShape: 'circle', sizeVariance: 3, hueVariation: 0,
@@ -112,6 +119,7 @@ const EFFECT_PRESETS = {
     palette: 'sunset',
     cfg: {
       emitterShape: 'line', emitterMode: 'continuous', speedMult: 1,
+      emitterSize: 40, emitterAngle: 0,
       count: 180, spawnRate: 80, speed: 4, spread: 40, direction: 90,
       gravity: 0.15, turbulence: 0.5, drag: 0.97, wind: 0,
       particleSize: 4, particleShape: 'square', sizeVariance: 1, hueVariation: 45,
@@ -129,6 +137,7 @@ const EFFECT_PRESETS = {
     palette: 'magic',
     cfg: {
       emitterShape: 'circle', emitterMode: 'continuous', speedMult: 1,
+      emitterSize: 20, emitterAngle: 0,
       count: 200, spawnRate: 80, speed: 3, spread: 360, direction: 270,
       gravity: 0, turbulence: 0.05, drag: 1, wind: 0,
       particleSize: 3, particleShape: 'sparkle', sizeVariance: 1, hueVariation: 20,
@@ -146,6 +155,7 @@ const EFFECT_PRESETS = {
     palette: 'ocean',
     cfg: {
       emitterShape: 'line', emitterMode: 'continuous', speedMult: 1,
+      emitterSize: 45, emitterAngle: 0,
       count: 300, spawnRate: 200, speed: 8, spread: 5, direction: 95,
       gravity: 0.1, turbulence: 0.05, drag: 1, wind: 0.06,
       particleSize: 1, particleShape: 'square', sizeVariance: 0, hueVariation: 0,
@@ -163,6 +173,7 @@ const EFFECT_PRESETS = {
     palette: 'nature',
     cfg: {
       emitterShape: 'circle', emitterMode: 'continuous', speedMult: 1,
+      emitterSize: 16, emitterAngle: 0,
       count: 80, spawnRate: 35, speed: 1.2, spread: 60, direction: 270,
       gravity: -0.05, turbulence: 0.15, drag: 0.97, wind: 0,
       particleSize: 4, particleShape: 'star', sizeVariance: 2, hueVariation: 15,
@@ -180,6 +191,7 @@ const EFFECT_PRESETS = {
     palette: 'neon',
     cfg: {
       emitterShape: 'point', emitterMode: 'continuous', speedMult: 1.5,
+      emitterSize: 18, emitterAngle: 0,
       count: 150, spawnRate: 120, speed: 5, spread: 360, direction: 270,
       gravity: 0, turbulence: 1.2, drag: 0.88, wind: 0,
       particleSize: 2, particleShape: 'square', sizeVariance: 1, hueVariation: 20,
@@ -197,6 +209,7 @@ const EFFECT_PRESETS = {
     palette: 'ocean',
     cfg: {
       emitterShape: 'line', emitterMode: 'continuous', speedMult: 1,
+      emitterSize: 30, emitterAngle: 0,
       count: 250, spawnRate: 160, speed: 4, spread: 10, direction: 90,
       gravity: 0.2, turbulence: 0.2, drag: 0.99, wind: 0,
       particleSize: 2, particleShape: 'circle', sizeVariance: 1, hueVariation: 10,
@@ -214,6 +227,7 @@ const EFFECT_PRESETS = {
     palette: 'neon',
     cfg: {
       emitterShape: 'point', emitterMode: 'burst', speedMult: 1,
+      emitterSize: 18, emitterAngle: 0,
       count: 180, spawnRate: 180, speed: 5.5, spread: 360, direction: 270,
       gravity: 0.12, turbulence: 0.1, drag: 0.96, wind: 0,
       particleSize: 3, particleShape: 'star', sizeVariance: 1, hueVariation: 40,
@@ -231,6 +245,7 @@ const EFFECT_PRESETS = {
     palette: 'nature',
     cfg: {
       emitterShape: 'line', emitterMode: 'continuous', speedMult: 1,
+      emitterSize: 40, emitterAngle: 0,
       count: 120, spawnRate: 30, speed: 1.5, spread: 25, direction: 100,
       gravity: 0.05, turbulence: 0.3, drag: 0.97, wind: 0.08,
       particleSize: 4, particleShape: 'square', sizeVariance: 2, hueVariation: 35,
@@ -248,6 +263,7 @@ const EFFECT_PRESETS = {
     palette: 'ice',
     cfg: {
       emitterShape: 'point', emitterMode: 'trail', speedMult: 1,
+      emitterSize: 18, emitterAngle: 0,
       count: 180, spawnRate: 150, speed: 1.5, spread: 30, direction: 90,
       gravity: 0, turbulence: 0.1, drag: 0.92, wind: 0,
       particleSize: 3, particleShape: 'circle', sizeVariance: 1, hueVariation: 15,
@@ -265,12 +281,13 @@ const EFFECT_PRESETS = {
     palette: 'ocean',
     cfg: {
       emitterShape: 'line', emitterMode: 'continuous', speedMult: 1,
+      emitterSize: 30, emitterAngle: 0,
       count: 80, spawnRate: 25, speed: 0.8, spread: 20, direction: 270,
       gravity: -0.03, turbulence: 0.08, drag: 0.99, wind: 0,
-      particleSize: 6, particleShape: 'circle', sizeVariance: 4, hueVariation: 20,
-      blendMode: 'screen', effectStrength: 1.1, startAlpha: 0.5, rotation: 0,
-      lifetime: 200, fade: 0.6, shrink: -0.3,
-      speedVariance: 0.25, velocityDecay: 0.15,
+      particleSize: 7, particleShape: 'ring', sizeVariance: 4, hueVariation: 20,
+      blendMode: 'screen', effectStrength: 1.1, startAlpha: 0.55, rotation: 0,
+      lifetime: 200, fade: 0.6, shrink: -0.35,
+      speedVariance: 0.25, velocityDecay: 0.1,
       deathCount: 0, deathSpeed: 2, deathSize: 2,
       multiColor: true, useGradient: true, gradientStart: '#88eeff', gradientEnd: '#0044aa',
       bgColor: '#02080f', trailAlpha: 0.06, loop: false, bounce: false,
@@ -282,6 +299,7 @@ const EFFECT_PRESETS = {
     palette: 'neon',
     cfg: {
       emitterShape: 'point', emitterMode: 'burst', speedMult: 1,
+      emitterSize: 18, emitterAngle: 0,
       count: 40, spawnRate: 40, speed: 6, spread: 360, direction: 270,
       gravity: 0, turbulence: 0, drag: 0.998, wind: 0,
       particleSize: 7, particleShape: 'circle', sizeVariance: 2, hueVariation: 40,
@@ -299,6 +317,7 @@ const EFFECT_PRESETS = {
     palette: 'neon',
     cfg: {
       emitterShape: 'point', emitterMode: 'continuous', speedMult: 2,
+      emitterSize: 18, emitterAngle: 0,
       count: 80, spawnRate: 80, speed: 10, spread: 8, direction: 0,
       gravity: 0, turbulence: 0, drag: 1, wind: 0,
       particleSize: 2, particleShape: 'square', sizeVariance: 0, hueVariation: 10,
@@ -308,6 +327,42 @@ const EFFECT_PRESETS = {
       deathCount: 0, deathSpeed: 2, deathSize: 2,
       multiColor: true, useGradient: true, gradientStart: '#ff0066', gradientEnd: '#6600ff',
       bgColor: '#060010', trailAlpha: 0.35, loop: false, bounce: true,
+    },
+  },
+
+  stardust: {
+    label: 'Stardust',
+    palette: 'ice',
+    cfg: {
+      emitterShape: 'line', emitterMode: 'continuous', speedMult: 1,
+      emitterSize: 45, emitterAngle: 0,
+      count: 160, spawnRate: 30, speed: 0.5, spread: 360, direction: 270,
+      gravity: -0.003, turbulence: 0.06, drag: 1, wind: 0.008,
+      particleSize: 2, particleShape: 'star', sizeVariance: 1, hueVariation: 25,
+      blendMode: 'glow', effectStrength: 1.0, startAlpha: 0.85, rotation: 1,
+      lifetime: 320, fade: 0.5, shrink: 0,
+      speedVariance: 0.8, velocityDecay: 0,
+      deathCount: 0, deathSpeed: 2, deathSize: 1,
+      multiColor: true, useGradient: true, gradientStart: '#ffffff', gradientEnd: '#6699ff',
+      bgColor: '#020208', trailAlpha: 0.02, loop: false,
+    },
+  },
+
+  shockwave: {
+    label: 'Shockwave',
+    palette: 'ice',
+    cfg: {
+      emitterShape: 'point', emitterMode: 'burst', speedMult: 1,
+      emitterSize: 18, emitterAngle: 0,
+      count: 90, spawnRate: 90, speed: 7, spread: 360, direction: 270,
+      gravity: 0, turbulence: 0.05, drag: 0.97, wind: 0,
+      particleSize: 8, particleShape: 'ring', sizeVariance: 2, hueVariation: 10,
+      blendMode: 'glow', effectStrength: 1.5, startAlpha: 0.95, rotation: 0,
+      lifetime: 50, fade: 1, shrink: 0.2,
+      speedVariance: 0.15, velocityDecay: 0.45,
+      deathCount: 2, deathSpeed: 2.5, deathSize: 2,
+      multiColor: true, useGradient: true, gradientStart: '#ffffff', gradientEnd: '#0099ff',
+      bgColor: '#040812', trailAlpha: 0.22, loop: false,
     },
   },
 };

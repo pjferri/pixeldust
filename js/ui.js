@@ -3,6 +3,7 @@
  * Wires all DOM controls to the emitter/renderer state.
  * v0.8: color-mode dropdown, ghost glow fix, export UX improvements.
  * v0.9: speed variance, velocity decay, death particles, grow mode.
+ * v0.1.0: emitter-size, emitter-angle, ring shape, crosshair shape extent.
  */
 
 // ── Undo / Redo ────────────────────────────────────────────────────────────
@@ -158,6 +159,18 @@ function updateDeathParamsVisibility() {
   if (row) row.classList.toggle('hidden', count === 0);
 }
 
+// ── Emitter shape rows visibility ──────────────────────────────────────────
+
+function updateEmitterShapeRows() {
+  const shape     = document.getElementById('emitter-shape')?.value || 'point';
+  const sizeRow   = document.getElementById('emitter-size-row');
+  const angleRow  = document.getElementById('emitter-angle-row');
+  const showSize  = shape === 'line' || shape === 'circle';
+  const showAngle = shape === 'line';
+  if (sizeRow)  sizeRow.classList.toggle('hidden', !showSize);
+  if (angleRow) angleRow.classList.toggle('hidden', !showAngle);
+}
+
 // ── initUI ─────────────────────────────────────────────────────────────────
 
 function initUI() {
@@ -236,9 +249,15 @@ function initUI() {
     cfg.burstPending = true;
   });
 
+  // ── Emitter shape → show/hide size & angle rows ───────────────────────
+  document.getElementById('emitter-shape').addEventListener('change', () => {
+    updateEmitterShapeRows();
+    // directControls loop also calls pushConfig on change
+  });
+
   // ── All slider/select controls → emitter config ───────────────────────
   const directControls = [
-    'emitter-shape',
+    'emitter-shape', 'emitter-size', 'emitter-angle',
     'particle-count', 'spawn-rate', 'speed', 'spread', 'direction', 'gravity', 'turbulence', 'drag', 'wind', 'bounce',
     'speed-variance', 'velocity-decay',
     'particle-size', 'size-variance', 'particle-shape', 'start-alpha', 'rotation', 'hue-variation', 'effect-strength',
@@ -349,6 +368,7 @@ function initUI() {
 
   pushConfig();
   updateBurstRowVisibility();
+  updateEmitterShapeRows();
   startEmitterPosHUD();
 
   // Seed undo history with initial state
@@ -397,6 +417,8 @@ function applyEffectPreset(name) {
 
   set('emitter-shape',  c.emitterShape);
   set('emitter-mode',   c.emitterMode);
+  set('emitter-size',   c.emitterSize ?? 18);
+  set('emitter-angle',  c.emitterAngle ?? 0);
   set('speed-mult',     c.speedMult ?? 1);
   set('particle-count', c.count);
   set('spawn-rate',     c.spawnRate);
@@ -450,6 +472,7 @@ function applyEffectPreset(name) {
 
   updateBurstRowVisibility();
   updateDeathParamsVisibility();
+  updateEmitterShapeRows();
   resetParticles();
   clearCanvas();
   pushConfig();
@@ -503,6 +526,8 @@ function pushConfig() {
   setEmitterConfig({
     emitterShape:  v('emitter-shape'),
     emitterMode:   v('emitter-mode'),
+    emitterSize:   parseFloat(document.getElementById('emitter-size')?.value ?? '18') || 18,
+    emitterAngle:  parseFloat(document.getElementById('emitter-angle')?.value ?? '0') || 0,
     speedMult:     n('speed-mult') || 1,
     count:         i('particle-count'),
     spawnRate:     i('spawn-rate') || 60,
@@ -559,6 +584,8 @@ function getFullSnapshot() {
   return {
     emitterShape:  v('emitter-shape'),
     emitterMode:   v('emitter-mode'),
+    emitterSize:   parseFloat(document.getElementById('emitter-size')?.value ?? '18') || 18,
+    emitterAngle:  parseFloat(document.getElementById('emitter-angle')?.value ?? '0') || 0,
     speedMult:     n('speed-mult'),
     count:         i('particle-count'),
     spawnRate:     i('spawn-rate'),
@@ -605,6 +632,8 @@ function applySnapshot(snap) {
 
   set('emitter-shape',  snap.emitterShape);
   set('emitter-mode',   snap.emitterMode);
+  set('emitter-size',   snap.emitterSize ?? 18);
+  set('emitter-angle',  snap.emitterAngle ?? 0);
   set('speed-mult',     snap.speedMult ?? 1);
   set('particle-count', snap.count);
   set('spawn-rate',     snap.spawnRate);
@@ -661,6 +690,7 @@ function applySnapshot(snap) {
 
   updateBurstRowVisibility();
   updateDeathParamsVisibility();
+  updateEmitterShapeRows();
   resetParticles();
   clearCanvas();
   pushConfig();
@@ -788,7 +818,10 @@ function randomizeSettings() {
   const setCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
 
   // Sane ranges that still produce interesting results
-  set('emitter-shape',  pick(['point', 'line', 'circle']));
+  const chosenEmitterShape = pick(['point', 'point', 'line', 'circle']);
+  set('emitter-shape',  chosenEmitterShape);
+  set('emitter-size',   rng(8, 40, 1));
+  set('emitter-angle',  rng(0, 180, 1));
   set('emitter-mode',   pick(['continuous', 'continuous', 'continuous', 'burst', 'trail'])); // weight continuous
   set('speed-mult',     rng(0.5, 2, 0.05));
   set('particle-count', rng(30, 300, 10));
@@ -803,7 +836,7 @@ function randomizeSettings() {
   set('hue-variation',  rng(0, 45, 1));
   set('particle-size',  rng(1, 10, 1));
   set('size-variance',  rng(0, 4, 1));
-  set('particle-shape', pick(['square', 'circle', 'diamond', 'cross', 'star', 'sparkle']));
+  set('particle-shape', pick(['square', 'circle', 'diamond', 'cross', 'star', 'sparkle', 'ring']));
   set('blend-mode',     pick(['normal', 'glow', 'neon', 'screen', 'shadow']));
   set('effect-strength', rng(0.4, 1.8, 0.05));
   set('start-alpha',    rng(0.3, 1, 0.05));
@@ -839,6 +872,7 @@ function randomizeSettings() {
 
   updateBurstRowVisibility();
   updateDeathParamsVisibility();
+  updateEmitterShapeRows();
 
   // Re-sync all val-display spans
   document.querySelectorAll('.val-display').forEach(display => {

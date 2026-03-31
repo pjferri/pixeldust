@@ -15,7 +15,7 @@
       <div id="logo">
         <span class="logo-px">PX</span>
         <span class="logo-name">PixelDust</span>
-        <span class="logo-version">v0.9</span>
+        <span class="logo-version">v0.1.0</span>
       </div>
       <div id="topbar-controls">
         <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
@@ -72,6 +72,28 @@
               <option value="trail">Trail</option>
             </select>
           </label>
+
+          <!-- Emitter shape size — hidden for point emitter -->
+          <div id="emitter-size-row" class="hidden">
+            <label class="ctrl-row" title="Size of the emitter spawn area (% of canvas)">
+              <span>Shape size</span>
+              <div class="slider-pair">
+                <input type="range" id="emitter-size" min="5" max="50" value="18" step="1" />
+                <span class="val-display" data-for="emitter-size">18</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Emitter angle — only meaningful for line emitter -->
+          <div id="emitter-angle-row" class="hidden">
+            <label class="ctrl-row" title="Rotation angle of the line emitter (0–180°)">
+              <span>Angle°</span>
+              <div class="slider-pair">
+                <input type="range" id="emitter-angle" min="0" max="180" value="0" step="1" />
+                <span class="val-display" data-for="emitter-angle">0</span>
+              </div>
+            </label>
+          </div>
 
           <label class="ctrl-row">
             <span>Speed ×</span>
@@ -209,6 +231,7 @@
               <option value="cross">Cross</option>
               <option value="star">Star ★</option>
               <option value="sparkle">Sparkle ✦</option>
+              <option value="ring">Ring ◎</option>
             </select>
           </label>
 

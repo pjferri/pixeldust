@@ -1,6 +1,8 @@
 /**
  * renderer.js
  * Canvas drawing, emitter crosshair, and canvas drag interaction.
+ *
+ * v0.1.0: ring particle shape; crosshair now visualises emitter shape extent
  */
 
 let canvas, ctx;
@@ -12,14 +14,10 @@ let effectStrength = 1;
 
 function normalizeEffectMode(mode) {
   switch (mode) {
-    case 'source-over':
-      return 'normal';
-    case 'lighter':
-      return 'glow';
-    case 'multiply':
-      return 'shadow';
-    case 'screen':
-      return 'screen';
+    case 'source-over': return 'normal';
+    case 'lighter':     return 'glow';
+    case 'multiply':    return 'shadow';
+    case 'screen':      return 'screen';
     case 'normal':
     case 'glow':
     case 'neon':
@@ -62,8 +60,7 @@ function renderFrame() {
 
   ctx.globalCompositeOperation = 'source-over';
 
-  // If no particles are alive, do a full opaque clear so any residual
-  // glow/lighter-composite brightness from previous frames is instantly erased.
+  // If no particles are alive, do a full opaque clear so residual glow is erased
   if (liveCount() === 0) {
     ctx.fillStyle = `rgb(${r},${g},${b})`;
     ctx.fillRect(0, 0, w, h);
@@ -173,6 +170,22 @@ function drawParticleShape(ctx, shape, x, y, size) {
       }
       break;
 
+    case 'ring': {
+      // Hollow circle (annulus) — great for shockwave / portal / soap-bubble effects
+      const r = size / 2;
+      if (r < 2.5) {
+        // Too small for a ring, fall back to filled pixel
+        ctx.fillRect(x, y, 1, 1);
+      } else {
+        const innerR = Math.max(0.5, r * 0.45);
+        ctx.beginPath();
+        ctx.arc(x + 0.5, y + 0.5, r, 0, Math.PI * 2, false);
+        ctx.arc(x + 0.5, y + 0.5, innerR, 0, Math.PI * 2, true);
+        ctx.fill('evenodd');
+      }
+      break;
+    }
+
     case 'diamond': {
       const h = Math.ceil(size / 2);
       ctx.beginPath();
@@ -243,30 +256,50 @@ function pixelCircle(ctx, cx, cy, diameter) {
   }
 }
 
+/**
+ * Draw the emitter crosshair and — for line/circle shapes — a dashed
+ * shape indicator showing the actual spawn area.
+ */
 function drawEmitterCrosshair() {
   const x = emitterX >= 0 ? emitterX : canvasW / 2;
   const y = emitterY >= 0 ? emitterY : canvasH / 2;
-  const r = 7;
-  const gap = 3;
+  const shape = cfg?.emitterShape || 'point';
+  const size  = Math.max(1, cfg?.emitterSize || 18);
 
   ctx.save();
-  ctx.globalAlpha = 0.5;
-  ctx.strokeStyle = '#ffffff';
+  ctx.strokeStyle = 'rgba(255,255,255,0.45)';
   ctx.lineWidth = 1;
 
+  // ── Shape indicator (dashed outline of the spawn area) ────────────────
+  if (shape === 'line') {
+    const hw    = canvasW * (size / 100);
+    const angle = ((cfg?.emitterAngle || 0) * Math.PI) / 180;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(angle) * hw, y + Math.sin(angle) * hw);
+    ctx.lineTo(x - Math.cos(angle) * hw, y - Math.sin(angle) * hw);
+    ctx.stroke();
+  } else if (shape === 'circle') {
+    const radius = Math.min(canvasW, canvasH) * (size / 100);
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // ── Center crosshair ───────────────────────────────────────────────────
+  ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  const r   = 7;
+  const gap = 3;
   ctx.beginPath();
-  ctx.moveTo(x - r, y);
-  ctx.lineTo(x - gap, y);
-  ctx.moveTo(x + gap, y);
-  ctx.lineTo(x + r, y);
-  ctx.moveTo(x, y - r);
-  ctx.lineTo(x, y - gap);
-  ctx.moveTo(x, y + gap);
-  ctx.lineTo(x, y + r);
+  ctx.moveTo(x - r, y); ctx.lineTo(x - gap, y);
+  ctx.moveTo(x + gap, y); ctx.lineTo(x + r, y);
+  ctx.moveTo(x, y - r); ctx.lineTo(x, y - gap);
+  ctx.moveTo(x, y + gap); ctx.lineTo(x, y + r);
   ctx.stroke();
 
-  ctx.globalAlpha = 0.7;
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.fillRect(x - 1, y - 1, 2, 2);
   ctx.restore();
 }
@@ -299,7 +332,7 @@ function setupEmitterInteraction() {
     setEmitterPos(x, y);
   });
 
-  canvas.addEventListener('mouseup', () => { dragging = false; setEmitterDragging(false); });
+  canvas.addEventListener('mouseup',    () => { dragging = false; setEmitterDragging(false); });
   canvas.addEventListener('mouseleave', () => { dragging = false; setEmitterDragging(false); });
 
   canvas.addEventListener('touchstart', e => {
@@ -320,10 +353,10 @@ function setupEmitterInteraction() {
   canvas.addEventListener('touchend', () => { dragging = false; setEmitterDragging(false); });
 }
 
-function setRendererBg(hex) { bgColor = hex; }
-function setTrailAlpha(alpha) { trailAlpha = alpha; }
-function setBlendMode(mode) { blendMode = normalizeEffectMode(mode); }
-function setEffectStrength(value) { effectStrength = Math.max(0, Math.min(2, Number.isFinite(value) ? value : 1)); }
+function setRendererBg(hex)      { bgColor = hex; }
+function setTrailAlpha(alpha)    { trailAlpha = alpha; }
+function setBlendMode(mode)      { blendMode = normalizeEffectMode(mode); }
+function setEffectStrength(value){ effectStrength = Math.max(0, Math.min(2, Number.isFinite(value) ? value : 1)); }
 
 function clearCanvas() {
   const { r, g, b } = hexToRgb(bgColor);
@@ -334,4 +367,4 @@ function clearCanvas() {
 }
 
 function getCanvas() { return canvas; }
-function getCtx() { return ctx; }
+function getCtx()    { return ctx; }
