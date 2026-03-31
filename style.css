@@ -765,3 +765,53 @@ kbd {
 .shortcuts-grid span {
   font-size: 11px;
   color: var(--text-label);
+}
+
+/* GIF modal reuses export modal styles; just need preview img */
+#gif-preview-img {
+  max-width: 100%;
+  max-height: 260px;
+  border: 1px solid var(--border-light);
+  background: #000;
+}
+
+#gif-progress-wrap {
+  height: 4px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+#gif-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+  width: 0%;
+  transition: width 0.15s;
+  border-radius: 2px;
+}
+
+#gif-status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+#gif-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 900px) {
+  :root { --panel-w: 190px; }
+}
+@media (max-width: 720px) {
+  #panel-right { display: none; }
+}
