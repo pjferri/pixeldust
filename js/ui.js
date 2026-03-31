@@ -264,6 +264,7 @@ function initUI() {
     'particle-size', 'size-variance', 'particle-shape', 'start-alpha', 'rotation', 'hue-variation', 'effect-strength',
     'lifetime', 'fade', 'shrink',
     'death-count', 'death-speed', 'death-size',
+    'pulse-interval',
   ];
   directControls.forEach(id => {
     const el = document.getElementById(id);
@@ -451,6 +452,7 @@ function applyEffectPreset(name) {
   set('death-count',     c.deathCount ?? 0);
   set('death-speed',     c.deathSpeed ?? 2);
   set('death-size',      c.deathSize ?? 2);
+  set('pulse-interval',  c.pulseInterval ?? 2);
 
   setCheck('loop-toggle',   c.loop ?? false);
   setCheck('bounce',        c.bounce ?? false);
@@ -500,6 +502,8 @@ function applyPalette(name) {
 function updateBurstRowVisibility() {
   const mode = document.getElementById('emitter-mode').value;
   document.getElementById('burst-row').classList.toggle('hidden', mode !== 'burst');
+  const pRow = document.getElementById('pulse-interval-row');
+  if (pRow) pRow.classList.toggle('hidden', mode !== 'pulse');
 }
 
 // ── Emitter position HUD ───────────────────────────────────────────────────
@@ -563,6 +567,7 @@ function pushConfig() {
     deathCount:    i('death-count'),
     deathSpeed:    parseFloat(document.getElementById('death-speed')?.value ?? '2') || 2,
     deathSize:     i('death-size') || 2,
+    pulseInterval: parseFloat(document.getElementById('pulse-interval')?.value ?? '2') || 2,
   });
 
   setSpeedMult(n('speed-mult') || 1);
@@ -624,6 +629,7 @@ function getFullSnapshot() {
     deathCount:    i('death-count'),
     deathSpeed:    parseFloat(v('death-speed')) || 2,
     deathSize:     i('death-size') || 2,
+    pulseInterval: parseFloat(v('pulse-interval')) || 2,
   };
 }
 
@@ -651,6 +657,7 @@ function applySnapshot(snap) {
   set('death-count',     snap.deathCount ?? 0);
   set('death-speed',     snap.deathSpeed ?? 2);
   set('death-size',      snap.deathSize ?? 2);
+  set('pulse-interval',  snap.pulseInterval ?? 2);
   set('particle-size',  snap.particleSize);
   set('particle-shape', snap.particleShape);
   set('hue-variation',  snap.hueVariation ?? 0);
@@ -823,7 +830,8 @@ function randomizeSettings() {
   set('emitter-shape',  chosenEmitterShape);
   set('emitter-size',   rng(8, 40, 1));
   set('emitter-angle',  rng(0, 180, 1));
-  set('emitter-mode',   pick(['continuous', 'continuous', 'continuous', 'burst', 'trail'])); // weight continuous
+  set('emitter-mode',   pick(['continuous', 'continuous', 'continuous', 'burst', 'pulse'])); // weight continuous
+  set('pulse-interval', rng(0.5, 6, 0.5));
   set('speed-mult',     rng(0.5, 2, 0.05));
   set('particle-count', rng(30, 300, 10));
   set('spawn-rate',     rng(20, 200, 10));
@@ -888,7 +896,8 @@ function randomizeSettings() {
   clearCanvas();
   pushConfig();
 
-  if (document.getElementById('emitter-mode').value === 'burst') {
+  const _rMode = document.getElementById('emitter-mode').value;
+  if (_rMode === 'burst') {
     setTimeout(() => { cfg.burstPending = true; }, 100);
   }
 }

@@ -69,7 +69,7 @@
             <select id="emitter-mode">
               <option value="continuous">Continuous</option>
               <option value="burst">Burst</option>
-              <option value="trail">Trail</option>
+              <option value="pulse">Pulse</option>
             </select>
           </label>
 
@@ -107,6 +107,17 @@
           <div id="burst-row" class="ctrl-row hidden">
             <span>Trigger</span>
             <button id="btn-burst" class="btn btn-primary" style="flex:1">&#9654; Fire! (B)</button>
+          </div>
+
+          <!-- Pulse interval — shown only in pulse mode -->
+          <div id="pulse-interval-row" class="hidden">
+            <label class="ctrl-row" title="Time between automatic bursts">
+              <span>Interval (s)</span>
+              <div class="slider-pair">
+                <input type="range" id="pulse-interval" min="0.5" max="10" value="2" step="0.5" />
+                <span class="val-display" data-for="pulse-interval">2.0</span>
+              </div>
+            </label>
           </div>
 
           <label class="ctrl-row">

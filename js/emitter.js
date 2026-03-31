@@ -27,17 +27,18 @@ let emitterDragging = false;
 let emitterJustMoved = false;
 
 /** Frames elapsed since the last loop-reset (used by the loop feature). */
-let _loopTimer = 0;
+let _loopTimer  = 0;
+let _pulseTimer = 0;
 
 /** Current emitter config. Updated by ui.js via setEmitterConfig(). */
 let cfg = {
   // Emitter
   emitterShape:  'point',       // 'point' | 'line' | 'circle'
-  emitterMode:   'continuous',  // 'continuous' | 'burst' | 'trail'
+  emitterMode:   'continuous',  // 'continuous' | 'burst' | 'pulse'
   emitterSize:   18,            // % of canvas (line half-width or circle radius)
   emitterAngle:  0,             // degrees — rotation of line emitter
   count:         120,
-  spawnRate:     60,            // particles per second (continuous/trail modes)
+  spawnRate:     60,            // particles per second (continuous/pulse modes)
 
   // Movement
   speed:         3,
@@ -83,6 +84,7 @@ let cfg = {
 
   // Burst state (transient)
   burstPending:  false,
+  pulseInterval: 2,            // seconds between auto-bursts in pulse mode
 
   // Export helpers
   bgColor:       '#0c0c0e',
@@ -107,6 +109,7 @@ function getEmitterConfig() {
 function resetParticles() {
   for (const p of particles) p.alive = false;
   _loopTimer = 0;
+  _pulseTimer = 0;
 }
 
 /** Number of currently-alive particles (for the HUD). */
@@ -190,13 +193,13 @@ function tickEmitter() {
       toSpawn = cfg.count;
       cfg.burstPending = false;
     }
-  } else if (cfg.emitterMode === 'trail') {
-    // Only emit while the user is dragging / moving the emitter.
-    if ((emitterDragging || emitterJustMoved) && live < cfg.count) {
-      toSpawn = Math.min(
-        cfg.count - live,
-        Math.max(1, Math.round(cfg.spawnRate / 60))
-      );
+  } else if (cfg.emitterMode === 'pulse') {
+    // Auto-fire a full burst every pulseInterval seconds
+    _pulseTimer++;
+    const pulseFrames = Math.max(10, Math.round((cfg.pulseInterval || 2) * 60));
+    if (_pulseTimer >= pulseFrames) {
+      _pulseTimer = 0;
+      toSpawn = cfg.count;
     }
   }
 
@@ -211,9 +214,11 @@ function tickEmitter() {
     const interval = Math.ceil(cfg.lifetime * 1.5) + 20;
     if (_loopTimer >= interval) {
       _loopTimer = 0;
+  _pulseTimer = 0;
       resetParticles();
       clearCanvas();
       if (cfg.emitterMode === 'burst') cfg.burstPending = true;
+      if (cfg.emitterMode === 'pulse') _pulseTimer = 0;
     }
   }
 
