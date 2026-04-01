@@ -107,7 +107,6 @@ function buildPaletteGrid(colors) {
 function setSingleColor(hex) {
   activeColor = hex;
   document.getElementById('color-picker').value = hex;
-  updateColorReadout(hex);
 }
 
 // updateColorReadout removed — color readout panel removed from UI
