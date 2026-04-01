@@ -4,6 +4,7 @@
  * v0.8: color-mode dropdown, ghost glow fix, export UX improvements.
  * v0.9: speed variance, velocity decay, death particles, grow mode.
  * v0.1.0: emitter-size, emitter-angle, ring shape, crosshair shape extent.
+ * v0.1.1: ghost trail fix, layout cleanup, preset emitter positions, pulse mode.
  */
 
 // ── Undo / Redo ────────────────────────────────────────────────────────────
@@ -176,7 +177,6 @@ function updateEmitterShapeRows() {
 function initUI() {
   initSliderDisplays();
   buildEffectPresetBar();
-  document.getElementById('speed-mult').closest('.slider-pair').previousElementSibling.textContent = 'Preview speed';
   document.getElementById('loop-toggle').closest('.ctrl-row').title = 'Restarts the effect periodically so you can preview seamless loops.';
 
   // Load from URL hash if present, else keep the neutral point-emitter defaults
@@ -480,6 +480,12 @@ function applyEffectPreset(name) {
   clearCanvas();
   pushConfig();
 
+  // Move emitter to preset's canonical position
+  if (c.emitterPX !== undefined && c.emitterPY !== undefined) {
+    const cvs = getCanvas();
+    if (cvs) setEmitterPos(cvs.width * c.emitterPX, cvs.height * c.emitterPY);
+  }
+
   // Burst mode: fire immediately
   if (c.emitterMode === 'burst') {
     setTimeout(() => { cfg.burstPending = true; }, 100);
@@ -702,6 +708,12 @@ function applySnapshot(snap) {
   resetParticles();
   clearCanvas();
   pushConfig();
+
+  // Restore emitter position if snapshot includes it
+  if (snap.emitterPX !== undefined && snap.emitterPY !== undefined) {
+    const cvs = getCanvas();
+    if (cvs) setEmitterPos(cvs.width * snap.emitterPX, cvs.height * snap.emitterPY);
+  }
 }
 
 function saveConfig() {

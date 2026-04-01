@@ -7,6 +7,9 @@
 
 let canvas, ctx;
 
+// Ghost trail fix — tracks emitter stationarity
+let _ghostLastX = -9999, _ghostLastY = -9999, _stationaryFrames = 0, _ghostCleared = false;
+
 let bgColor = '#0c0c0e';
 let trailAlpha = 0.12;
 let blendMode = 'glow';
@@ -67,6 +70,20 @@ function renderFrame() {
   } else {
     ctx.fillStyle = `rgba(${r},${g},${b},${1 - trailAlpha})`;
     ctx.fillRect(0, 0, w, h);
+  }
+
+  // Ghost trail fix — 8-bit canvas quantization can leave a faint residue
+  // near the background colour that the semi-transparent overlay never erases.
+  // When the emitter hasn't moved for (lifetime + 60) frames, we do one full
+  // opaque clear before drawing particles so the residue is wiped invisibly.
+  if (emitterX !== _ghostLastX || emitterY !== _ghostLastY) {
+    _ghostLastX = emitterX; _ghostLastY = emitterY;
+    _stationaryFrames = 0; _ghostCleared = false;
+  } else { _stationaryFrames++; }
+  if (_stationaryFrames === (cfg?.lifetime ?? 60) + 60 && !_ghostCleared) {
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(0, 0, w, h);
+    _ghostCleared = true;
   }
 
   for (const p of particles) {
