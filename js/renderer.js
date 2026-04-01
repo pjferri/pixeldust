@@ -72,15 +72,14 @@ function renderFrame() {
     ctx.fillRect(0, 0, w, h);
   }
 
-  // Ghost trail fix — 8-bit canvas quantization can leave a faint residue
-  // near the background colour that the semi-transparent overlay never erases.
-  // When the emitter hasn't moved for (lifetime + 60) frames, we do one full
-  // opaque clear before drawing particles so the residue is wiped invisibly.
+  // Ghost trail safety net: after 30 stationary frames clear once.
+  // Primary ghost elimination is now done via clearCanvas() calls in
+  // setEmitterPos() and pushConfig() so this rarely needs to fire.
   if (emitterX !== _ghostLastX || emitterY !== _ghostLastY) {
     _ghostLastX = emitterX; _ghostLastY = emitterY;
     _stationaryFrames = 0; _ghostCleared = false;
   } else { _stationaryFrames++; }
-  if (_stationaryFrames === (cfg?.lifetime ?? 60) + 60 && !_ghostCleared) {
+  if (_stationaryFrames === 30 && !_ghostCleared) {
     ctx.fillStyle = `rgb(${r},${g},${b})`;
     ctx.fillRect(0, 0, w, h);
     _ghostCleared = true;

@@ -584,6 +584,10 @@ function pushConfig() {
 
   // Queue a history snapshot (debounced so fast slider drags collapse)
   _schedulePush();
+
+  // Clear ghost trails from any previous config state.
+  // Safe to call every push — it's just one opaque fillRect per frame.
+  clearCanvas();
 }
 
 // ── Save / Load / Share ────────────────────────────────────────────────────

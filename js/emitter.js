@@ -124,9 +124,16 @@ function liveCount() {
  * Called by the canvas drag handler in renderer.js.
  */
 function setEmitterPos(x, y) {
-  emitterX = Math.round(x);
-  emitterY = Math.round(y);
-  emitterJustMoved = true;
+  const nx = Math.round(x);
+  const ny = Math.round(y);
+  if (nx !== emitterX || ny !== emitterY) {
+    emitterX = nx;
+    emitterY = ny;
+    emitterJustMoved = true;
+    // Immediately clear the canvas so no ghost trail lingers at the old position.
+    // clearCanvas() is defined in renderer.js (all files share the global scope).
+    if (typeof clearCanvas === 'function') clearCanvas();
+  }
 }
 
 function setEmitterDragging(isDragging) {
