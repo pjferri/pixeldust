@@ -399,31 +399,67 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
-#color-swatch-current {
+/* ── Color readout: swatch + editable hex + RGB + HSL ── */
+#color-readout {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 5px 6px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 6px;
 }
 
+#readout-swatch {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-light);
+  border-radius: 2px;
+  flex-shrink: 0;
+  align-self: center;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+#readout-swatch:hover {
+  border-color: var(--text-secondary);
+}
+
+#readout-values {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+#color-hex-input {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 1px 0;
+  width: 100%;
+  outline: none;
+  letter-spacing: 0.5px;
+}
+#color-hex-input:focus { border-bottom-color: var(--accent); }
+
+
+
+/* Legacy swatch-box still used by palette grid active indicator */
 .swatch-box {
   width: 20px;
   height: 20px;
   border: 1px solid var(--border-light);
   border-radius: 2px;
   flex-shrink: 0;
-}
-
-#swatch-hex {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* ── Palette grid ── */

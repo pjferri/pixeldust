@@ -75,15 +75,19 @@ function initSliderDisplays() {
 
 // ── Palette grid ───────────────────────────────────────────────────────────
 
+// Tracks which palette slot is currently selected (for editing via color picker)
+let _activePaletteIdx = 0;
+
 function buildPaletteGrid(colors) {
   const grid = document.getElementById('palette-grid');
   grid.innerHTML = '';
-  colors.forEach(hex => {
+  colors.forEach((hex, idx) => {
     const div = document.createElement('div');
     div.className        = 'pal-swatch';
     div.style.background = hex;
     div.title            = hex;
     div.addEventListener('click', () => {
+      _activePaletteIdx = idx;
       setSingleColor(hex);
       grid.querySelectorAll('.pal-swatch').forEach(s => s.classList.remove('active'));
       div.classList.add('active');
@@ -92,14 +96,26 @@ function buildPaletteGrid(colors) {
     grid.appendChild(div);
   });
   const first = grid.querySelector('.pal-swatch');
-  if (first) first.classList.add('active');
+  if (first) { first.classList.add('active'); _activePaletteIdx = 0; }
 }
 
 function setSingleColor(hex) {
   activeColor = hex;
-  document.getElementById('color-picker').value                     = hex;
-  document.getElementById('swatch-current-color').style.background  = hex;
-  document.getElementById('swatch-hex').textContent                 = hex;
+  document.getElementById('color-picker').value = hex;
+  updateColorReadout(hex);
+}
+
+/**
+ * Update the color readout panel: swatch background and hex input value.
+ * Called whenever the active color changes (picker, palette click, load).
+ */
+function updateColorReadout(hex) {
+  const swatch   = document.getElementById('readout-swatch');
+  const hexInput = document.getElementById('color-hex-input');
+  if (!swatch) return;
+
+  swatch.style.background = hex;
+  if (hexInput && document.activeElement !== hexInput) hexInput.value = hex;
 }
 
 // ── Color mode ─────────────────────────────────────────────────────────────
@@ -140,14 +156,9 @@ function updateColorModeUI() {
   document.getElementById('palette-area').classList.toggle('hidden', !showPalette);
   document.getElementById('gradient-start-row').classList.toggle('hidden', !showGradStart);
   document.getElementById('gradient-end-row').classList.toggle('hidden', !showGradEnd);
-
-  // Update hint text
-  const hint = document.getElementById('gradient-hint');
-  if (hint) {
-    hint.textContent = mode === 'palette-fade'
-      ? 'Each particle picks a palette color and fades to the end color over its lifetime.'
-      : 'Particles lerp from start color → end color over their lifetime.';
-  }
+  // Show the hex/RGB/HSL readout in single and palette modes (where activeColor is meaningful)
+  const readout = document.getElementById('color-readout');
+  if (readout) readout.classList.toggle('hidden', mode === 'gradient');
 
   // Sync hidden checkboxes so pushConfig reads correct values
   const flags = getColorModeFlags();
@@ -264,8 +275,41 @@ function initUI() {
 
   // ── Single colour picker ──────────────────────────────────────────────
   document.getElementById('color-picker').addEventListener('input', e => {
+    const mode = document.getElementById('color-mode')?.value || 'palette';
+    if ((mode === 'palette' || mode === 'palette-fade') &&
+        _activePaletteIdx >= 0 && _activePaletteIdx < activePalette.length) {
+      // Update the selected palette slot in-place
+      activePalette[_activePaletteIdx] = e.target.value;
+      buildPaletteGrid(activePalette);
+      // Re-apply .active to the edited swatch
+      const swatches = document.querySelectorAll('#palette-grid .pal-swatch');
+      if (swatches[_activePaletteIdx]) swatches[_activePaletteIdx].classList.add('active');
+    }
     setSingleColor(e.target.value);
     pushConfig();
+  });
+
+  // ── Hex text input (color readout) ────────────────────────────────────
+  // Lets users type or paste a hex value directly; syncs back to the picker.
+  document.getElementById('color-hex-input')?.addEventListener('input', e => {
+    const val = e.target.value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+      document.getElementById('color-picker').value = val;
+      setSingleColor(val);
+      pushConfig();
+    }
+  });
+  document.getElementById('color-hex-input')?.addEventListener('blur', e => {
+    // On blur, snap the field back to the current valid color
+    const hexInput = e.target;
+    if (!/^#[0-9a-fA-F]{6}$/.test(hexInput.value.trim())) {
+      hexInput.value = activeColor;
+    }
+  });
+
+  // ── Readout swatch click → open color picker (works in all modes) ────
+  document.getElementById('readout-swatch')?.addEventListener('click', () => {
+    document.getElementById('color-picker').click();
   });
 
   // ── Color mode dropdown ───────────────────────────────────────────────
@@ -280,6 +324,7 @@ function initUI() {
   // ── BG colour ─────────────────────────────────────────────────────────
   document.getElementById('bg-color').addEventListener('input', e => {
     setRendererBg(e.target.value);
+    clearCanvas();
     pushConfig();
   });
 
@@ -423,9 +468,12 @@ function initUI() {
     if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyY' || (e.code === 'KeyZ' && e.shiftKey))) {
       e.preventDefault(); redo(); return;
     }
-    // Copy canvas snapshot to clipboard (Ctrl+C)
+    // Copy canvas snapshot to clipboard (Ctrl+C) — only when not in a text input
     if ((e.ctrlKey || e.metaKey) && e.code === 'KeyC') {
-      copyCanvasToClipboard(); return;
+      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+        copyCanvasToClipboard();
+      }
+      return;
     }
 
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
@@ -594,6 +642,9 @@ function updateBurstRowVisibility() {
   document.getElementById('burst-row').classList.toggle('hidden', mode !== 'burst');
   const pRow = document.getElementById('pulse-interval-row');
   if (pRow) pRow.classList.toggle('hidden', mode !== 'pulse');
+  // Spawn rate only applies to continuous mode; hide it for burst and pulse
+  const rRow = document.getElementById('spawn-rate-row');
+  if (rRow) rRow.classList.toggle('hidden', mode !== 'continuous');
 }
 
 // ── Emitter position HUD ───────────────────────────────────────────────────
@@ -673,8 +724,9 @@ function pushConfig() {
   // Queue a history snapshot (debounced so fast slider drags collapse)
   _schedulePush();
 
-  // Clear ghost trails from any previous config state.
-  // Safe to call every push — it's just one opaque fillRect per frame.
+  // Clear ghost trails left over from the previous config state.
+  // Runs every push so sub-pixel quantization ghosts can't survive even
+  // one frame past a slider or emitter change.
   clearCanvas();
 }
 
@@ -721,6 +773,11 @@ function getFullSnapshot() {
     gradientStart: v('gradient-start'),
     gradientEnd:   v('gradient-end'),
     loop:          b('loop-toggle'),
+    bounce:        b('bounce'),
+    // Save emitter position as canvas-relative fractions so it round-trips
+    // correctly even if the canvas is resized between save and load.
+    emitterPX:     (() => { const c = getCanvas(); return (c && emitterX >= 0) ? emitterX / c.width  : 0.5; })(),
+    emitterPY:     (() => { const c = getCanvas(); return (c && emitterY >= 0) ? emitterY / c.height : 0.5; })(),
     palette:       activePalette,
     singleColor:   activeColor,
     speedVariance: n('speed-variance'),
@@ -822,6 +879,13 @@ function saveConfig() {
   a.download    = 'pixeldust_config.json';
   a.click();
   URL.revokeObjectURL(url);
+  // Flash button feedback
+  const btn = document.getElementById('btn-save-cfg');
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Saved!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  }
 }
 
 function loadConfig(e) {
@@ -909,7 +973,8 @@ function toggleFullscreen() {
 function triggerGifExport() {
   const fps      = parseInt(document.getElementById('gif-fps').value, 10)    || 15;
   const duration = parseFloat(document.getElementById('gif-duration').value) || 2;
-  startGifExport({ fps, duration }, { ...getEmitterConfig() });
+  const gifSize  = parseInt(document.getElementById('gif-size')?.value, 10)  || 256;
+  startGifExport({ fps, duration, gifSize }, { ...getEmitterConfig() });
 }
 
 function triggerExport() {
