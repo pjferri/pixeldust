@@ -52,6 +52,10 @@ function _applyHistoryEntry(snap) {
   }
 }
 
+// ── Speed curve (quadratic for finer low-end control) ──────────────────────
+function speedCurve(raw)   { return raw * raw / 10; }
+function speedUncurve(spd) { return Math.sqrt(Math.max(0, spd) * 10); }
+
 // ── Slider display sync ────────────────────────────────────────────────────
 
 function initSliderDisplays() {
@@ -60,7 +64,8 @@ function initSliderDisplays() {
     const slider = document.getElementById(id);
     if (!slider) return;
     const update = () => {
-      const v = parseFloat(slider.value);
+      let v = parseFloat(slider.value);
+      if (id === 'speed') v = speedCurve(v);
       display.textContent = Number.isInteger(v) ? v : v.toFixed(2);
     };
     slider.addEventListener('input', update);
@@ -424,7 +429,7 @@ function applyEffectPreset(name) {
   set('speed-mult',     c.speedMult ?? 1);
   set('particle-count', c.count);
   set('spawn-rate',     c.spawnRate);
-  set('speed',          c.speed);
+  set('speed',          speedUncurve(c.speed).toFixed(2));
   set('spread',         c.spread);
   set('direction',      c.direction);
   set('gravity',        c.gravity);
@@ -468,7 +473,8 @@ function applyEffectPreset(name) {
   document.querySelectorAll('.val-display').forEach(display => {
     const slider = document.getElementById(display.dataset.for);
     if (slider) {
-      const v = parseFloat(slider.value);
+      let v = parseFloat(slider.value);
+      if (display.dataset.for === 'speed') v = speedCurve(v);
       display.textContent = Number.isInteger(v) ? v : v.toFixed(2);
     }
   });
@@ -542,7 +548,7 @@ function pushConfig() {
     speedMult:     n('speed-mult') || 1,
     count:         i('particle-count'),
     spawnRate:     i('spawn-rate') || 60,
-    speed:         n('speed'),
+    speed:         speedCurve(n('speed')),
     spread:        n('spread'),
     direction:     n('direction'),
     gravity:       n('gravity'),
@@ -605,7 +611,7 @@ function getFullSnapshot() {
     speedMult:     n('speed-mult'),
     count:         i('particle-count'),
     spawnRate:     i('spawn-rate'),
-    speed:         n('speed'),
+    speed:         speedCurve(n('speed')),
     spread:        n('spread'),
     direction:     n('direction'),
     gravity:       n('gravity'),
@@ -654,7 +660,7 @@ function applySnapshot(snap) {
   set('speed-mult',     snap.speedMult ?? 1);
   set('particle-count', snap.count);
   set('spawn-rate',     snap.spawnRate);
-  set('speed',          snap.speed);
+  set('speed',          speedUncurve(snap.speed).toFixed(2));
   set('spread',         snap.spread);
   set('direction',      snap.direction);
   set('gravity',        snap.gravity);
@@ -701,7 +707,8 @@ function applySnapshot(snap) {
   document.querySelectorAll('.val-display').forEach(display => {
     const slider = document.getElementById(display.dataset.for);
     if (slider) {
-      const v = parseFloat(slider.value);
+      let v = parseFloat(slider.value);
+      if (display.dataset.for === 'speed') v = speedCurve(v);
       display.textContent = Number.isInteger(v) ? v : v.toFixed(2);
     }
   });
@@ -851,7 +858,7 @@ function randomizeSettings() {
   set('speed-mult',     rng(0.5, 2, 0.05));
   set('particle-count', rng(30, 300, 10));
   set('spawn-rate',     rng(20, 200, 10));
-  set('speed',          rng(0.5, 8, 0.5));
+  set('speed',          speedUncurve(rng(0.5, 8, 0.5)).toFixed(2));
   set('spread',         rng(5, 360, 5));
   set('direction',      rng(0, 359, 1));
   set('gravity',        rng(-0.5, 0.5, 0.05));
@@ -903,7 +910,8 @@ function randomizeSettings() {
   document.querySelectorAll('.val-display').forEach(display => {
     const slider = document.getElementById(display.dataset.for);
     if (slider) {
-      const v = parseFloat(slider.value);
+      let v = parseFloat(slider.value);
+      if (display.dataset.for === 'speed') v = speedCurve(v);
       display.textContent = Number.isInteger(v) ? v : v.toFixed(2);
     }
   });

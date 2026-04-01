@@ -7,8 +7,8 @@
 
 let canvas, ctx;
 
-// Ghost trail fix — tracks emitter stationarity
-let _ghostLastX = -9999, _ghostLastY = -9999, _stationaryFrames = 0, _ghostCleared = false;
+// Ghost trail fix — pixel-snap counter
+let _snapCount = 0;
 
 let bgColor = '#0c0c0e';
 let trailAlpha = 0.12;
@@ -72,17 +72,25 @@ function renderFrame() {
     ctx.fillRect(0, 0, w, h);
   }
 
-  // Ghost trail safety net: after 30 stationary frames clear once.
-  // Primary ghost elimination is now done via clearCanvas() calls in
-  // setEmitterPos() and pushConfig() so this rarely needs to fire.
-  if (emitterX !== _ghostLastX || emitterY !== _ghostLastY) {
-    _ghostLastX = emitterX; _ghostLastY = emitterY;
-    _stationaryFrames = 0; _ghostCleared = false;
-  } else { _stationaryFrames++; }
-  if (_stationaryFrames === 30 && !_ghostCleared) {
-    ctx.fillStyle = `rgb(${r},${g},${b})`;
-    ctx.fillRect(0, 0, w, h);
-    _ghostCleared = true;
+  // ── Pixel-snap ghost fix ─────────────────────────────────────────────
+  // 8-bit canvas quantization can leave pixels stuck 1–2 units from the
+  // background colour, creating a faint permanent "ghost."  Every 3rd
+  // frame we scan the canvas and snap any pixel within ±3 of the bg to
+  // the exact bg value.  Because this runs BEFORE drawParticle(), active
+  // particle content is always painted fresh on top — no visual impact.
+  _snapCount = (_snapCount + 1) % 3;
+  if (_snapCount === 0) {
+    const img = ctx.getImageData(0, 0, w, h);
+    const d = img.data;
+    const T = 3; // threshold
+    for (let i = 0, n = d.length; i < n; i += 4) {
+      if (d[i]   - r <= T && r - d[i]   <= T &&
+          d[i+1] - g <= T && g - d[i+1] <= T &&
+          d[i+2] - b <= T && b - d[i+2] <= T) {
+        d[i] = r; d[i+1] = g; d[i+2] = b;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
   }
 
   for (const p of particles) {
