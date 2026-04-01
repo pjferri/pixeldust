@@ -15,7 +15,7 @@
       <div id="logo">
         <span class="logo-px">PX</span>
         <span class="logo-name">PixelDust</span>
-        <span class="logo-version">v0.1.1</span>
+        <span class="logo-version">v0.1.2</span>
       </div>
       <div id="topbar-controls">
         <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
@@ -271,23 +271,33 @@
           </label>
 
           <label class="ctrl-row">
-            <span>Effect</span>
+            <span>Style</span>
             <select id="blend-mode">
-              <option value="normal">Normal</option>
-              <option value="glow" selected>Glow</option>
-              <option value="neon">Neon</option>
-              <option value="screen">Screen</option>
+              <option value="normal" selected>Normal</option>
+              <option value="glow">Glow</option>
+              <option value="prism">Prism</option>
               <option value="shadow">Shadow</option>
             </select>
           </label>
 
-          <label class="ctrl-row">
-            <span>Effect amt</span>
-            <div class="slider-pair">
-              <input type="range" id="effect-strength" min="0" max="2" value="1" step="0.05" />
-              <span class="val-display" data-for="effect-strength">1.00</span>
+          <div id="effect-params-row" class="hidden">
+            <div id="effect-strength-row">
+              <label class="ctrl-row">
+                <span>Intensity</span>
+                <div class="slider-pair">
+                  <input type="range" id="effect-strength" min="0" max="3" value="1" step="0.05" />
+                  <span class="val-display" data-for="effect-strength">1.00</span>
+                </div>
+              </label>
             </div>
-          </label>
+
+            <div id="shadow-color-row" class="hidden">
+              <label class="ctrl-row">
+                <span>Shadow color</span>
+                <input type="color" id="shadow-color" value="#120018" />
+              </label>
+            </div>
+          </div>
 
           <label class="ctrl-row">
             <span>Trail fade</span>

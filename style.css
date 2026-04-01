@@ -548,7 +548,8 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
 
 /* ── Gradient pickers rows (inline inside Color section) ── */
 #gradient-start-row,
-#gradient-end-row {
+#gradient-end-row,
+#effect-strength-row {
   margin-top: 4px;
 }
 
@@ -817,10 +818,16 @@ kbd {
 }
 
 /* ── Death sparks sub-controls (indented under death-count slider) ── */
-#death-params-row {
+#death-params-row,
+#effect-params-row {
   border-left: 2px solid rgba(255,255,255,0.10);
   margin-left: 8px;
+  margin-bottom: 6px;
   padding-left: 6px;
+}
+
+#shadow-color-row {
+  margin-top: 4px;
 }
 
 /* ── Emitter shape size/angle sub-controls ── */
@@ -830,5 +837,6 @@ kbd {
 #pulse-interval-row {
   border-left: 2px solid rgba(255,255,255,0.10);
   margin-left: 8px;
+  margin-bottom: 6px;
   padding-left: 6px;
 }

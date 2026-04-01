@@ -81,6 +81,11 @@ function createParticle(x, y, cfg) {
   const speedMult = 1 - sv * 0.5 + Math.random() * sv;
   const speed = cfg.speed * Math.max(0.01, speedMult);
 
+  // speedScale (0–1): couples per-frame forces to the speed setting so that
+  // gravity, wind, and turbulence all scale down with the speed slider.
+  // At speed=0 the simulation is truly still; at speed=10 forces are full.
+  const speedScale = cfg.speed / 10;
+
   // ── Start colour ─────────────────────────────────────────────────────────
   // Priority: multiColor (random palette) > gradient start > single colour.
   let startHex;
@@ -135,6 +140,7 @@ function createParticle(x, y, cfg) {
     drag:          Math.max(0.5, Math.min(1, cfg.drag ?? 1)),
     bounce:        !!cfg.bounce,
     velocityDecay: cfg.velocityDecay || 0,
+    speedScale,
     alive:         true,
     isDeathParticle: cfg._isDeathParticle || false,
   };
@@ -157,10 +163,10 @@ function updateParticle(p) {
   const t = p.life / p.maxLife;   // normalised age [0..1]
 
   // ── Gravity ───────────────────────────────────────────────────────────────
-  p.vy += p.gravity;
+  p.vy += p.gravity * p.speedScale;
 
   // ── Wind (constant horizontal force) ─────────────────────────────────────
-  if (p.wind !== 0) p.vx += p.wind;
+  if (p.wind !== 0) p.vx += p.wind * p.speedScale;
 
   // ── Air drag (velocity dampening) ────────────────────────────────────────
   if (p.drag < 1) {
@@ -178,8 +184,8 @@ function updateParticle(p) {
 
   // ── Turbulence ────────────────────────────────────────────────────────────
   if (p.turbulence > 0) {
-    p.vx += (Math.random() - 0.5) * p.turbulence;
-    p.vy += (Math.random() - 0.5) * p.turbulence;
+    p.vx += (Math.random() - 0.5) * p.turbulence * p.speedScale;
+    p.vy += (Math.random() - 0.5) * p.turbulence * p.speedScale;
   }
 
   // ── Movement ──────────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@
  * v0.8: color-mode dropdown, ghost glow fix, export UX improvements.
  * v0.9: speed variance, velocity decay, death particles, grow mode.
  * v0.1.0: emitter-size, emitter-angle, ring shape, crosshair shape extent.
- * v0.1.1: ghost trail fix, layout cleanup, preset emitter positions, pulse mode.
+ * v0.1.2: appearance polish, shadow-color controls, and sub-control spacing cleanup.
  */
 
 // ── Undo / Redo ────────────────────────────────────────────────────────────
@@ -165,6 +165,72 @@ function updateDeathParamsVisibility() {
   if (row) row.classList.toggle('hidden', count === 0);
 }
 
+const EFFECT_MODE_META = {
+  normal: {
+    usesStrength: false,
+    usesShadowColor: false,
+    description: 'Draws the particle shape cleanly with no extra bloom or compositing.',
+  },
+  glow: {
+    usesStrength: true,
+    usesShadowColor: false,
+    description: 'Lower intensity stays soft and airy. Higher intensity pushes into a brighter, punchier bloom.',
+  },
+  prism: {
+    usesStrength: true,
+    usesShadowColor: false,
+    description: 'Adds separated spectral fringes for a more stylized chromatic effect.',
+  },
+  shadow: {
+    usesStrength: true,
+    usesShadowColor: true,
+    description: 'Adds a visible offset under-shadow for depth and weight.',
+  },
+};
+
+function canonicalEffectMode(mode) {
+  if (typeof normalizeEffectMode === 'function') {
+    return normalizeEffectMode(mode);
+  }
+  return mode || 'normal';
+}
+
+function getEffectStrengthValue(fallback = 1) {
+  const raw = parseFloat(document.getElementById('effect-strength')?.value ?? '');
+  return Number.isFinite(raw) ? raw : fallback;
+}
+
+function getShadowColorValue(fallback = '#120018') {
+  const raw = document.getElementById('shadow-color')?.value ?? '';
+  return /^#[0-9a-f]{6}$/i.test(raw) ? raw : fallback;
+}
+
+function updateEffectControls() {
+  const modeEl = document.getElementById('blend-mode');
+  const paramsRow = document.getElementById('effect-params-row');
+  const strengthRow = document.getElementById('effect-strength-row');
+  const shadowRow = document.getElementById('shadow-color-row');
+  const slider = document.getElementById('effect-strength');
+  const shadowInput = document.getElementById('shadow-color');
+  if (!modeEl || !paramsRow || !strengthRow || !shadowRow || !slider || !shadowInput) return;
+
+  const mode = canonicalEffectMode(modeEl.value || 'normal');
+  if (modeEl.value !== mode) modeEl.value = mode;
+
+  const meta = EFFECT_MODE_META[mode] || EFFECT_MODE_META.normal;
+  Array.from(modeEl.options).forEach(option => {
+    const optionMeta = EFFECT_MODE_META[canonicalEffectMode(option.value)] || EFFECT_MODE_META.normal;
+    option.title = optionMeta.description;
+  });
+
+  paramsRow.classList.toggle('hidden', !meta.usesStrength && !meta.usesShadowColor);
+  strengthRow.classList.toggle('hidden', !meta.usesStrength);
+  shadowRow.classList.toggle('hidden', !meta.usesShadowColor);
+  slider.disabled = !meta.usesStrength;
+  shadowInput.disabled = !meta.usesShadowColor;
+  modeEl.title = meta.description;
+}
+
 // ── Emitter shape rows visibility ──────────────────────────────────────────
 
 function updateEmitterShapeRows() {
@@ -225,17 +291,26 @@ function initUI() {
 
   // ── Blend mode ────────────────────────────────────────────────────────
   document.getElementById('blend-mode').addEventListener('change', e => {
-    setBlendMode(e.target.value);
+    const mode = canonicalEffectMode(e.target.value);
+    e.target.value = mode;
+    updateEffectControls();
+    setBlendMode(mode);
     pushConfig();
   });
   document.getElementById('effect-strength').addEventListener('input', e => {
     setEffectStrength(parseFloat(e.target.value));
     pushConfig();
   });
+  document.getElementById('shadow-color').addEventListener('input', e => {
+    setShadowColor(e.target.value);
+    pushConfig();
+  });
 
   // ── Gradient pickers (always wired; visibility controlled by color-mode) ──
   document.getElementById('gradient-start').addEventListener('input', pushConfig);
   document.getElementById('gradient-end').addEventListener('input',   pushConfig);
+
+  updateEffectControls();
 
   // ── Speed multiplier ─────────────────────────────────────────────────
   document.getElementById('speed-mult').addEventListener('input', e => {
@@ -439,8 +514,9 @@ function applyEffectPreset(name) {
   set('particle-size',  c.particleSize);
   set('particle-shape', c.particleShape);
   set('hue-variation',  c.hueVariation ?? 0);
-  set('blend-mode',     c.blendMode);
+  set('blend-mode',     canonicalEffectMode(c.blendMode));
   set('effect-strength', c.effectStrength ?? 1);
+  set('shadow-color',   c.shadowColor || '#120018');
   set('size-variance',  c.sizeVariance ?? 0);
   set('start-alpha',    c.startAlpha);
   set('rotation',       c.rotation ?? 0);
@@ -461,6 +537,8 @@ function applyEffectPreset(name) {
 
   setCheck('loop-toggle',   c.loop ?? false);
   setCheck('bounce',        c.bounce ?? false);
+
+  updateEffectControls();
 
   // Sync color-mode dropdown from preset flags, then update visibility
   set('color-mode', colorModeFromFlags(!!c.multiColor, !!c.useGradient));
@@ -538,7 +616,9 @@ function pushConfig() {
   const i = id => parseInt(v(id), 10) || 0;
   const b = id => document.getElementById(id)?.checked ?? false;
 
-  const blendVal = v('blend-mode');
+  const blendVal = canonicalEffectMode(v('blend-mode'));
+  const effectStrength = getEffectStrengthValue();
+  const shadowColor = getShadowColorValue();
 
   setEmitterConfig({
     emitterShape:  v('emitter-shape'),
@@ -561,7 +641,8 @@ function pushConfig() {
     particleShape: v('particle-shape'),
     hueVariation:  n('hue-variation'),
     blendMode:     blendVal,
-    effectStrength: n('effect-strength') || 1,
+    effectStrength,
+    shadowColor,
     startAlpha:    n('start-alpha') || 1,
     rotation:      n('rotation'),
     lifetime:      i('lifetime'),
@@ -584,7 +665,8 @@ function pushConfig() {
 
   setSpeedMult(n('speed-mult') || 1);
   setBlendMode(blendVal);
-  setEffectStrength(n('effect-strength') || 1);
+  setEffectStrength(effectStrength);
+  setShadowColor(shadowColor);
   setTrailAlpha(n('trail-alpha'));
   setRendererBg(v('bg-color'));
 
@@ -623,8 +705,9 @@ function getFullSnapshot() {
     sizeVariance:  i('size-variance'),
     particleShape: v('particle-shape'),
     hueVariation:  n('hue-variation'),
-    blendMode:     v('blend-mode'),
-    effectStrength: n('effect-strength'),
+    blendMode:     canonicalEffectMode(v('blend-mode')),
+    effectStrength: getEffectStrengthValue(),
+    shadowColor:   getShadowColorValue(),
     startAlpha:    n('start-alpha'),
     rotation:      n('rotation'),
     lifetime:      i('lifetime'),
@@ -677,8 +760,9 @@ function applySnapshot(snap) {
   set('particle-size',  snap.particleSize);
   set('particle-shape', snap.particleShape);
   set('hue-variation',  snap.hueVariation ?? 0);
-  set('blend-mode',     snap.blendMode);
+  set('blend-mode',     canonicalEffectMode(snap.blendMode));
   set('effect-strength', snap.effectStrength ?? 1);
+  set('shadow-color',   snap.shadowColor || '#120018');
   set('size-variance',  snap.sizeVariance ?? 0);
   set('start-alpha',    snap.startAlpha);
   set('rotation',       snap.rotation ?? 0);
@@ -697,6 +781,7 @@ function applySnapshot(snap) {
   const cmEl = document.getElementById('color-mode');
   if (cmEl) cmEl.value = restoredMode;
   updateColorModeUI();
+  updateEffectControls();
 
   if (snap.palette && snap.palette.length) {
     activePalette = [...snap.palette];
@@ -869,8 +954,12 @@ function randomizeSettings() {
   set('particle-size',  rng(1, 10, 1));
   set('size-variance',  rng(0, 4, 1));
   set('particle-shape', pick(['square', 'circle', 'diamond', 'cross', 'star', 'sparkle', 'ring']));
-  set('blend-mode',     pick(['normal', 'glow', 'neon', 'screen', 'shadow']));
-  set('effect-strength', rng(0.4, 1.8, 0.05));
+  const chosenBlendMode = pick(['normal', 'glow', 'glow', 'glow', 'prism', 'shadow']);
+  set('blend-mode', chosenBlendMode);
+  set('effect-strength', chosenBlendMode === 'normal' ? 0 : rng(0.35, 2.6, 0.05));
+  set('shadow-color', chosenBlendMode === 'shadow'
+    ? pick(['#120018', '#1a0f2e', '#102033', '#2a1010', '#0f2416'])
+    : '#120018');
   set('start-alpha',    rng(0.3, 1, 0.05));
   set('rotation',       rng(0, 15, 0.5));
   set('lifetime',       rng(20, 200, 5));
@@ -888,6 +977,7 @@ function randomizeSettings() {
     set('gradient-end',   randomHex());
   }
   updateColorModeUI();
+  updateEffectControls();
 
   set('speed-variance', rng(0, 0.6, 0.05));
   set('velocity-decay', rng(0, 0.5, 0.05));

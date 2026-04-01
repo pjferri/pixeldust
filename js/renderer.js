@@ -12,21 +12,24 @@ let _snapCount = 0;
 
 let bgColor = '#0c0c0e';
 let trailAlpha = 0.12;
-let blendMode = 'glow';
+let blendMode = 'normal';
 let effectStrength = 1;
+let shadowColor = '#120018';
 
 function normalizeEffectMode(mode) {
   switch (mode) {
     case 'source-over': return 'normal';
     case 'lighter':     return 'glow';
     case 'multiply':    return 'shadow';
-    case 'screen':      return 'screen';
+    case 'screen':      return 'glow';
     case 'normal':
     case 'glow':
-    case 'neon':
-    case 'screen':
+    case 'prism':
     case 'shadow':
       return mode;
+    case 'neon':
+    case 'soft':
+      return 'glow';
     default:
       return 'normal';
   }
@@ -123,29 +126,37 @@ function drawParticle(ctx, p) {
   const intensity = Math.max(0, effectStrength);
 
   if (effectMode === 'glow') {
-    drawParticlePass(ctx, p, x, y, s * (1.4 + intensity), color, alpha * 0.10 * intensity, 'lighter');
-    drawParticlePass(ctx, p, x, y, s * (1.1 + intensity * 0.6), color, alpha * 0.22 * intensity, 'lighter');
-    drawParticlePass(ctx, p, x, y, s, color, alpha, 'source-over');
+    const softBias = Math.max(0, 1.2 - intensity) / 1.2;
+    drawParticlePass(ctx, p, x, y, s * (1.35 + intensity * 0.25), color, alpha * (0.02 + softBias * 0.06), 'screen', 1.04 + softBias * 0.08);
+    drawParticlePass(ctx, p, x, y, s * (1.18 + intensity * 0.4), color, alpha * (0.04 + intensity * 0.05), 'lighter');
+    drawParticlePass(ctx, p, x, y, s * (1.65 + intensity * 0.9), color, alpha * (0.015 + intensity * 0.035), 'lighter');
+    if (intensity > 1.4) {
+      drawParticlePass(ctx, p, x, y, s * (1 + intensity * 0.24), color, alpha * Math.min(0.95, 0.14 + intensity * 0.18), 'lighter');
+    }
+    drawParticlePass(ctx, p, x, y, s, color, alpha, 'source-over', 1 + intensity * 0.08);
     return;
   }
 
-  if (effectMode === 'neon') {
-    drawParticlePass(ctx, p, x, y, s * (1.8 + intensity * 1.4), color, alpha * 0.12 * intensity, 'lighter');
-    drawParticlePass(ctx, p, x, y, s * (1.2 + intensity), color, alpha * 0.28 * intensity, 'lighter');
-    drawParticlePass(ctx, p, x, y, s * (1 + intensity * 0.2), color, alpha * 0.9, 'lighter');
-    drawParticlePass(ctx, p, x, y, s, color, alpha, 'source-over');
-    return;
-  }
-
-  if (effectMode === 'screen') {
-    drawParticlePass(ctx, p, x, y, s * (1 + intensity * 0.4), color, alpha * 0.18 * intensity, 'screen');
-    drawParticlePass(ctx, p, x, y, s, color, alpha, 'screen');
+  if (effectMode === 'prism') {
+    const fringeOffset = Math.max(1, Math.round(1 + intensity * 1.1 + s * 0.08));
+    const magenta = mixRgbColor(color, { r: 255, g: 90, b: 220 }, 0.62);
+    const cyan = mixRgbColor(color, { r: 110, g: 255, b: 255 }, 0.58);
+    const gold = mixRgbColor(color, { r: 255, g: 220, b: 90 }, 0.5);
+    drawParticlePass(ctx, p, x - fringeOffset, y, s * (1 + intensity * 0.12), magenta, alpha * (0.12 + intensity * 0.04), 'lighter');
+    drawParticlePass(ctx, p, x + fringeOffset, y, s * (1 + intensity * 0.12), cyan, alpha * (0.12 + intensity * 0.04), 'lighter');
+    drawParticlePass(ctx, p, x, y - fringeOffset, s * (1 + intensity * 0.08), gold, alpha * (0.08 + intensity * 0.03), 'screen', 1.05);
+    drawParticlePass(ctx, p, x, y, s * (1.06 + intensity * 0.18), color, alpha * (0.06 + intensity * 0.04), 'screen', 1.1 + intensity * 0.04);
+    drawParticlePass(ctx, p, x, y, s, color, alpha, 'source-over', 1.05 + intensity * 0.04);
     return;
   }
 
   if (effectMode === 'shadow') {
-    drawParticlePass(ctx, p, x, y, s * (1 + intensity * 0.4), color, alpha * 0.25 * Math.max(0.3, intensity), 'multiply');
-    drawParticlePass(ctx, p, x, y, s, color, alpha * 0.85, 'source-over', Math.max(0.2, 0.7 - intensity * 0.15));
+    const shadowOffset = Math.max(1, Math.round(1 + intensity * 1.4));
+    const shadowRgb = hexColorToRgbString(shadowColor);
+    drawParticlePass(ctx, p, x + shadowOffset, y + shadowOffset, s * (1.22 + intensity * 0.18), shadowRgb, alpha * (0.18 + intensity * 0.08), 'source-over', 0.55);
+    drawParticlePass(ctx, p, x + Math.max(1, Math.floor(shadowOffset / 2)), y + Math.max(1, Math.floor(shadowOffset / 2)), s * (1.02 + intensity * 0.08), shadowRgb, alpha * (0.12 + intensity * 0.05), 'source-over', 0.82);
+    drawParticlePass(ctx, p, x, y, s * (1 + intensity * 0.05), color, alpha * 0.16, 'lighter');
+    drawParticlePass(ctx, p, x, y, s, color, alpha, 'source-over');
     return;
   }
 
@@ -179,6 +190,19 @@ function brightenRgbColor(rgbString, factor) {
   const match = rgbString.match(/\d+/g);
   if (!match) return rgbString;
   const [r, g, b] = match.map(n => Math.max(0, Math.min(255, Math.round(Number(n) * factor))));
+  return `rgb(${r},${g},${b})`;
+}
+
+function mixRgbColor(rgbString, tint, amount) {
+  const match = rgbString.match(/\d+/g);
+  if (!match) return rgbString;
+  const a = Math.max(0, Math.min(1, amount));
+  const [r, g, b] = match.map(Number);
+  return `rgb(${Math.round(r * (1 - a) + tint.r * a)},${Math.round(g * (1 - a) + tint.g * a)},${Math.round(b * (1 - a) + tint.b * a)})`;
+}
+
+function hexColorToRgbString(hex) {
+  const { r, g, b } = hexToRgb(hex || '#120018');
   return `rgb(${r},${g},${b})`;
 }
 
@@ -380,7 +404,8 @@ function setupEmitterInteraction() {
 function setRendererBg(hex)      { bgColor = hex; }
 function setTrailAlpha(alpha)    { trailAlpha = alpha; }
 function setBlendMode(mode)      { blendMode = normalizeEffectMode(mode); }
-function setEffectStrength(value){ effectStrength = Math.max(0, Math.min(2, Number.isFinite(value) ? value : 1)); }
+function setEffectStrength(value){ effectStrength = Math.max(0, Math.min(3, Number.isFinite(value) ? value : 1)); }
+function setShadowColor(hex)     { shadowColor = /^#[0-9a-f]{6}$/i.test(hex || '') ? hex : '#120018'; }
 
 function clearCanvas() {
   const { r, g, b } = hexToRgb(bgColor);

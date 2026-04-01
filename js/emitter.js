@@ -56,7 +56,7 @@ let cfg = {
   // Appearance
   particleSize:  3,
   particleShape: 'square',
-  blendMode:     'lighter',
+  blendMode:     'normal',
   startAlpha:    1,             // starting opacity of each particle
   rotation:      0,             // max rotation speed in degrees/frame (0 = no spin)
   sizeVariance:  0,             // ±px random size offset per particle
@@ -78,6 +78,7 @@ let cfg = {
   useGradient:   false,
   gradientStart: '#ffff00',
   gradientEnd:   '#ff0000',
+  shadowColor:   '#120018',
 
   // Loop
   loop:          false,
