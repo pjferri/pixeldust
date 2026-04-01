@@ -168,8 +168,9 @@ function drawParticlePass(ctx, p, x, y, size, color, alpha, compositeOperation, 
 
   const drawSize = Math.max(1, Math.round(size));
   const hasRotation = p.spin !== 0 && p.angle !== undefined &&
-    (p.shape === 'square' || p.shape === 'diamond' || p.shape === 'star' ||
-     p.shape === 'sparkle' || p.shape === 'cross');
+    (p.shape === 'square' || p.shape === 'triangle' || p.shape === 'diamond' ||
+     p.shape === 'star' || p.shape === 'sparkle' || p.shape === 'cross' ||
+     p.shape === 'heart');
 
   ctx.save();
   ctx.globalCompositeOperation = compositeOperation;
@@ -234,6 +235,17 @@ function drawParticleShape(ctx, shape, x, y, size) {
       break;
     }
 
+    case 'triangle': {
+      const h = Math.ceil(size / 2);
+      ctx.beginPath();
+      ctx.moveTo(x, y - h);
+      ctx.lineTo(x + h, y + h);
+      ctx.lineTo(x - h, y + h);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+
     case 'diamond': {
       const h = Math.ceil(size / 2);
       ctx.beginPath();
@@ -268,6 +280,29 @@ function drawParticleShape(ctx, shape, x, y, size) {
       }
       ctx.closePath();
       ctx.fill();
+      break;
+    }
+
+    case 'heart': {
+      if (size <= 2) {
+        ctx.fillRect(x, y, 1, 1);
+      } else {
+        const half = size / 2;
+        ctx.beginPath();
+        ctx.moveTo(x, y + half * 0.95);
+        ctx.bezierCurveTo(
+          x + half * 1.25, y + half * 0.25,
+          x + half * 1.15, y - half * 0.75,
+          x, y - half * 0.1
+        );
+        ctx.bezierCurveTo(
+          x - half * 1.15, y - half * 0.75,
+          x - half * 1.25, y + half * 0.25,
+          x, y + half * 0.95
+        );
+        ctx.closePath();
+        ctx.fill();
+      }
       break;
     }
 

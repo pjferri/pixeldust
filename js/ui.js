@@ -4,7 +4,7 @@
  * v0.8: color-mode dropdown, ghost glow fix, export UX improvements.
  * v0.9: speed variance, velocity decay, death particles, grow mode.
  * v0.1.0: emitter-size, emitter-angle, ring shape, crosshair shape extent.
- * v0.1.2: appearance polish, shadow-color controls, and sub-control spacing cleanup.
+ * v0.1.3: randomizer polish, new particle shapes, and appearance/control refinements.
  */
 
 // ── Undo / Redo ────────────────────────────────────────────────────────────
@@ -940,7 +940,7 @@ function randomizeSettings() {
   set('emitter-angle',  rng(0, 180, 1));
   set('emitter-mode',   pick(['continuous', 'continuous', 'continuous', 'burst', 'pulse'])); // weight continuous
   set('pulse-interval', rng(0.5, 6, 0.5));
-  set('speed-mult',     rng(0.5, 2, 0.05));
+  set('speed-mult',     1);
   set('particle-count', rng(30, 300, 10));
   set('spawn-rate',     rng(20, 200, 10));
   set('speed',          speedUncurve(rng(0.5, 8, 0.5)).toFixed(2));
@@ -953,7 +953,7 @@ function randomizeSettings() {
   set('hue-variation',  rng(0, 45, 1));
   set('particle-size',  rng(1, 10, 1));
   set('size-variance',  rng(0, 4, 1));
-  set('particle-shape', pick(['square', 'circle', 'diamond', 'cross', 'star', 'sparkle', 'ring']));
+  set('particle-shape', pick(['square', 'circle', 'triangle', 'diamond', 'cross', 'heart', 'star', 'sparkle', 'ring']));
   const chosenBlendMode = pick(['normal', 'glow', 'glow', 'glow', 'prism', 'shadow']);
   set('blend-mode', chosenBlendMode);
   set('effect-strength', chosenBlendMode === 'normal' ? 0 : rng(0.35, 2.6, 0.05));
@@ -995,6 +995,7 @@ function randomizeSettings() {
   updateBurstRowVisibility();
   updateDeathParamsVisibility();
   updateEmitterShapeRows();
+  centerEmitter();
 
   // Re-sync all val-display spans
   document.querySelectorAll('.val-display').forEach(display => {
