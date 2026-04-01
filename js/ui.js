@@ -85,12 +85,17 @@ function buildPaletteGrid(colors) {
     const div = document.createElement('div');
     div.className        = 'pal-swatch';
     div.style.background = hex;
-    div.title            = hex;
+    div.title            = hex + ' — click to select, click again to edit';
     div.addEventListener('click', () => {
+      const wasActive = div.classList.contains('active');
       _activePaletteIdx = idx;
       setSingleColor(hex);
       grid.querySelectorAll('.pal-swatch').forEach(s => s.classList.remove('active'));
       div.classList.add('active');
+      if (wasActive) {
+        // Second click on the already-selected swatch — open colour picker to edit it
+        document.getElementById('color-picker').click();
+      }
       pushConfig();
     });
     grid.appendChild(div);
@@ -105,18 +110,7 @@ function setSingleColor(hex) {
   updateColorReadout(hex);
 }
 
-/**
- * Update the color readout panel: swatch background and hex input value.
- * Called whenever the active color changes (picker, palette click, load).
- */
-function updateColorReadout(hex) {
-  const swatch   = document.getElementById('readout-swatch');
-  const hexInput = document.getElementById('color-hex-input');
-  if (!swatch) return;
-
-  swatch.style.background = hex;
-  if (hexInput && document.activeElement !== hexInput) hexInput.value = hex;
-}
+// updateColorReadout removed — color readout panel removed from UI
 
 // ── Color mode ─────────────────────────────────────────────────────────────
 // Maps the "Color source" dropdown to the underlying multiColor + useGradient flags.
@@ -156,10 +150,6 @@ function updateColorModeUI() {
   document.getElementById('palette-area').classList.toggle('hidden', !showPalette);
   document.getElementById('gradient-start-row').classList.toggle('hidden', !showGradStart);
   document.getElementById('gradient-end-row').classList.toggle('hidden', !showGradEnd);
-  // Show the hex/RGB/HSL readout in single and palette modes (where activeColor is meaningful)
-  const readout = document.getElementById('color-readout');
-  if (readout) readout.classList.toggle('hidden', mode === 'gradient');
-
   // Sync hidden checkboxes so pushConfig reads correct values
   const flags = getColorModeFlags();
   const mcEl = document.getElementById('multi-color');
@@ -287,29 +277,6 @@ function initUI() {
     }
     setSingleColor(e.target.value);
     pushConfig();
-  });
-
-  // ── Hex text input (color readout) ────────────────────────────────────
-  // Lets users type or paste a hex value directly; syncs back to the picker.
-  document.getElementById('color-hex-input')?.addEventListener('input', e => {
-    const val = e.target.value.trim();
-    if (/^#[0-9a-fA-F]{6}$/.test(val)) {
-      document.getElementById('color-picker').value = val;
-      setSingleColor(val);
-      pushConfig();
-    }
-  });
-  document.getElementById('color-hex-input')?.addEventListener('blur', e => {
-    // On blur, snap the field back to the current valid color
-    const hexInput = e.target;
-    if (!/^#[0-9a-fA-F]{6}$/.test(hexInput.value.trim())) {
-      hexInput.value = activeColor;
-    }
-  });
-
-  // ── Readout swatch click → open color picker (works in all modes) ────
-  document.getElementById('readout-swatch')?.addEventListener('click', () => {
-    document.getElementById('color-picker').click();
   });
 
   // ── Color mode dropdown ───────────────────────────────────────────────

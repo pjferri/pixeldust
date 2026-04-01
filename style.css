@@ -403,54 +403,6 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
 }
 
 /* ── Color readout: swatch + editable hex + RGB + HSL ── */
-#color-readout {
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
-  padding: 5px 6px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-bottom: 6px;
-}
-
-#readout-swatch {
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--border-light);
-  border-radius: 2px;
-  flex-shrink: 0;
-  align-self: center;
-  cursor: pointer;
-  transition: border-color 0.15s;
-}
-#readout-swatch:hover {
-  border-color: var(--text-secondary);
-}
-
-#readout-values {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-
-#color-hex-input {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--border);
-  color: var(--text-primary);
-  padding: 1px 0;
-  width: 100%;
-  outline: none;
-  letter-spacing: 0.5px;
-}
-#color-hex-input:focus { border-bottom-color: var(--accent); }
-
 
 
 /* Legacy swatch-box still used by palette grid active indicator */
@@ -574,13 +526,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
 }
 
 /* ── Gradient hint text ── */
-.ctrl-hint {
-  font-size: 9px;
-  color: var(--text-secondary);
-  line-height: 1.4;
-  margin-top: 4px;
-  font-style: italic;
-}
+
 
 /* ── Gradient pickers rows (inline inside Color section) ── */
 #gradient-start-row,
