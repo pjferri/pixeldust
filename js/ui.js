@@ -8,6 +8,7 @@
  * v0.1.5: color panel redesign, native-picker cleanup, and layout polish.
  * v0.1.6: expanded emitter shapes with arc controls and export/crosshair parity.
  * v0.1.7: vortex force control and galaxy preset.
+ * v0.1.8: export and rendering mechanics overhaul.
  */
 
 // ── Undo / Redo ────────────────────────────────────────────────────────────
@@ -588,19 +589,40 @@ function initUI() {
     updateDeathParamsVisibility();
   }
 
-  // ── Sprite sheet export ───────────────────────────────────────────────
-  document.getElementById('btn-export').addEventListener('click',        triggerExport);
-  document.getElementById('btn-export-bottom').addEventListener('click', triggerExport);
-  document.getElementById('btn-close-modal').addEventListener('click', () => {
-    document.getElementById('export-modal').classList.add('hidden');
+  // ── Unified Render & Export ──────────────────────────────────────────
+  document.getElementById('btn-render').addEventListener('click', triggerRender);
+  document.getElementById('btn-render-top').addEventListener('click', triggerRender);
+  document.getElementById('btn-close-render').addEventListener('click', closeRenderModal);
+
+  // Render modal playback controls
+  document.getElementById('render-play-btn').addEventListener('click', () => {
+    _previewPlaying ? stopPreviewPlayback() : startPreviewPlayback();
+  });
+  document.getElementById('render-stop-btn').addEventListener('click', () => {
+    stopPreviewPlayback();
+    _previewFrame = 0;
+    drawPreviewFrame(0);
+  });
+  document.getElementById('render-scrubber').addEventListener('input', e => {
+    stopPreviewPlayback();
+    const idx = parseInt(e.target.value, 10);
+    _previewFrame = idx;
+    drawPreviewFrame(idx);
+  });
+  document.getElementById('render-speed').addEventListener('input', e => {
+    _previewSpeed = parseFloat(e.target.value);
+    document.getElementById('render-speed-val').textContent = _previewSpeed.toFixed(2) + '\u00d7';
+  });
+  document.getElementById('render-loop').addEventListener('change', e => {
+    _previewLoop = e.target.checked;
+  });
+  document.getElementById('render-reverse').addEventListener('change', e => {
+    _previewReverse = e.target.checked;
   });
 
-  // ── GIF export ────────────────────────────────────────────────────────
-  document.getElementById('btn-export-gif-top').addEventListener('click', triggerGifExport);
-  document.getElementById('btn-export-gif').addEventListener('click',     triggerGifExport);
-  document.getElementById('btn-close-gif-modal').addEventListener('click', () => {
-    document.getElementById('gif-modal').classList.add('hidden');
-  });
+  // Export format switch
+  document.getElementById('render-export-format').addEventListener('change', updateExportFormatUI);
+  document.getElementById('render-export-btn').addEventListener('click', runExport);
 
   // ── Save / Load / Share ───────────────────────────────────────────────
   document.getElementById('btn-save-cfg').addEventListener('click', saveConfig);
@@ -630,8 +652,7 @@ function initUI() {
   const closeShortcuts = () => shortcutsModal.classList.add('hidden');
   const closeOverlays  = () => {
     closeShortcuts();
-    document.getElementById('export-modal').classList.add('hidden');
-    document.getElementById('gif-modal').classList.add('hidden');
+    closeRenderModal();
   };
   document.getElementById('btn-shortcuts').addEventListener('click', openShortcuts);
   document.getElementById('btn-close-shortcuts').addEventListener('click', closeShortcuts);
@@ -663,8 +684,7 @@ function initUI() {
     if (e.code === 'KeyB')   document.getElementById('btn-burst')?.click();
     if (e.code === 'KeyF')   toggleFullscreen();
     if (e.key  === '?')      { e.preventDefault(); shortcutsModal.classList.contains('hidden') ? openShortcuts() : closeShortcuts(); }
-    if (e.code === 'KeyE')   triggerExport();
-    if (e.code === 'KeyG')   triggerGifExport();
+    if (e.code === 'KeyE')   triggerRender();
     if (e.code === 'KeyZ')   randomizeSettings();
     if (e.code === 'KeyS')   { e.preventDefault(); saveConfig(); }
     if (e.code === 'KeyC')   copyCanvasToClipboard();
@@ -1170,20 +1190,13 @@ function toggleFullscreen() {
   requestAnimationFrame(() => { sizeCanvas(); clearCanvas(); });
 }
 
-function triggerGifExport() {
-  const fps      = parseInt(document.getElementById('gif-fps').value, 10)    || 15;
-  const duration = parseFloat(document.getElementById('gif-duration').value) || 2;
-  const gifSize  = parseInt(document.getElementById('gif-size')?.value, 10)  || 256;
-  startGifExport({ fps, duration, gifSize }, { ...getEmitterConfig() });
-}
+function triggerRender() {
+  const frames      = parseInt(document.getElementById('render-frames').value, 10)      || 30;
+  const frameSize   = parseInt(document.getElementById('render-frame-size').value, 10)  || 128;
+  const fps         = parseInt(document.getElementById('render-fps').value, 10)         || 15;
+  const transparentBg = document.getElementById('render-transparent')?.checked ?? false;
 
-function triggerExport() {
-  startExport({
-    frames:    parseInt(document.getElementById('export-frames').value,     10) || 16,
-    frameSize: parseInt(document.getElementById('export-frame-size').value, 10) || 128,
-    cols:      parseInt(document.getElementById('export-cols').value,       10) || 4,
-    transparentBg: document.getElementById('export-transparent')?.checked ?? false,
-  }, { ...getEmitterConfig() });
+  captureFrames({ frames, frameSize, fps, transparentBg }, { ...getEmitterConfig() });
 }
 
 // ── Randomize ─────────────────────────────────────────────────────────────

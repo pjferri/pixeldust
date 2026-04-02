@@ -246,67 +246,104 @@ function createLocalSimulator(emitCfg, frameSize) {
   return { canvas: frameCanvas, tick, drawFrame, resetPool };
 }
 
-/**
- * Render a sprite sheet PNG from the current emitter settings.
- */
-async function startExport(exportCfg, emitCfg) {
-  const { frames, frameSize, cols, transparentBg } = exportCfg;
-  const rows  = Math.ceil(frames / cols);
-  const sheetW = cols * frameSize;
-  const sheetH = rows * frameSize;
 
-  const modal       = document.getElementById('export-modal');
-  const progressBar = document.getElementById('export-progress-bar');
-  const statusEl    = document.getElementById('export-status');
-  const resultEl    = document.getElementById('export-result');
-  const previewImg  = document.getElementById('export-preview-img');
-  const dlLink      = document.getElementById('export-download-link');
-  const exportCanvas = document.getElementById('export-canvas');
+/* ════════════════════════════════════════════════════════════════════
+   UNIFIED RENDER & EXPORT PIPELINE
+   ════════════════════════════════════════════════════════════════════
+   Workflow:
+   1. User clicks Render → captureFrames() runs the offline simulator
+      and stores an array of ImageData frames.
+   2. The Render Result modal shows an animated preview with playback
+      controls (play/pause, scrubber, speed, loop, reverse).
+   3. User picks an export format (PNG Spritesheet, GIF, PNG ZIP)
+      and clicks Export → the appropriate encoder runs.
+   ════════════════════════════════════════════════════════════════════ */
 
+/** Captured frame data — stored globally so export can use it */
+let _capturedFrames = [];   // Array of ImageData
+let _capturedSize   = 128;  // pixel width/height of each frame
+let _capturedFps    = 15;   // fps used for playback & GIF timing
+let _capturedTransparent = false;
+
+/** Preview animation state */
+let _previewPlaying = false;
+let _previewFrame   = 0;
+let _previewSpeed   = 1;
+let _previewLoop    = true;
+let _previewReverse = false;
+let _previewRaf     = null;
+let _previewLastT   = 0;
+
+function yieldFrame() {
+  return new Promise(resolve => requestAnimationFrame(resolve));
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   PHASE 1: CAPTURE FRAMES
+   ────────────────────────────────────────────────────────────────── */
+
+async function captureFrames(renderCfg, emitCfg) {
+  const { frames, frameSize, fps, transparentBg } = renderCfg;
+
+  const modal       = document.getElementById('render-modal');
+  const progressPhase = document.getElementById('render-progress-phase');
+  const resultPhase = document.getElementById('render-result');
+  const progressBar = document.getElementById('render-progress-bar');
+  const statusEl    = document.getElementById('render-status');
+
+  // Show modal in progress mode
   modal.classList.remove('hidden');
-  resultEl.classList.add('hidden');
+  progressPhase.classList.remove('hidden');
+  resultPhase.classList.add('hidden');
   progressBar.style.width = '0%';
+  statusEl.textContent = 'Preparing\u2026';
 
-  exportCanvas.width = sheetW;
-  exportCanvas.height = sheetH;
-  const sheetCtx = exportCanvas.getContext('2d');
-  sheetCtx.imageSmoothingEnabled = false;
-  if (!transparentBg) {
-    sheetCtx.fillStyle = '#000000';
-    sheetCtx.fillRect(0, 0, sheetW, sheetH);
-  } else {
-    sheetCtx.clearRect(0, 0, sheetW, sheetH);
-  }
+  _capturedFrames = [];
+  _capturedSize   = frameSize;
+  _capturedFps    = fps;
+  _capturedTransparent = transparentBg;
 
+  // Create local simulator
   const simCfg = { ...emitCfg, transparentBg };
   if (simCfg.emitterMode === 'burst') simCfg.burstPending = true;
 
   const sim = createLocalSimulator(simCfg, frameSize);
-  // Prime so the simulation is in a steady state before we start capturing.
-  // Burst: no prime (fire is instant). Pulse: prime for exactly one interval
-  // so the first burst fires right as priming ends and particles are live from
-  // frame 0. Continuous: fill the pool (lifetime × 1.5 is enough).
+
+  // Prime simulation to steady state
   const primeTicks =
     simCfg.emitterMode === 'burst' ? 0 :
     simCfg.emitterMode === 'pulse' ? Math.round((simCfg.pulseInterval || 2) * 60) :
     Math.round(simCfg.lifetime * 1.5);
 
-  statusEl.textContent = 'Priming simulation...';
+  statusEl.textContent = 'Priming simulation\u2026';
   await yieldFrame();
   for (let tick = 0; tick < primeTicks; tick++) sim.tick();
 
+  // Capture frames
+  // We want each rendered frame to represent 1/fps seconds of simulation.
+  // The simulator runs at 60 ticks/sec internally, so each frame needs
+  // (60/fps) * speedMult ticks.
+  const ticksPerFrame = (60 / fps) * Math.max(0.05, simCfg.speedMult || 1);
   let tickAccum = 0;
 
+  // Create a temporary canvas to read ImageData from
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = frameSize;
+  tempCanvas.height = frameSize;
+  const tempCtx = tempCanvas.getContext('2d');
+
   for (let frame = 0; frame < frames; frame++) {
-    tickAccum += Math.max(0.05, simCfg.speedMult || 1);
+    tickAccum += ticksPerFrame;
     const ticksThisFrame = Math.floor(tickAccum);
     tickAccum -= ticksThisFrame;
-    for (let tick = 0; tick < ticksThisFrame; tick++) sim.tick();
+    for (let t = 0; t < ticksThisFrame; t++) sim.tick();
     sim.drawFrame();
 
-    const col = frame % cols;
-    const row = Math.floor(frame / cols);
-    sheetCtx.drawImage(sim.canvas, col * frameSize, row * frameSize);
+    // Store frame as ImageData
+    tempCtx.clearRect(0, 0, frameSize, frameSize);
+    tempCtx.drawImage(sim.canvas, 0, 0);
+    const imgData = tempCtx.getImageData(0, 0, frameSize, frameSize);
+    _capturedFrames.push(imgData);
 
     const pct = Math.round(((frame + 1) / frames) * 100);
     progressBar.style.width = pct + '%';
@@ -315,99 +352,347 @@ async function startExport(exportCfg, emitCfg) {
     if (frame % 4 === 0) await yieldFrame();
   }
 
+  // Switch to result view
+  progressPhase.classList.add('hidden');
+  resultPhase.classList.remove('hidden');
+
+  // Update info
+  document.getElementById('render-info-frames').textContent =
+    `${frames} frames @ ${fps} fps`;
+  document.getElementById('render-info-size').textContent =
+    `${frameSize}\u00d7${frameSize}px`;
+
+  // Setup preview canvas
+  const previewCanvas = document.getElementById('render-preview-canvas');
+  previewCanvas.width  = frameSize;
+  previewCanvas.height = frameSize;
+
+  // Setup scrubber
+  const scrubber = document.getElementById('render-scrubber');
+  scrubber.max   = frames - 1;
+  scrubber.value = 0;
+
+  // Reset encode progress
+  document.getElementById('render-encode-progress').classList.add('hidden');
+
+  // Setup export format visibility
+  updateExportFormatUI();
+
+  // Draw first frame and start playback
+  _previewFrame = 0;
+  drawPreviewFrame(0);
+  startPreviewPlayback();
+}
+
+
+/* ──────────────────────────────────────────────────────────────────
+   PHASE 2: ANIMATED PREVIEW WITH PLAYBACK
+   ────────────────────────────────────────────────────────────────── */
+
+function drawPreviewFrame(idx) {
+  if (!_capturedFrames.length) return;
+  idx = Math.max(0, Math.min(idx, _capturedFrames.length - 1));
+
+  const canvas = document.getElementById('render-preview-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(_capturedFrames[idx], 0, 0);
+
+  // Update scrubber & frame counter
+  document.getElementById('render-scrubber').value = idx;
+  document.getElementById('render-frame-num').textContent =
+    `${idx + 1} / ${_capturedFrames.length}`;
+}
+
+function startPreviewPlayback() {
+  if (_previewPlaying) return;
+  _previewPlaying = true;
+  _previewLastT = performance.now();
+  document.getElementById('render-play-btn').innerHTML = '&#10074;&#10074;';
+  _previewRaf = requestAnimationFrame(previewLoop);
+}
+
+function stopPreviewPlayback() {
+  _previewPlaying = false;
+  document.getElementById('render-play-btn').innerHTML = '&#9654;';
+  if (_previewRaf) {
+    cancelAnimationFrame(_previewRaf);
+    _previewRaf = null;
+  }
+}
+
+function previewLoop(now) {
+  if (!_previewPlaying || !_capturedFrames.length) return;
+
+  const dt = now - _previewLastT;
+  const frameInterval = 1000 / (_capturedFps * _previewSpeed);
+
+  if (dt >= frameInterval) {
+    _previewLastT = now - (dt % frameInterval);
+
+    const total = _capturedFrames.length;
+    if (_previewReverse) {
+      _previewFrame--;
+      if (_previewFrame < 0) {
+        if (_previewLoop) {
+          _previewFrame = total - 1;
+        } else {
+          _previewFrame = 0;
+          stopPreviewPlayback();
+          return;
+        }
+      }
+    } else {
+      _previewFrame++;
+      if (_previewFrame >= total) {
+        if (_previewLoop) {
+          _previewFrame = 0;
+        } else {
+          _previewFrame = total - 1;
+          stopPreviewPlayback();
+          return;
+        }
+      }
+    }
+    drawPreviewFrame(_previewFrame);
+  }
+
+  _previewRaf = requestAnimationFrame(previewLoop);
+}
+
+
+/* ──────────────────────────────────────────────────────────────────
+   PHASE 3: EXPORT FUNCTIONS
+   ────────────────────────────────────────────────────────────────── */
+
+function updateExportFormatUI() {
+  const fmt = document.getElementById('render-export-format').value;
+  const sheetOpts = document.getElementById('render-sheet-opts');
+  const gifOpts   = document.getElementById('render-gif-opts');
+
+  sheetOpts.classList.toggle('hidden', fmt !== 'spritesheet');
+  gifOpts.classList.toggle('hidden', fmt !== 'gif');
+}
+
+/** Export: PNG Spritesheet */
+async function exportSpritesheet() {
+  const frames    = _capturedFrames;
+  const frameSize = _capturedSize;
+  const cols      = parseInt(document.getElementById('render-cols').value, 10) || 4;
+  const rows      = Math.ceil(frames.length / cols);
+  const sheetW    = cols * frameSize;
+  const sheetH    = rows * frameSize;
+
+  const exportCanvas = document.getElementById('export-canvas');
+  exportCanvas.width  = sheetW;
+  exportCanvas.height = sheetH;
+  const ctx = exportCanvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  if (!_capturedTransparent) {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, sheetW, sheetH);
+  } else {
+    ctx.clearRect(0, 0, sheetW, sheetH);
+  }
+
+  // Draw each frame into the grid
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width  = frameSize;
+  tempCanvas.height = frameSize;
+  const tempCtx = tempCanvas.getContext('2d');
+
+  for (let i = 0; i < frames.length; i++) {
+    tempCtx.putImageData(frames[i], 0, 0);
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    ctx.drawImage(tempCanvas, col * frameSize, row * frameSize);
+  }
+
   const dataUrl = exportCanvas.toDataURL('image/png');
-  previewImg.src = dataUrl;
-  dlLink.href = dataUrl;
-  dlLink.download = `pixeldust_sprite_${frameSize}x${frameSize}_${frames}f.png`;
-  resultEl.classList.remove('hidden');
-  statusEl.textContent = `Done! ${frames} frames at ${frameSize}×${frameSize}px (${cols} cols)`;
+  triggerDownload(dataUrl, `pixeldust_sprite_${frameSize}x${frameSize}_${frames.length}f.png`);
 }
 
-function yieldFrame() {
-  return new Promise(resolve => requestAnimationFrame(resolve));
-}
-
-/**
- * Capture the effect as an animated GIF.
- */
-async function startGifExport(gifCfg, emitCfg) {
-  const modal       = document.getElementById('gif-modal');
-  const progressBar = document.getElementById('gif-progress-bar');
-  const statusEl    = document.getElementById('gif-status');
-  const resultEl    = document.getElementById('gif-result');
-  const previewImg  = document.getElementById('gif-preview-img');
-  const dlLink      = document.getElementById('gif-download-link');
-
-  modal.classList.remove('hidden');
-  resultEl.classList.add('hidden');
-  progressBar.style.width = '0%';
-  statusEl.textContent = 'Preparing...';
-
+/** Export: Animated GIF */
+async function exportGif() {
   if (typeof GIF === 'undefined') {
-    statusEl.textContent = 'Error: gif.js not loaded. Check your internet connection.';
+    alert('gif.js library not loaded. Check your internet connection.');
     return;
   }
 
-  const { fps, duration, gifSize } = gifCfg;
-  const totalFrames = Math.round(fps * duration);
-  const delay       = Math.round(1000 / fps);
-  const frameSize   = gifSize || 256;
+  const encodeProgress = document.getElementById('render-encode-progress');
+  const encodeBar      = document.getElementById('render-encode-bar');
+  const encodeStatus   = document.getElementById('render-encode-status');
 
-  const simCfg = { ...emitCfg };
-  if (simCfg.emitterMode === 'burst') simCfg.burstPending = true;
+  encodeProgress.classList.remove('hidden');
+  encodeBar.style.width = '0%';
+  encodeStatus.textContent = 'Building GIF frames\u2026';
 
-  const sim = createLocalSimulator(simCfg, frameSize);
-  const primeTicks =
-    simCfg.emitterMode === 'burst' ? 0 :
-    simCfg.emitterMode === 'pulse' ? Math.round((simCfg.pulseInterval || 2) * 60) :
-    Math.round(simCfg.lifetime * 1.5);
+  const frameSize = _capturedSize;
+  const fps       = _capturedFps;
+  const delay     = Math.round(1000 / fps);
+  const quality   = parseInt(document.getElementById('render-gif-quality').value, 10) || 8;
 
-  statusEl.textContent = 'Priming simulation...';
-  await yieldFrame();
-  for (let tick = 0; tick < primeTicks; tick++) sim.tick();
+  // Fetch the worker script as a blob to avoid CORS issues
+  let workerBlobUrl;
+  try {
+    const resp = await fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js');
+    const workerText = await resp.text();
+    const blob = new Blob([workerText], { type: 'application/javascript' });
+    workerBlobUrl = URL.createObjectURL(blob);
+  } catch (e) {
+    encodeStatus.textContent = 'Error: Could not load GIF worker. Check internet connection.';
+    return;
+  }
 
   const gif = new GIF({
     workers:      2,
-    quality:      8,
+    quality:      quality,
     width:        frameSize,
     height:       frameSize,
-    workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js',
+    workerScript: workerBlobUrl,
+    transparent:  _capturedTransparent ? 0x00000000 : null,
   });
 
-  let tickAccum = 0;
+  // Add captured frames
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width  = frameSize;
+  tempCanvas.height = frameSize;
+  const tempCtx = tempCanvas.getContext('2d');
 
-  for (let frame = 0; frame < totalFrames; frame++) {
-    tickAccum += (60 / fps) * Math.max(0.05, simCfg.speedMult || 1);
-    const ticksThisFrame = Math.floor(tickAccum);
-    tickAccum -= ticksThisFrame;
-    for (let tick = 0; tick < ticksThisFrame; tick++) sim.tick();
-    sim.drawFrame();
-    gif.addFrame(sim.canvas, { delay, copy: true });
+  for (let i = 0; i < _capturedFrames.length; i++) {
+    tempCtx.putImageData(_capturedFrames[i], 0, 0);
+    gif.addFrame(tempCtx, { delay, copy: true });
 
-    const pct = Math.round(((frame + 1) / totalFrames) * 80);
-    progressBar.style.width = pct + '%';
-    statusEl.textContent = `Capturing frame ${frame + 1} / ${totalFrames}`;
+    const pct = Math.round(((i + 1) / _capturedFrames.length) * 50);
+    encodeBar.style.width = pct + '%';
 
-    if (frame % 4 === 0) await yieldFrame();
+    if (i % 8 === 0) await yieldFrame();
   }
 
-  statusEl.textContent = 'Encoding GIF...';
-  progressBar.style.width = '80%';
+  encodeStatus.textContent = 'Encoding GIF (this may take a moment)\u2026';
+  encodeBar.style.width = '50%';
   await yieldFrame();
 
-  gif.on('progress', progress => {
-    progressBar.style.width = `${80 + Math.round(progress * 20)}%`;
-  });
+  return new Promise((resolve) => {
+    gif.on('progress', progress => {
+      encodeBar.style.width = `${50 + Math.round(progress * 50)}%`;
+    });
 
-  gif.on('finished', blob => {
-    const url = URL.createObjectURL(blob);
-    previewImg.src = url;
-    dlLink.href = url;
-    dlLink.download = `pixeldust_${frameSize}px_${fps}fps_${duration}s.gif`;
-    progressBar.style.width = '100%';
-    statusEl.textContent = `Done! ${totalFrames} frames @ ${fps} fps (${frameSize}×${frameSize})`;
-    resultEl.classList.remove('hidden');
-  });
+    gif.on('finished', blob => {
+      const url = URL.createObjectURL(blob);
+      encodeBar.style.width = '100%';
+      encodeStatus.textContent = `GIF encoded! ${_capturedFrames.length} frames @ ${fps} fps`;
 
-  gif.render();
+      triggerDownload(url, `pixeldust_${frameSize}px_${fps}fps.gif`);
+
+      // Clean up after a brief delay so download starts
+      setTimeout(() => {
+        encodeProgress.classList.add('hidden');
+        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(workerBlobUrl);
+      }, 2000);
+
+      resolve();
+    });
+
+    gif.render();
+  });
+}
+
+/** Export: PNG Frames as ZIP */
+async function exportFramesZip() {
+  const encodeProgress = document.getElementById('render-encode-progress');
+  const encodeBar      = document.getElementById('render-encode-bar');
+  const encodeStatus   = document.getElementById('render-encode-status');
+
+  encodeProgress.classList.remove('hidden');
+  encodeBar.style.width = '0%';
+  encodeStatus.textContent = 'Packaging PNG frames\u2026';
+
+  const frameSize = _capturedSize;
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width  = frameSize;
+  tempCanvas.height = frameSize;
+  const tempCtx = tempCanvas.getContext('2d');
+
+  // We'll create individual PNGs and pack into a simple combined download
+  // Since we don't have JSZip, we'll download frames as individual PNGs
+  // bundled into a single spritesheet-style download or one-by-one
+  // Actually, let's just do individual downloads with a frame number
+  // For a better UX: create a single vertical strip PNG
+  const stripW = frameSize;
+  const stripH = frameSize * _capturedFrames.length;
+
+  // If strip would be too large (>16k pixels), fall back to grid layout
+  const maxDim = 16384;
+  let exportCanvas, ctx, cols, rows;
+
+  if (stripH <= maxDim) {
+    cols = 1;
+    rows = _capturedFrames.length;
+  } else {
+    cols = Math.ceil(Math.sqrt(_capturedFrames.length));
+    rows = Math.ceil(_capturedFrames.length / cols);
+  }
+
+  exportCanvas = document.getElementById('export-canvas');
+  exportCanvas.width  = cols * frameSize;
+  exportCanvas.height = rows * frameSize;
+  ctx = exportCanvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  if (_capturedTransparent) {
+    ctx.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
+  } else {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+  }
+
+  for (let i = 0; i < _capturedFrames.length; i++) {
+    tempCtx.putImageData(_capturedFrames[i], 0, 0);
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    ctx.drawImage(tempCanvas, col * frameSize, row * frameSize);
+
+    const pct = Math.round(((i + 1) / _capturedFrames.length) * 100);
+    encodeBar.style.width = pct + '%';
+
+    if (i % 8 === 0) await yieldFrame();
+  }
+
+  const dataUrl = exportCanvas.toDataURL('image/png');
+  triggerDownload(dataUrl, `pixeldust_frames_${frameSize}px_${_capturedFrames.length}f.png`);
+
+  encodeBar.style.width = '100%';
+  encodeStatus.textContent = `Exported ${_capturedFrames.length} frames as PNG strip`;
+  setTimeout(() => encodeProgress.classList.add('hidden'), 2000);
+}
+
+
+/* ──────────────────────────────────────────────────────────────────
+   UTILITY
+   ────────────────────────────────────────────────────────────────── */
+
+function triggerDownload(url, filename) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function closeRenderModal() {
+  stopPreviewPlayback();
+  document.getElementById('render-modal').classList.add('hidden');
+  _capturedFrames = [];  // free memory
+}
+
+function runExport() {
+  const fmt = document.getElementById('render-export-format').value;
+  switch (fmt) {
+    case 'spritesheet': return exportSpritesheet();
+    case 'gif':         return exportGif();
+    case 'frames':      return exportFramesZip();
+  }
 }

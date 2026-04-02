@@ -788,7 +788,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
 }
 
 /* ============================================================
-   EXPORT MODAL
+   MODALS (shared)
    ============================================================ */
 .modal {
   position: fixed;
@@ -819,7 +819,20 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
   margin-bottom: 16px;
 }
 
-#export-progress-wrap {
+.export-actions { display: flex; gap: 8px; }
+
+/* ============================================================
+   RENDER RESULT MODAL
+   ============================================================ */
+.render-modal-box {
+  min-width: 380px;
+  max-width: 520px;
+  width: 90vw;
+}
+
+/* ── Progress phase ── */
+#render-progress-wrap,
+#render-encode-wrap {
   height: 4px;
   background: var(--bg-input);
   border: 1px solid var(--border);
@@ -828,7 +841,8 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
   margin-bottom: 10px;
 }
 
-#export-progress-bar {
+#render-progress-bar,
+#render-encode-bar {
   height: 100%;
   background: linear-gradient(90deg, var(--accent), var(--accent-hover));
   width: 0%;
@@ -836,35 +850,153 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
   border-radius: 2px;
 }
 
-#export-status {
+#render-status,
+#render-encode-status {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-secondary);
   margin-bottom: 16px;
 }
 
-#export-result {
+/* ── Preview canvas ── */
+#render-preview-wrap {
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  gap: 12px;
+  background: #000;
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  min-height: 128px;
 }
 
-#export-preview-img {
-  max-width: 100%;
-  max-height: 320px;
-  border: 1px solid var(--border-light);
+#render-preview-canvas {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  background: #000;
+  max-width: 100%;
+  max-height: 320px;
 }
 
-.export-actions { display: flex; gap: 8px; }
+/* ── Info bar ── */
+#render-info {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
 
-.export-sep {
-  height: 1px;
+/* ── Playback controls ── */
+#render-playback {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+
+#render-transport {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+#render-transport .btn-sm {
+  font-size: 10px;
+  padding: 2px 8px;
+  min-width: 28px;
+  line-height: 1.4;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+#render-transport .btn-sm:hover {
   background: var(--border);
-  margin: 8px 0;
+}
+
+#render-scrubber {
+  flex: 1;
+  height: 4px;
+  accent-color: var(--accent);
+}
+
+#render-frame-num {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  min-width: 60px;
+  text-align: right;
+}
+
+#render-transport-row2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-label);
+}
+
+#render-transport-row2 label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+#render-speed {
+  width: 60px;
+  height: 3px;
+  accent-color: var(--accent);
+}
+
+#render-speed-val {
+  min-width: 28px;
+}
+
+/* ── Export panel ── */
+#render-export-panel {
+  margin-bottom: 10px;
+}
+
+#render-export-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+#render-export-format {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 6px;
+}
+
+#render-sheet-opts,
+#render-gif-opts {
+  padding-left: 4px;
+  border-left: 2px solid rgba(255,255,255,0.08);
+  margin-left: 4px;
+  margin-top: 4px;
+}
+
+.ctrl-row.compact { margin-bottom: 2px; }
+.ctrl-row.compact span { font-size: 10px; }
+
+/* ── Encode progress (GIF/ZIP) ── */
+#render-encode-progress {
+  margin-bottom: 8px;
 }
 
 /* ============================================================
@@ -901,44 +1033,7 @@ kbd {
   color: var(--text-label);
 }
 
-/* GIF modal reuses export modal styles; just need preview img */
-#gif-preview-img {
-  max-width: 100%;
-  max-height: 260px;
-  border: 1px solid var(--border-light);
-  background: #000;
-}
 
-#gif-progress-wrap {
-  height: 4px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 10px;
-}
-
-#gif-progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
-  width: 0%;
-  transition: width 0.15s;
-  border-radius: 2px;
-}
-
-#gif-status {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-bottom: 16px;
-}
-
-#gif-result {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
 
 /* ============================================================
    RESPONSIVE
