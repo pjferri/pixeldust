@@ -5,6 +5,7 @@
  * v0.9: speed variance, velocity decay, death particles, grow mode.
  * v0.1.0: emitter-size, emitter-angle, ring shape, crosshair shape extent.
  * v0.1.3: randomizer polish, new particle shapes, and appearance/control refinements.
+ * v0.1.5: color panel redesign, native-picker cleanup, and layout polish.
  */
 
 // ── Undo / Redo ────────────────────────────────────────────────────────────
