@@ -5,6 +5,7 @@
  * v0.5: air drag, continuous fade
  * v0.6: wind force, hue variation
  * v0.9: speedVariance, velocityDecay, grow mode (negative shrink)
+ * v0.1.7: vortex/orbit force around each particle's spawn point
  */
 
 // ── Colour helpers ─────────────────────────────────────────────────────────
@@ -137,6 +138,9 @@ function createParticle(x, y, cfg) {
     gravity:       cfg.gravity,
     wind:          cfg.wind || 0,
     turbulence:    cfg.turbulence || 0,
+    orbit:         cfg.orbit ?? 0,
+    orbitX:        x,
+    orbitY:        y,
     drag:          Math.max(0.5, Math.min(1, cfg.drag ?? 1)),
     bounce:        !!cfg.bounce,
     velocityDecay: cfg.velocityDecay || 0,
@@ -186,6 +190,23 @@ function updateParticle(p) {
   if (p.turbulence > 0) {
     p.vx += (Math.random() - 0.5) * p.turbulence * p.speedScale;
     p.vy += (Math.random() - 0.5) * p.turbulence * p.speedScale;
+  }
+
+  if (p.orbit !== 0) {
+    const dx = p.x - p.orbitX;
+    const dy = p.y - p.orbitY;
+    const distSq = dx * dx + dy * dy;
+    if (distSq > 0.0001) {
+      const dist = Math.sqrt(distSq);
+      const tangentX = -dy / dist;
+      const tangentY = dx / dist;
+      const orbitStrength = p.orbit * p.speedScale * Math.min(0.65, 0.18 + dist * 0.01);
+      const pullStrength = Math.abs(p.orbit) * p.speedScale * 0.02;
+      p.vx += tangentX * orbitStrength;
+      p.vy += tangentY * orbitStrength;
+      p.vx -= (dx / dist) * pullStrength;
+      p.vy -= (dy / dist) * pullStrength;
+    }
   }
 
   // ── Movement ──────────────────────────────────────────────────────────────

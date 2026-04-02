@@ -1,6 +1,6 @@
 /**
  * presets.js
- * Full effect presets — v0.1.6
+ * Full effect presets — v0.1.7
  * All presets now include: speedVariance, velocityDecay, deathCount/Speed/Size,
  * emitterSize (% of canvas), emitterAngle (line rotation degrees),
  * emitterPX / emitterPY (fractional canvas position for auto-placement).
@@ -364,6 +364,24 @@ const EFFECT_PRESETS = {
       deathCount: 2, deathSpeed: 2.5, deathSize: 2,
       multiColor: true, useGradient: true, gradientStart: '#ffffff', gradientEnd: '#0099ff',
       bgColor: '#040812', trailAlpha: 0.22, loop: false,
+    },
+  },
+
+  galaxy: {
+    label: 'Galaxy',
+    palette: 'magic',
+    cfg: {
+      emitterShape: 'point', emitterMode: 'continuous', speedMult: 1,
+      emitterSize: 18, emitterAngle: 0, pulseInterval: 2, emitterPX: 0.5, emitterPY: 0.5,
+      count: 220, spawnRate: 90, speed: 2.4, spread: 360, direction: 270,
+      gravity: 0, turbulence: 0.18, drag: 0.985, wind: 0, orbit: 1.35,
+      particleSize: 2, particleShape: 'sparkle', sizeVariance: 1, hueVariation: 35,
+      blendMode: 'prism', effectStrength: 1.3, startAlpha: 0.95, rotation: 5,
+      lifetime: 140, fade: 0.85, shrink: 0.1,
+      speedVariance: 0.2, velocityDecay: 0.08,
+      deathCount: 0, deathSpeed: 2, deathSize: 2,
+      multiColor: true, useGradient: true, gradientStart: '#ffffff', gradientEnd: '#7a2bff',
+      bgColor: '#04030a', trailAlpha: 0.08, loop: false,
     },
   },
 };

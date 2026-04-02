@@ -7,6 +7,7 @@
  * v0.1.3: randomizer polish, new particle shapes, and appearance/control refinements.
  * v0.1.5: color panel redesign, native-picker cleanup, and layout polish.
  * v0.1.6: expanded emitter shapes with arc controls and export/crosshair parity.
+ * v0.1.7: vortex force control and galaxy preset.
  */
 
 // ── Undo / Redo ────────────────────────────────────────────────────────────
@@ -567,7 +568,7 @@ function initUI() {
   const directControls = [
     'emitter-shape', 'emitter-size', 'emitter-angle', 'emitter-arc',
     'particle-count', 'spawn-rate', 'speed', 'spread', 'direction', 'gravity', 'turbulence', 'drag', 'wind', 'bounce',
-    'speed-variance', 'velocity-decay',
+    'orbit', 'speed-variance', 'velocity-decay',
     'particle-size', 'size-variance', 'particle-shape', 'start-alpha', 'rotation', 'hue-variation', 'effect-strength',
     'lifetime', 'fade', 'shrink',
     'death-count', 'death-speed', 'death-size',
@@ -739,6 +740,7 @@ function applyEffectPreset(name) {
   set('turbulence',     c.turbulence);
   set('drag',           c.drag ?? 1);
   set('wind',           c.wind ?? 0);
+  set('orbit',          c.orbit ?? 0);
   set('particle-size',  c.particleSize);
   set('particle-shape', c.particleShape);
   set('hue-variation',  c.hueVariation ?? 0);
@@ -873,6 +875,7 @@ function pushConfig() {
     turbulence:    n('turbulence'),
     drag:          parseFloat(document.getElementById('drag')?.value ?? '1') || 1,
     wind:          n('wind'),
+    orbit:         n('orbit'),
     bounce:        b('bounce'),
     particleSize:  i('particle-size'),
     sizeVariance:  i('size-variance'),
@@ -941,6 +944,7 @@ function getFullSnapshot() {
     turbulence:    n('turbulence'),
     drag:          n('drag') || 1,
     wind:          n('wind'),
+    orbit:         n('orbit'),
     bounce:        b('bounce'),
     particleSize:  i('particle-size'),
     sizeVariance:  i('size-variance'),
@@ -997,6 +1001,7 @@ function applySnapshot(snap) {
   set('turbulence',     snap.turbulence);
   set('drag',           snap.drag ?? 1);
   set('wind',           snap.wind ?? 0);
+  set('orbit',          snap.orbit ?? 0);
   setCheck('bounce',    snap.bounce ?? false);
   set('speed-variance',  snap.speedVariance ?? 0);
   set('velocity-decay',  snap.velocityDecay ?? 0);
@@ -1211,6 +1216,7 @@ function randomizeSettings() {
   set('turbulence',     rng(0, 1.5, 0.05));
   set('drag',           rng(0.88, 1.0, 0.005));
   set('wind',           rng(-0.2, 0.2, 0.01));
+  set('orbit',          Math.random() < 0.45 ? rng(-2, 2, 0.05) : 0);
   set('hue-variation',  rng(0, 45, 1));
   set('particle-size',  rng(1, 10, 1));
   set('size-variance',  rng(0, 4, 1));
