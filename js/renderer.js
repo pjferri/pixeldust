@@ -352,6 +352,33 @@ function pixelCircle(ctx, cx, cy, diameter) {
   }
 }
 
+function rendererRotateEmitterOffset(dx, dy, angle) {
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return [
+    dx * cos - dy * sin,
+    dx * sin + dy * cos,
+  ];
+}
+
+function rendererTriangleEmitterVertices(radius) {
+  return [
+    { x: 0, y: -radius },
+    { x: Math.sin(Math.PI / 3) * radius, y: radius * 0.5 },
+    { x: -Math.sin(Math.PI / 3) * radius, y: radius * 0.5 },
+  ];
+}
+
+function rendererTraceEmitterPolygon(cx, cy, points) {
+  if (!points.length) return;
+  ctx.beginPath();
+  ctx.moveTo(cx + points[0].x, cy + points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(cx + points[i].x, cy + points[i].y);
+  }
+  ctx.closePath();
+}
+
 /**
  * Draw the emitter crosshair and — for line/circle shapes — a dashed
  * shape indicator showing the actual spawn area.
@@ -361,25 +388,56 @@ function drawEmitterCrosshair() {
   const y = emitterY >= 0 ? emitterY : canvasH / 2;
   const shape = cfg?.emitterShape || 'point';
   const size  = Math.max(1, cfg?.emitterSize || 18);
+  const radialSize = Math.min(canvasW, canvasH) * (size / 100);
+  const angle = ((cfg?.emitterAngle || 0) * Math.PI) / 180;
 
   ctx.save();
   ctx.strokeStyle = 'rgba(255,255,255,0.45)';
   ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
 
   // ── Shape indicator (dashed outline of the spawn area) ────────────────
   if (shape === 'line') {
-    const hw    = canvasW * (size / 100);
-    const angle = ((cfg?.emitterAngle || 0) * Math.PI) / 180;
-    ctx.setLineDash([4, 4]);
+    const halfWidth = canvasW * (size / 100);
     ctx.beginPath();
-    ctx.moveTo(x + Math.cos(angle) * hw, y + Math.sin(angle) * hw);
-    ctx.lineTo(x - Math.cos(angle) * hw, y - Math.sin(angle) * hw);
+    ctx.moveTo(x + Math.cos(angle) * halfWidth, y + Math.sin(angle) * halfWidth);
+    ctx.lineTo(x - Math.cos(angle) * halfWidth, y - Math.sin(angle) * halfWidth);
     ctx.stroke();
-  } else if (shape === 'circle') {
-    const radius = Math.min(canvasW, canvasH) * (size / 100);
-    ctx.setLineDash([4, 4]);
+  } else if (shape === 'circle' || shape === 'disk') {
     ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.arc(x, y, radialSize, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (shape === 'square') {
+    const half = radialSize;
+    const points = [
+      rendererRotateEmitterOffset(-half, -half, angle),
+      rendererRotateEmitterOffset(half, -half, angle),
+      rendererRotateEmitterOffset(half, half, angle),
+      rendererRotateEmitterOffset(-half, half, angle),
+    ].map(([px, py]) => ({ x: px, y: py }));
+    rendererTraceEmitterPolygon(x, y, points);
+    ctx.stroke();
+  } else if (shape === 'triangle') {
+    const points = rendererTriangleEmitterVertices(radialSize)
+      .map(({ x: px, y: py }) => {
+        const [rx, ry] = rendererRotateEmitterOffset(px, py, angle);
+        return { x: rx, y: ry };
+      });
+    rendererTraceEmitterPolygon(x, y, points);
+    ctx.stroke();
+  } else if (shape === 'arc') {
+    const halfSpan = (((cfg?.emitterArc || 120) / 2) * Math.PI) / 180;
+    const start = angle - halfSpan;
+    const end = angle + halfSpan;
+    ctx.beginPath();
+    ctx.arc(x, y, radialSize, start, end);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(start) * radialSize, y + Math.sin(start) * radialSize);
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(end) * radialSize, y + Math.sin(end) * radialSize);
     ctx.stroke();
   }
 

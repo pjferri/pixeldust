@@ -966,6 +966,7 @@ kbd {
 /* ── Emitter shape size/angle sub-controls ── */
 #emitter-size-row,
 #emitter-angle-row,
+#emitter-arc-row,
 #burst-row,
 #pulse-interval-row {
   border-left: 2px solid rgba(255,255,255,0.10);

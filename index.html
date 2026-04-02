@@ -15,7 +15,7 @@
       <div id="logo">
         <span class="logo-px">PX</span>
         <span class="logo-name">PixelDust</span>
-        <span class="logo-version">v0.1.5</span>
+        <span class="logo-version">v0.1.6</span>
       </div>
       <div id="topbar-controls">
         <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
@@ -61,6 +61,10 @@
               <option value="point">Point</option>
               <option value="line">Line</option>
               <option value="circle">Circle</option>
+              <option value="disk">Disk</option>
+              <option value="square">Square</option>
+              <option value="triangle">Triangle</option>
+              <option value="arc">Arc</option>
             </select>
           </label>
 
@@ -75,13 +79,23 @@
             </label>
           </div>
 
-          <!-- Emitter angle — only meaningful for line emitter -->
+          <!-- Emitter angle — shown for rotatable emitter shapes -->
           <div id="emitter-angle-row" class="hidden">
-            <label class="ctrl-row" title="Rotation angle of the line emitter (0–180°)">
-              <span>Angle°</span>
+            <label class="ctrl-row" title="Rotation angle of the emitter shape">
+              <span>Rotation°</span>
               <div class="slider-pair">
-                <input type="range" id="emitter-angle" min="0" max="180" value="0" step="1" />
+                <input type="range" id="emitter-angle" min="0" max="360" value="0" step="1" />
                 <span class="val-display" data-for="emitter-angle">0</span>
+              </div>
+            </label>
+          </div>
+
+          <div id="emitter-arc-row" class="hidden">
+            <label class="ctrl-row" title="Arc emitter only: angular span of the spawn curve">
+              <span>Arc span°</span>
+              <div class="slider-pair">
+                <input type="range" id="emitter-arc" min="15" max="360" value="120" step="5" />
+                <span class="val-display" data-for="emitter-arc">120</span>
               </div>
             </label>
           </div>

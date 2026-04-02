@@ -6,6 +6,7 @@
  * v0.1.0: emitter-size, emitter-angle, ring shape, crosshair shape extent.
  * v0.1.3: randomizer polish, new particle shapes, and appearance/control refinements.
  * v0.1.5: color panel redesign, native-picker cleanup, and layout polish.
+ * v0.1.6: expanded emitter shapes with arc controls and export/crosshair parity.
  */
 
 // ── Undo / Redo ────────────────────────────────────────────────────────────
@@ -392,10 +393,13 @@ function updateEmitterShapeRows() {
   const shape     = document.getElementById('emitter-shape')?.value || 'point';
   const sizeRow   = document.getElementById('emitter-size-row');
   const angleRow  = document.getElementById('emitter-angle-row');
-  const showSize  = shape === 'line' || shape === 'circle';
-  const showAngle = shape === 'line';
+  const arcRow    = document.getElementById('emitter-arc-row');
+  const showSize  = shape !== 'point';
+  const showAngle = shape === 'line' || shape === 'square' || shape === 'triangle' || shape === 'arc';
+  const showArc   = shape === 'arc';
   if (sizeRow)  sizeRow.classList.toggle('hidden', !showSize);
   if (angleRow) angleRow.classList.toggle('hidden', !showAngle);
+  if (arcRow)   arcRow.classList.toggle('hidden', !showArc);
 }
 
 // ── initUI ─────────────────────────────────────────────────────────────────
@@ -561,7 +565,7 @@ function initUI() {
 
   // ── All slider/select controls → emitter config ───────────────────────
   const directControls = [
-    'emitter-shape', 'emitter-size', 'emitter-angle',
+    'emitter-shape', 'emitter-size', 'emitter-angle', 'emitter-arc',
     'particle-count', 'spawn-rate', 'speed', 'spread', 'direction', 'gravity', 'turbulence', 'drag', 'wind', 'bounce',
     'speed-variance', 'velocity-decay',
     'particle-size', 'size-variance', 'particle-shape', 'start-alpha', 'rotation', 'hue-variation', 'effect-strength',
@@ -724,6 +728,7 @@ function applyEffectPreset(name) {
   set('emitter-mode',   c.emitterMode);
   set('emitter-size',   c.emitterSize ?? 18);
   set('emitter-angle',  c.emitterAngle ?? 0);
+  set('emitter-arc',    c.emitterArc ?? 120);
   set('speed-mult',     c.speedMult ?? 1);
   set('particle-count', c.count);
   set('spawn-rate',     c.spawnRate);
@@ -857,6 +862,7 @@ function pushConfig() {
     emitterMode:   v('emitter-mode'),
     emitterSize:   parseFloat(document.getElementById('emitter-size')?.value ?? '18') || 18,
     emitterAngle:  parseFloat(document.getElementById('emitter-angle')?.value ?? '0') || 0,
+    emitterArc:    parseFloat(document.getElementById('emitter-arc')?.value ?? '120') || 120,
     speedMult:     n('speed-mult') || 1,
     count:         i('particle-count'),
     spawnRate:     i('spawn-rate') || 60,
@@ -924,6 +930,7 @@ function getFullSnapshot() {
     emitterMode:   v('emitter-mode'),
     emitterSize:   parseFloat(document.getElementById('emitter-size')?.value ?? '18') || 18,
     emitterAngle:  parseFloat(document.getElementById('emitter-angle')?.value ?? '0') || 0,
+    emitterArc:    parseFloat(document.getElementById('emitter-arc')?.value ?? '120') || 120,
     speedMult:     n('speed-mult'),
     count:         i('particle-count'),
     spawnRate:     i('spawn-rate'),
@@ -979,6 +986,7 @@ function applySnapshot(snap) {
   set('emitter-mode',   snap.emitterMode);
   set('emitter-size',   snap.emitterSize ?? 18);
   set('emitter-angle',  snap.emitterAngle ?? 0);
+  set('emitter-arc',    snap.emitterArc ?? 120);
   set('speed-mult',     snap.speedMult ?? 1);
   set('particle-count', snap.count);
   set('spawn-rate',     snap.spawnRate);
@@ -1186,10 +1194,11 @@ function randomizeSettings() {
   const setCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
 
   // Sane ranges that still produce interesting results
-  const chosenEmitterShape = pick(['point', 'point', 'line', 'circle']);
+  const chosenEmitterShape = pick(['point', 'point', 'line', 'circle', 'disk', 'square', 'triangle', 'arc']);
   set('emitter-shape',  chosenEmitterShape);
   set('emitter-size',   rng(8, 40, 1));
-  set('emitter-angle',  rng(0, 180, 1));
+  set('emitter-angle',  rng(0, 360, 1));
+  set('emitter-arc',    rng(30, 300, 5));
   set('emitter-mode',   pick(['continuous', 'continuous', 'continuous', 'burst', 'pulse'])); // weight continuous
   set('pulse-interval', rng(0.5, 6, 0.5));
   set('speed-mult',     1);

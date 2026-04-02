@@ -23,9 +23,33 @@ function createLocalSimulator(emitCfg, frameSize) {
   const bgHex       = emitCfg.bgColor || '#0c0c0e';
   const transparentBg = !!emitCfg.transparentBg;
 
+  function exportRotateEmitterOffset(dx, dy, angle) {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return [
+      dx * cos - dy * sin,
+      dx * sin + dy * cos,
+    ];
+  }
+
+  function exportTriangleEmitterOffset(radius, angle) {
+    const top = { x: 0, y: -radius };
+    const right = { x: Math.sin(Math.PI / 3) * radius, y: radius * 0.5 };
+    const left = { x: -right.x, y: right.y };
+    const r1 = Math.sqrt(Math.random());
+    const r2 = Math.random();
+    const u = 1 - r1;
+    const v = r1 * (1 - r2);
+    const w = r1 * r2;
+    const dx = u * top.x + v * right.x + w * left.x;
+    const dy = u * top.y + v * right.y + w * left.y;
+    return exportRotateEmitterOffset(dx, dy, angle);
+  }
+
   // ── Spawn point (mirrors emitter.js spawnPoint) ─────────────────────────
   function spawnPoint() {
     const size = Math.max(1, emitCfg.emitterSize || 18);
+    const radialSize = frameSize * (size / 100);
     switch (emitCfg.emitterShape) {
       case 'line': {
         const hw    = frameSize * (size / 100);
@@ -34,9 +58,33 @@ function createLocalSimulator(emitCfg, frameSize) {
         return [centerX + t * Math.cos(angle), centerY + t * Math.sin(angle)];
       }
       case 'circle': {
-        const radius = frameSize * (size / 100);
+        const radius = radialSize;
         const a = Math.random() * Math.PI * 2;
         return [centerX + Math.cos(a) * radius, centerY + Math.sin(a) * radius];
+      }
+      case 'disk': {
+        const radius = radialSize * Math.sqrt(Math.random());
+        const a = Math.random() * Math.PI * 2;
+        return [centerX + Math.cos(a) * radius, centerY + Math.sin(a) * radius];
+      }
+      case 'square': {
+        const half = radialSize;
+        const angle = ((emitCfg.emitterAngle || 0) * Math.PI) / 180;
+        const dx = (Math.random() * 2 - 1) * half;
+        const dy = (Math.random() * 2 - 1) * half;
+        const [rx, ry] = exportRotateEmitterOffset(dx, dy, angle);
+        return [centerX + rx, centerY + ry];
+      }
+      case 'triangle': {
+        const angle = ((emitCfg.emitterAngle || 0) * Math.PI) / 180;
+        const [dx, dy] = exportTriangleEmitterOffset(radialSize, angle);
+        return [centerX + dx, centerY + dy];
+      }
+      case 'arc': {
+        const centerAngle = ((emitCfg.emitterAngle || 0) * Math.PI) / 180;
+        const halfSpan = (((emitCfg.emitterArc || 120) / 2) * Math.PI) / 180;
+        const a = centerAngle + (Math.random() * 2 - 1) * halfSpan;
+        return [centerX + Math.cos(a) * radialSize, centerY + Math.sin(a) * radialSize];
       }
       default:
         return [centerX, centerY];
