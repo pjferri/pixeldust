@@ -78,35 +78,143 @@ function initSliderDisplays() {
 // Tracks which palette slot is currently selected (for editing via color picker)
 let _activePaletteIdx = 0;
 
-function buildPaletteGrid(colors) {
+const COLOR_INPUT_FALLBACKS = {
+  'color-picker': '#ffff00',
+  'gradient-start': '#ffff00',
+  'gradient-end': '#ff0000',
+  'bg-color': '#0c0c0e',
+  'shadow-color': '#120018',
+};
+
+function normalizeHexColor(hex, fallback = '#ffffff') {
+  const candidate = typeof hex === 'string' ? hex.trim() : '';
+  if (/^#[0-9a-f]{6}$/i.test(candidate)) return candidate.toLowerCase();
+  return fallback.toLowerCase();
+}
+
+function syncBgPresetSelection(hex) {
+  const normalized = normalizeHexColor(hex, COLOR_INPUT_FALLBACKS['bg-color']);
+  document.querySelectorAll('.bg-swatch').forEach(swatch => {
+    const swatchHex = normalizeHexColor(swatch.dataset.color || '', '#000000');
+    swatch.classList.toggle('active', swatchHex === normalized);
+  });
+}
+
+function openNativeColorPicker(id) {
+  const input = document.getElementById(id);
+  if (!input) return;
+  try {
+    if (typeof input.showPicker === 'function') {
+      input.showPicker();
+      return;
+    }
+  } catch (_) {
+    // Fall back to click() if showPicker is unavailable or blocked.
+  }
+  input.click();
+}
+
+function buildPaletteGrid(colors, activeIdx = 0) {
   const grid = document.getElementById('palette-grid');
+  const clampedIdx = colors.length
+    ? Math.max(0, Math.min(activeIdx, colors.length - 1))
+    : 0;
   grid.innerHTML = '';
   colors.forEach((hex, idx) => {
-    const div = document.createElement('div');
-    div.className        = 'pal-swatch';
-    div.style.background = hex;
-    div.title            = hex + ' — click to select, click again to edit';
-    div.addEventListener('click', () => {
-      const wasActive = div.classList.contains('active');
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.className = 'pal-swatch';
+    input.value = hex;
+    if (idx === clampedIdx) input.classList.add('active');
+    input.addEventListener('click', () => {
       _activePaletteIdx = idx;
-      setSingleColor(hex);
       grid.querySelectorAll('.pal-swatch').forEach(s => s.classList.remove('active'));
-      div.classList.add('active');
-      if (wasActive) {
-        // Second click on the already-selected swatch — open colour picker to edit it
-        document.getElementById('color-picker').click();
-      }
-      pushConfig();
+      input.classList.add('active');
     });
-    grid.appendChild(div);
+    input.addEventListener('input', (e) => {
+      activePalette[idx] = e.target.value;
+      _activePaletteIdx = idx;
+      setSingleColor(e.target.value);
+      pushConfig();
+      updateGradientPreview();
+    });
+    grid.appendChild(input);
   });
-  const first = grid.querySelector('.pal-swatch');
-  if (first) { first.classList.add('active'); _activePaletteIdx = 0; }
+  _activePaletteIdx = clampedIdx;
 }
 
 function setSingleColor(hex) {
-  activeColor = hex;
-  document.getElementById('color-picker').value = hex;
+  activeColor = normalizeHexColor(hex, COLOR_INPUT_FALLBACKS['color-picker']);
+  document.getElementById('color-picker').value = activeColor;
+  // Sync gradient-start so single+fade mode works correctly
+  document.getElementById('gradient-start').value = activeColor;
+}
+
+function updateGradientPreview() {
+  const bar = document.getElementById('gradient-bar');
+  if (!bar) return;
+  const isFade = document.getElementById('fade-to-toggle')?.checked ?? false;
+  if (!isFade) return;
+
+  const toggle = document.querySelector('#color-mode-toggle .seg-btn.active');
+  const isPalette = toggle ? toggle.dataset.mode === 'palette' : true;
+
+  const endColor = document.getElementById('gradient-end')?.value || '#ff0000';
+
+  if (isPalette && activePalette.length) {
+    // Show palette colors fading to end
+    const stops = activePalette.map((c, i) => {
+      const pct = (i / Math.max(1, activePalette.length - 1)) * 50;
+      return c + ' ' + pct + '%';
+    });
+    stops.push(endColor + ' 100%');
+    bar.style.background = 'linear-gradient(to right, ' + stops.join(', ') + ')';
+  } else {
+    const startColor = document.getElementById('color-picker')?.value || '#ffff00';
+    bar.style.background = 'linear-gradient(to right, ' + startColor + ', ' + endColor + ')';
+  }
+}
+
+function syncColorUIFromMode(mode) {
+  // Sync segmented toggle
+  const isPalette = mode === 'palette' || mode === 'palette-fade';
+  document.querySelectorAll('#color-mode-toggle .seg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === (isPalette ? 'palette' : 'single'));
+  });
+  // Sync fade checkbox
+  const isFade = mode === 'gradient' || mode === 'palette-fade';
+  const fadeToggle = document.getElementById('fade-to-toggle');
+  if (fadeToggle) fadeToggle.checked = isFade;
+  // Hidden select
+  const cmEl = document.getElementById('color-mode');
+  if (cmEl) cmEl.value = mode;
+  updateColorModeUI();
+}
+
+function applyColorValueToTarget(targetId, rawHex) {
+  const input = document.getElementById(targetId);
+  if (!input) return;
+  const fallback = COLOR_INPUT_FALLBACKS[targetId] || '#ffffff';
+  const hex = normalizeHexColor(rawHex, input.value || fallback);
+  input.value = hex;
+
+  if (targetId === 'color-picker') {
+    const mode = document.getElementById('color-mode')?.value || 'palette';
+    if ((mode === 'palette' || mode === 'palette-fade') &&
+        _activePaletteIdx >= 0 && _activePaletteIdx < activePalette.length) {
+      activePalette[_activePaletteIdx] = hex;
+      buildPaletteGrid(activePalette, _activePaletteIdx);
+    }
+    setSingleColor(hex);
+    return;
+  }
+
+  if (targetId === 'bg-color') {
+    setRendererBg(hex);
+    syncBgPresetSelection(hex);
+  } else if (targetId === 'shadow-color') {
+    setShadowColor(hex);
+  }
 }
 
 // updateColorReadout removed — color readout panel removed from UI
@@ -139,22 +247,43 @@ function colorModeFromFlags(multiColor, useGradient) {
  * Show/hide the relevant color sub-controls based on the current color-mode.
  */
 function updateColorModeUI() {
-  const mode = document.getElementById('color-mode')?.value || 'palette';
-  const showSingle   = mode === 'single';
-  const showPalette  = mode === 'palette' || mode === 'palette-fade';
-  const showGradStart = mode === 'gradient';
-  const showGradEnd  = mode === 'gradient' || mode === 'palette-fade';
+  const toggle = document.querySelector('#color-mode-toggle .seg-btn.active');
+  const isPalette = toggle ? toggle.dataset.mode === 'palette' : true;
+  const isFade = document.getElementById('fade-to-toggle')?.checked ?? false;
 
-  document.getElementById('color-picker-wrap').classList.toggle('hidden', !showSingle);
-  document.getElementById('palette-area').classList.toggle('hidden', !showPalette);
-  document.getElementById('gradient-start-row').classList.toggle('hidden', !showGradStart);
-  document.getElementById('gradient-end-row').classList.toggle('hidden', !showGradEnd);
-  // Sync hidden checkboxes so pushConfig reads correct values
-  const flags = getColorModeFlags();
+  // Show/hide sections
+  document.getElementById('single-color-row').classList.toggle('hidden', isPalette);
+  document.getElementById('palette-area').classList.toggle('hidden', !isPalette);
+
+  // Fade-to end color picker enabled state
+  const endPicker = document.getElementById('gradient-end');
+  if (endPicker) endPicker.classList.toggle('disabled', !isFade);
+  document.getElementById('gradient-preview').classList.toggle('hidden', !isFade);
+
+  // Derive color-mode value for backward compat
+  let mode;
+  if (isPalette && isFade) mode = 'palette-fade';
+  else if (isPalette) mode = 'palette';
+  else if (isFade) mode = 'gradient';
+  else mode = 'single';
+
+  const cmEl = document.getElementById('color-mode');
+  if (cmEl) cmEl.value = mode;
+
+  // Sync hidden checkboxes
   const mcEl = document.getElementById('multi-color');
   const ugEl = document.getElementById('use-gradient');
-  if (mcEl) mcEl.checked = flags.multiColor;
-  if (ugEl) ugEl.checked = flags.useGradient;
+  if (mcEl) mcEl.checked = isPalette;
+  if (ugEl) ugEl.checked = isFade;
+
+  // In single mode, sync gradient-start with color-picker
+  if (!isPalette) {
+    const cp = document.getElementById('color-picker');
+    const gs = document.getElementById('gradient-start');
+    if (cp && gs) gs.value = cp.value;
+  }
+
+  updateGradientPreview();
 }
 
 // ── Death params visibility ────────────────────────────────────────────────
@@ -262,37 +391,80 @@ function initUI() {
     btn.addEventListener('click', () => applyPalette(btn.dataset.preset));
   });
 
+
+
   // ── Single colour picker ──────────────────────────────────────────────
+
+  // ── Color mode dropdown ───────────────────────────────────────────────
   document.getElementById('color-picker').addEventListener('input', e => {
-    const mode = document.getElementById('color-mode')?.value || 'palette';
-    if ((mode === 'palette' || mode === 'palette-fade') &&
-        _activePaletteIdx >= 0 && _activePaletteIdx < activePalette.length) {
-      // Update the selected palette slot in-place
-      activePalette[_activePaletteIdx] = e.target.value;
-      buildPaletteGrid(activePalette);
-      // Re-apply .active to the edited swatch
-      const swatches = document.querySelectorAll('#palette-grid .pal-swatch');
-      if (swatches[_activePaletteIdx]) swatches[_activePaletteIdx].classList.add('active');
-    }
-    setSingleColor(e.target.value);
+    applyColorValueToTarget('color-picker', e.target.value);
+    pushConfig();
+    updateGradientPreview();
+  });
+
+  document.getElementById('bg-color').addEventListener('input', e => {
+    applyColorValueToTarget('bg-color', e.target.value);
     pushConfig();
   });
 
-  // ── Color mode dropdown ───────────────────────────────────────────────
-  const colorModeEl = document.getElementById('color-mode');
-  colorModeEl.addEventListener('change', () => {
+  document.getElementById('shadow-color').addEventListener('input', e => {
+    applyColorValueToTarget('shadow-color', e.target.value);
+    pushConfig();
+  });
+
+  document.getElementById('gradient-start').addEventListener('input', e => {
+    applyColorValueToTarget('gradient-start', e.target.value);
+    pushConfig();
+  });
+
+  document.getElementById('gradient-end').addEventListener('input', e => {
+    applyColorValueToTarget('gradient-end', e.target.value);
+    pushConfig();
+  });
+
+  // ── Color mode segmented toggle ──────────────────────────────────────
+  document.querySelectorAll('#color-mode-toggle .seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#color-mode-toggle .seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      updateColorModeUI();
+      pushConfig();
+    });
+  });
+
+  // ── Fade-to checkbox ─────────────────────────────────────────────────
+  document.getElementById('fade-to-toggle').addEventListener('change', () => {
     updateColorModeUI();
     pushConfig();
   });
+  document.getElementById('gradient-end').addEventListener('input', () => {
+    updateGradientPreview();
+    pushConfig();
+  });
+
+  // ── Palette add/remove buttons ───────────────────────────────────────
+  document.getElementById('pal-add').addEventListener('click', () => {
+    const randomHex = '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+    activePalette.push(randomHex);
+    _activePaletteIdx = activePalette.length - 1;
+    buildPaletteGrid(activePalette, _activePaletteIdx);
+    pushConfig();
+    updateGradientPreview();
+  });
+  document.getElementById('pal-remove').addEventListener('click', () => {
+    if (activePalette.length <= 1) return; // Keep at least 1
+    activePalette.splice(_activePaletteIdx, 1);
+    _activePaletteIdx = Math.min(_activePaletteIdx, activePalette.length - 1);
+    buildPaletteGrid(activePalette, _activePaletteIdx);
+    setSingleColor(activePalette[_activePaletteIdx]);
+    pushConfig();
+    updateGradientPreview();
+  });
+
   // Initial visibility sync
   updateColorModeUI();
 
   // ── BG colour ─────────────────────────────────────────────────────────
-  document.getElementById('bg-color').addEventListener('input', e => {
-    setRendererBg(e.target.value);
-    clearCanvas();
-    pushConfig();
-  });
 
   // ── Trail alpha ───────────────────────────────────────────────────────
   document.getElementById('trail-alpha').addEventListener('input', e => {
@@ -312,14 +484,8 @@ function initUI() {
     setEffectStrength(parseFloat(e.target.value));
     pushConfig();
   });
-  document.getElementById('shadow-color').addEventListener('input', e => {
-    setShadowColor(e.target.value);
-    pushConfig();
-  });
 
   // ── Gradient pickers (always wired; visibility controlled by color-mode) ──
-  document.getElementById('gradient-start').addEventListener('input', pushConfig);
-  document.getElementById('gradient-end').addEventListener('input',   pushConfig);
 
   updateEffectControls();
 
@@ -394,11 +560,7 @@ function initUI() {
   document.querySelectorAll('.bg-swatch').forEach(swatch => {
     swatch.addEventListener('click', () => {
       const color = swatch.dataset.color;
-      document.getElementById('bg-color').value = color;
-      setRendererBg(color);
-      clearCanvas();
-      document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
-      swatch.classList.add('active');
+      applyColorValueToTarget('bg-color', color);
       pushConfig();
     });
   });
@@ -442,13 +604,14 @@ function initUI() {
       return;
     }
 
+    if (e.code === 'Escape') { e.preventDefault(); closeOverlays(); return; }
+
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
     if (e.code === 'Space')  { e.preventDefault(); document.getElementById(isRunning ? 'btn-pause' : 'btn-play').click(); }
     if (e.code === 'KeyR')   document.getElementById('btn-reset').click();
     if (e.code === 'KeyB')   document.getElementById('btn-burst')?.click();
     if (e.code === 'KeyF')   toggleFullscreen();
     if (e.key  === '?')      { e.preventDefault(); shortcutsModal.classList.contains('hidden') ? openShortcuts() : closeShortcuts(); }
-    if (e.code === 'Escape') { e.preventDefault(); closeOverlays(); }
     if (e.code === 'KeyE')   triggerExport();
     if (e.code === 'KeyG')   triggerGifExport();
     if (e.code === 'KeyZ')   randomizeSettings();
@@ -555,8 +718,7 @@ function applyEffectPreset(name) {
   updateEffectControls();
 
   // Sync color-mode dropdown from preset flags, then update visibility
-  set('color-mode', colorModeFromFlags(!!c.multiColor, !!c.useGradient));
-  updateColorModeUI();
+  syncColorUIFromMode(colorModeFromFlags(!!c.multiColor, !!c.useGradient));
 
   // Apply palette
   if (palette && PALETTES[palette]) applyPalette(palette);
@@ -801,9 +963,7 @@ function applySnapshot(snap) {
 
   // Restore color-mode dropdown from snapshot flags
   const restoredMode = snap.colorMode || colorModeFromFlags(!!snap.multiColor, !!snap.useGradient);
-  const cmEl = document.getElementById('color-mode');
-  if (cmEl) cmEl.value = restoredMode;
-  updateColorModeUI();
+  syncColorUIFromMode(restoredMode);
   updateEffectControls();
 
   if (snap.palette && snap.palette.length) {
@@ -1001,14 +1161,7 @@ function randomizeSettings() {
   // Randomize color mode (weighted: palette most common, gradient and palette-fade less so)
   const colorModes = ['single', 'palette', 'palette', 'palette', 'gradient', 'palette-fade'];
   const chosenMode = pick(colorModes);
-  set('color-mode', chosenMode);
-  if (chosenMode === 'gradient' || chosenMode === 'palette-fade') {
-    const randomHex = () => '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
-    set('gradient-start', randomHex());
-    set('gradient-end',   randomHex());
-  }
-  updateColorModeUI();
-  updateEffectControls();
+  syncColorUIFromMode(chosenMode);
 
   set('speed-variance', rng(0, 0.6, 0.05));
   set('velocity-decay', rng(0, 0.5, 0.05));

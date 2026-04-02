@@ -398,59 +398,65 @@
         <section class="ctrl-group">
           <h3 class="group-label">Color</h3>
 
-          <!-- Color source dropdown — replaces confusing multi-color + gradient checkboxes -->
-          <label class="ctrl-row">
-            <span>Source</span>
-            <select id="color-mode">
-              <option value="single">Single color</option>
-              <option value="palette" selected>Palette</option>
-              <option value="gradient">Gradient</option>
-              <option value="palette-fade">Palette → Fade</option>
-            </select>
-          </label>
-
-          <!-- Single color picker — visible in "single" mode only -->
-          <div id="color-picker-wrap" class="hidden">
-            <input type="color" id="color-picker" value="#ffff00" />
-          </div>
-
-          <!-- Palette grid — visible in "palette" and "palette-fade" modes -->
-          <div id="palette-area">
-            <div id="palette-grid"></div>
-            <div id="palette-presets">
-              <span class="preset-label">Palettes:</span>
-              <button class="preset-btn" data-preset="fire">🔥 Fire</button>
-              <button class="preset-btn" data-preset="ice">🧊 Ice</button>
-              <button class="preset-btn" data-preset="magic">✨ Magic</button>
-              <button class="preset-btn" data-preset="nature">🌿 Nature</button>
-              <button class="preset-btn" data-preset="mono">⬜ Mono</button>
-              <button class="preset-btn" data-preset="sunset">🌅 Sunset</button>
-              <button class="preset-btn" data-preset="ocean">🌊 Ocean</button>
-              <button class="preset-btn" data-preset="lava">🌋 Lava</button>
-              <button class="preset-btn" data-preset="neon">💡 Neon</button>
+          <!-- Mode toggle: Single vs Palette -->
+          <div class="ctrl-row">
+            <span>Mode</span>
+            <div id="color-mode-toggle" class="seg-toggle">
+              <button type="button" data-mode="single" class="seg-btn">Single</button>
+              <button type="button" data-mode="palette" class="seg-btn active">Palette</button>
             </div>
           </div>
 
-          <!-- Gradient start — visible in "gradient" mode only -->
-          <div id="gradient-start-row" class="hidden">
+          <!-- Single color — inline ctrl-row, visible in single mode -->
+          <div id="single-color-row" class="hidden">
             <label class="ctrl-row">
-              <span>Start color</span>
-              <input type="color" id="gradient-start" value="#ffff00" />
+              <span>Color</span>
+              <input type="color" id="color-picker" value="#ffff00" />
             </label>
           </div>
 
-          <!-- Gradient end — visible in "gradient" and "palette-fade" modes -->
-          <div id="gradient-end-row" class="hidden">
-            <label class="ctrl-row">
-              <span>Fade to</span>
+          <!-- Palette — visible in palette mode -->
+          <div id="palette-area">
+            <div id="palette-grid"></div>
+            <div id="palette-tools">
+              <button type="button" id="pal-add" title="Add color to palette">+</button>
+              <button type="button" id="pal-remove" title="Remove selected color">−</button>
+            </div>
+            <div id="palette-presets">
+              <button class="preset-btn" data-preset="fire">Fire</button>
+              <button class="preset-btn" data-preset="ice">Ice</button>
+              <button class="preset-btn" data-preset="magic">Magic</button>
+              <button class="preset-btn" data-preset="nature">Nature</button>
+              <button class="preset-btn" data-preset="mono">Mono</button>
+              <button class="preset-btn" data-preset="sunset">Sunset</button>
+              <button class="preset-btn" data-preset="ocean">Ocean</button>
+              <button class="preset-btn" data-preset="lava">Lava</button>
+              <button class="preset-btn" data-preset="neon">Neon</button>
+            </div>
+          </div>
+
+          <!-- Fade-to: orthogonal toggle, works with both single and palette -->
+          <div class="ctrl-row" id="fade-to-row">
+            <span>Fade to</span>
+            <div class="fade-to-ctrl">
+              <input type="checkbox" id="fade-to-toggle" />
               <input type="color" id="gradient-end" value="#ff0000" />
-            </label>
+            </div>
+          </div>
+          <div id="gradient-preview" class="hidden">
+            <div id="gradient-bar"></div>
           </div>
 
-
-          <!-- Hidden checkboxes kept for config serialization compatibility -->
+          <!-- Hidden compat elements -->
+          <select id="color-mode" style="display:none">
+            <option value="single">Single color</option>
+            <option value="palette" selected>Palette</option>
+            <option value="gradient">Gradient</option>
+            <option value="palette-fade">Palette → Fade</option>
+          </select>
           <input type="checkbox" id="multi-color" style="display:none" />
           <input type="checkbox" id="use-gradient" style="display:none" />
+          <input type="color" id="gradient-start" value="#ffff00" style="display:none" />
         </section>
 
         <!-- CANVAS SETTINGS -->
