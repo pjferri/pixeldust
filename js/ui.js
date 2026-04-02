@@ -159,19 +159,18 @@ function updateGradientPreview() {
   const toggle = document.querySelector('#color-mode-toggle .seg-btn.active');
   const isPalette = toggle ? toggle.dataset.mode === 'palette' : true;
 
-  const endColor = document.getElementById('gradient-end')?.value || '#ff0000';
+  const stops = getGradientStops();
 
   if (isPalette && activePalette.length) {
-    // Show palette colors fading to end
-    const stops = activePalette.map((c, i) => {
-      const pct = (i / Math.max(1, activePalette.length - 1)) * 50;
-      return c + ' ' + pct + '%';
-    });
-    stops.push(endColor + ' 100%');
-    bar.style.background = 'linear-gradient(to right, ' + stops.join(', ') + ')';
+    // Show first palette color fading through stops
+    const allColors = [activePalette[0], ...stops];
+    const cssStops = allColors.map((c, i) => c + ' ' + Math.round(i / (allColors.length - 1) * 100) + '%');
+    bar.style.background = 'linear-gradient(to right, ' + cssStops.join(', ') + ')';
   } else {
     const startColor = document.getElementById('color-picker')?.value || '#ffff00';
-    bar.style.background = 'linear-gradient(to right, ' + startColor + ', ' + endColor + ')';
+    const allColors = [startColor, ...stops];
+    const cssStops = allColors.map((c, i) => c + ' ' + Math.round(i / (allColors.length - 1) * 100) + '%');
+    bar.style.background = 'linear-gradient(to right, ' + cssStops.join(', ') + ')';
   }
 }
 
@@ -188,6 +187,8 @@ function syncColorUIFromMode(mode) {
   // Hidden select
   const cmEl = document.getElementById('color-mode');
   if (cmEl) cmEl.value = mode;
+  // Rebuild gradient stops UI if fade is on
+  if (isFade) buildGradientStops(gradientStops);
   updateColorModeUI();
 }
 
@@ -217,7 +218,28 @@ function applyColorValueToTarget(targetId, rawHex) {
   }
 }
 
-// updateColorReadout removed — color readout panel removed from UI
+// ── Gradient stops grid ────────────────────────────────────────────────────
+
+function buildGradientStops(stops) {
+  const container = document.getElementById('gradient-stops');
+  if (!container) return;
+  container.innerHTML = '';
+  stops.forEach((hex, idx) => {
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.className = 'grad-stop';
+    input.value = hex;
+    input.addEventListener('input', (e) => {
+      gradientStops[idx] = e.target.value;
+      setGradientStops(gradientStops);
+      // Sync first stop to hidden gradient-end for compat
+      document.getElementById('gradient-end').value = gradientStops[0];
+      updateGradientPreview();
+      pushConfig();
+    });
+    container.appendChild(input);
+  });
+}
 
 // ── Color mode ─────────────────────────────────────────────────────────────
 // Maps the "Color source" dropdown to the underlying multiColor + useGradient flags.
@@ -255,10 +277,8 @@ function updateColorModeUI() {
   document.getElementById('single-color-row').classList.toggle('hidden', isPalette);
   document.getElementById('palette-area').classList.toggle('hidden', !isPalette);
 
-  // Fade-to end color picker enabled state
-  const endPicker = document.getElementById('gradient-end');
-  if (endPicker) endPicker.classList.toggle('disabled', !isFade);
-  document.getElementById('gradient-preview').classList.toggle('hidden', !isFade);
+  // Fade-to sub-panel
+  document.getElementById('fade-to-panel').classList.toggle('hidden', !isFade);
 
   // Derive color-mode value for backward compat
   let mode;
@@ -281,6 +301,11 @@ function updateColorModeUI() {
     const cp = document.getElementById('color-picker');
     const gs = document.getElementById('gradient-start');
     if (cp && gs) gs.value = cp.value;
+  }
+
+  // Sync gradient-end from first stop for compat
+  if (gradientStops.length) {
+    document.getElementById('gradient-end').value = gradientStops[0];
   }
 
   updateGradientPreview();
@@ -432,12 +457,31 @@ function initUI() {
     });
   });
 
-  // ── Fade-to checkbox ─────────────────────────────────────────────────
+  // ── Fade-to toggle ───────────────────────────────────────────────────
   document.getElementById('fade-to-toggle').addEventListener('change', () => {
     updateColorModeUI();
+    if (document.getElementById('fade-to-toggle').checked) {
+      buildGradientStops(gradientStops);
+    }
     pushConfig();
   });
-  document.getElementById('gradient-end').addEventListener('input', () => {
+
+  // ── Gradient stop add/remove ─────────────────────────────────────────
+  document.getElementById('grad-add').addEventListener('click', () => {
+    const randomHex = '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+    gradientStops.push(randomHex);
+    setGradientStops(gradientStops);
+    buildGradientStops(gradientStops);
+    document.getElementById('gradient-end').value = gradientStops[0];
+    updateGradientPreview();
+    pushConfig();
+  });
+  document.getElementById('grad-remove').addEventListener('click', () => {
+    if (gradientStops.length <= 1) return;
+    gradientStops.pop();
+    setGradientStops(gradientStops);
+    buildGradientStops(gradientStops);
+    document.getElementById('gradient-end').value = gradientStops[0];
     updateGradientPreview();
     pushConfig();
   });
@@ -463,6 +507,7 @@ function initUI() {
 
   // Initial visibility sync
   updateColorModeUI();
+  buildGradientStops(gradientStops);
 
   // ── BG colour ─────────────────────────────────────────────────────────
 
@@ -705,6 +750,13 @@ function applyEffectPreset(name) {
   set('gradient-start', c.gradientStart || '#ffff00');
   set('gradient-end',   c.gradientEnd   || '#ff0000');
 
+  // Restore gradient stops from preset (or derive from gradientEnd)
+  if (c.gradientStops && c.gradientStops.length) {
+    setGradientStops(c.gradientStops);
+  } else {
+    setGradientStops([c.gradientEnd || '#ff0000']);
+  }
+
   set('speed-variance',  c.speedVariance ?? 0);
   set('velocity-decay',  c.velocityDecay ?? 0);
   set('death-count',     c.deathCount ?? 0);
@@ -831,6 +883,7 @@ function pushConfig() {
     useGradient:   getColorModeFlags().useGradient,
     gradientStart: v('gradient-start'),
     gradientEnd:   v('gradient-end'),
+    gradientStops: [...getGradientStops()],
     loop:          b('loop-toggle'),
     bgColor:       v('bg-color'),
     trailAlpha:    n('trail-alpha'),
@@ -899,7 +952,7 @@ function getFullSnapshot() {
     multiColor:    getColorModeFlags().multiColor,
     useGradient:   getColorModeFlags().useGradient,
     gradientStart: v('gradient-start'),
-    gradientEnd:   v('gradient-end'),
+    gradientEnd:   gradientStops[0] || v('gradient-end'),
     loop:          b('loop-toggle'),
     bounce:        b('bounce'),
     // Save emitter position as canvas-relative fractions so it round-trips
@@ -958,6 +1011,13 @@ function applySnapshot(snap) {
   set('trail-alpha',    snap.trailAlpha);
   set('gradient-start', snap.gradientStart);
   set('gradient-end',   snap.gradientEnd);
+
+  // Restore gradient stops
+  if (snap.gradientStops && snap.gradientStops.length) {
+    setGradientStops(snap.gradientStops);
+  } else if (snap.gradientEnd) {
+    setGradientStops([snap.gradientEnd]);
+  }
 
   setCheck('loop-toggle',  snap.loop);
 
@@ -1162,6 +1222,14 @@ function randomizeSettings() {
   const colorModes = ['single', 'palette', 'palette', 'palette', 'gradient', 'palette-fade'];
   const chosenMode = pick(colorModes);
   syncColorUIFromMode(chosenMode);
+
+  // Randomize gradient stops
+  const randomHex = () => '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+  const numStops = Math.random() < 0.3 ? 2 : 1; // 30% chance of multi-stop
+  const newStops = [];
+  for (let s = 0; s < numStops; s++) newStops.push(randomHex());
+  setGradientStops(newStops);
+  set('gradient-end', newStops[0]);
 
   set('speed-variance', rng(0, 0.6, 0.05));
   set('velocity-decay', rng(0, 0.5, 0.05));

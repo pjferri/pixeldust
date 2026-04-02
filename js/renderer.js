@@ -113,9 +113,22 @@ function drawParticle(ctx, p) {
   let drawB = p.b;
   if (p.useGradient) {
     const t = p.life / p.maxLife;
-    drawR = Math.round(p.r + (p.er - p.r) * t);
-    drawG = Math.round(p.g + (p.eg - p.g) * t);
-    drawB = Math.round(p.b + (p.eb - p.b) * t);
+    const stops = getGradientStopsRgb();
+    const n = stops.length;  // number of destination stops
+    // Segments: [start→stop0, stop0→stop1, ..., stopN-2→stopN-1]
+    const segT = t * n;
+    const segIdx = Math.min(Math.floor(segT), n - 1);
+    const localT = segT - segIdx;
+    let fR, fG, fB;
+    if (segIdx === 0) {
+      fR = p.r; fG = p.g; fB = p.b;
+    } else {
+      fR = stops[segIdx - 1].r; fG = stops[segIdx - 1].g; fB = stops[segIdx - 1].b;
+    }
+    const to = stops[segIdx];
+    drawR = Math.round(fR + (to.r - fR) * localT);
+    drawG = Math.round(fG + (to.g - fG) * localT);
+    drawB = Math.round(fB + (to.b - fB) * localT);
   }
 
   const color = `rgb(${drawR},${drawG},${drawB})`;

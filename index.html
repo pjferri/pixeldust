@@ -435,19 +435,24 @@
             </div>
           </div>
 
-          <!-- Fade-to: orthogonal toggle, works with both single and palette -->
+          <!-- Fade-to: toggle + expandable sub-panel -->
           <div class="ctrl-row" id="fade-to-row">
             <span>Fade to</span>
-            <div class="fade-to-ctrl">
-              <input type="checkbox" id="fade-to-toggle" />
-              <input type="color" id="gradient-end" value="#ff0000" />
-            </div>
+            <input type="checkbox" id="fade-to-toggle" class="toggle" />
           </div>
-          <div id="gradient-preview" class="hidden">
-            <div id="gradient-bar"></div>
+          <div id="fade-to-panel" class="hidden">
+            <div id="gradient-stops"></div>
+            <div id="gradient-tools">
+              <button type="button" id="grad-add" title="Add gradient stop">+</button>
+              <button type="button" id="grad-remove" title="Remove last stop">−</button>
+            </div>
+            <div id="gradient-preview">
+              <div id="gradient-bar"></div>
+            </div>
           </div>
 
           <!-- Hidden compat elements -->
+          <input type="color" id="gradient-end" value="#ff0000" style="display:none" />
           <select id="color-mode" style="display:none">
             <option value="single">Single color</option>
             <option value="palette" selected>Palette</option>

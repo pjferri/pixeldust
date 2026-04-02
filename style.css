@@ -424,17 +424,37 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
 }
 
 /* ── Single color row ── */
+#single-color-row {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+#single-color-row .ctrl-row {
+  margin-bottom: 0;
+}
+
 #single-color-row input[type="color"] {
-  width: 40px;
-  height: 24px;
+  width: 28px;
+  height: 20px;
+}
+
+#palette-area {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 6px;
+  row-gap: 8px;
+  align-items: start;
 }
 
 /* ── Palette grid ── */
 #palette-grid {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 2px;
-  margin-bottom: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 0;
+  min-width: 0;
+  overflow: visible;
 }
 
 .pal-swatch {
@@ -443,8 +463,10 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
   appearance: none;
   border: 2px solid transparent;
   padding: 0;
-  width: 100%;
-  aspect-ratio: 1;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  box-sizing: border-box;
   cursor: pointer;
   border-radius: 2px;
   transition: transform 0.08s, border-color 0.08s;
@@ -454,22 +476,23 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
 .pal-swatch::-webkit-color-swatch { border: none; border-radius: 1px; }
 .pal-swatch::-moz-color-swatch { border: none; }
 .pal-swatch:hover {
-  transform: scale(1.18);
+  transform: scale(1.08);
   border-color: rgba(255,255,255,0.4);
-  z-index: 1;
+  z-index: 2;
   position: relative;
 }
 .pal-swatch.active {
   border-color: #fff;
-  transform: scale(1.1);
   box-shadow: 0 0 4px rgba(255,255,255,0.3);
 }
 
 /* ── Palette tools (+/−) ── */
 #palette-tools {
   display: flex;
+  flex-direction: column;
   gap: 4px;
-  margin-bottom: 8px;
+  margin-bottom: 0;
+  align-self: start;
 }
 #palette-tools button {
   width: 24px;
@@ -496,6 +519,10 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 3px;
+  grid-column: 1 / -1;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
 }
 
 .preset-btn {
@@ -523,25 +550,78 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
   border-color: var(--accent-hover);
 }
 
-/* ── Fade-to controls ── */
-.fade-to-ctrl {
+/* ── Fade-to sub-panel ── */
+#fade-to-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 6px;
+  row-gap: 6px;
+  align-items: start;
+  border-left: 2px solid rgba(255,255,255,0.10);
+  margin-left: 8px;
+  padding-left: 6px;
+  margin-bottom: 6px;
+}
+
+#gradient-stops {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.grad-stop {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-light);
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.1s, transform 0.08s;
+}
+.grad-stop::-webkit-color-swatch-wrapper { padding: 0; }
+.grad-stop::-webkit-color-swatch { border: none; border-radius: 2px; }
+.grad-stop::-moz-color-swatch { border: none; }
+.grad-stop:hover {
+  border-color: rgba(255,255,255,0.5);
+  transform: scale(1.1);
+}
+
+#gradient-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 0;
+  align-self: start;
+}
+#gradient-tools button {
+  width: 24px;
+  height: 20px;
+  font-size: 14px;
+  line-height: 1;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  transition: background 0.1s, color 0.1s;
 }
-.fade-to-ctrl input[type="color"] {
-  width: 32px;
-  height: 20px;
-  transition: opacity 0.15s;
-}
-.fade-to-ctrl input[type="color"].disabled {
-  opacity: 0.3;
-  pointer-events: none;
+#gradient-tools button:hover {
+  background: var(--accent);
+  color: #fff;
 }
 
 /* ── Gradient preview bar ── */
 #gradient-preview {
-  margin: 4px 0 6px;
+  grid-column: 1 / -1;
+  margin-top: 2px;
 }
 #gradient-bar {
   height: 8px;

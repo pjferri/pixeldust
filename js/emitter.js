@@ -30,6 +30,9 @@ let emitterJustMoved = false;
 let _loopTimer  = 0;
 let _pulseTimer = 0;
 
+/** Fractional spawn accumulator so sub-frame spawn rates work correctly. */
+let _spawnAccum = 0;
+
 /** Current emitter config. Updated by ui.js via setEmitterConfig(). */
 let cfg = {
   // Emitter
@@ -109,8 +112,9 @@ function getEmitterConfig() {
 /** Kill all particles (keeps pool array, reuses slots). */
 function resetParticles() {
   for (const p of particles) p.alive = false;
-  _loopTimer = 0;
+  _loopTimer  = 0;
   _pulseTimer = 0;
+  _spawnAccum = 0;
 }
 
 /** Number of currently-alive particles (for the HUD). */
@@ -189,12 +193,14 @@ function tickEmitter() {
   let toSpawn = 0;
 
   if (cfg.emitterMode === 'continuous') {
-    // Spawn at most `spawnRate/60` particles per frame, capped at max count
+    // Accumulate fractional particles per frame so any spawn rate works correctly,
+    // including rates well below 60 p/s (e.g. 5 p/s = one particle every 12 frames).
     if (live < cfg.count) {
-      toSpawn = Math.min(
-        cfg.count - live,
-        Math.max(1, Math.round(cfg.spawnRate / 60))
-      );
+      _spawnAccum += (cfg.spawnRate || 60) / 60;
+      toSpawn = Math.min(cfg.count - live, Math.floor(_spawnAccum));
+      _spawnAccum -= toSpawn;
+    } else {
+      _spawnAccum = 0; // drain accumulator when at capacity so it doesn't overflow
     }
   } else if (cfg.emitterMode === 'burst') {
     if (cfg.burstPending) {

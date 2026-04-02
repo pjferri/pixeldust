@@ -66,3 +66,20 @@ function hexToRgb(hex) {
   const v = parseInt(hex.replace('#', ''), 16);
   return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 };
 }
+
+// ── Gradient stops (fade-to destination colours) ──────────────────────────
+let gradientStops = ['#ff0000'];
+let gradientStopsRgb = [{ r: 255, g: 0, b: 0 }];
+
+function setGradientStops(stops) {
+  gradientStops = stops.length ? [...stops] : ['#ff0000'];
+  gradientStopsRgb = gradientStops.map(hexToRgb);
+}
+
+function getGradientStops() {
+  return gradientStops;
+}
+
+function getGradientStopsRgb() {
+  return gradientStopsRgb;
+}

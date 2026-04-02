@@ -16,7 +16,8 @@ function createLocalSimulator(emitCfg, frameSize) {
 
   const centerX = frameSize / 2;
   const centerY = frameSize / 2;
-  let loopTimer = 0;
+  let loopTimer  = 0;
+  let pulseTimer = 0;
 
   const trailAlpha  = Number.isFinite(emitCfg.trailAlpha) ? emitCfg.trailAlpha : 0.12;
   const bgHex       = emitCfg.bgColor || '#0c0c0e';
@@ -88,7 +89,9 @@ function createLocalSimulator(emitCfg, frameSize) {
   // ── Simulation ────────────────────────────────────────────────────────────
   function resetPool() {
     for (const particle of pool) particle.alive = false;
-    loopTimer = 0;
+    loopTimer  = 0;
+    pulseTimer = 0;
+    emitCfg._spawnAccum = 0;
   }
 
   function liveCountLocal() {
@@ -122,17 +125,25 @@ function createLocalSimulator(emitCfg, frameSize) {
     const live = liveCountLocal();
     let toSpawn = 0;
 
-    if (emitCfg.emitterMode === 'continuous' || emitCfg.emitterMode === 'trail') {
+    if (emitCfg.emitterMode === 'continuous') {
       if (live < emitCfg.count) {
-        toSpawn = Math.min(
-          emitCfg.count - live,
-          Math.max(1, Math.round((emitCfg.spawnRate || 60) / 60))
-        );
+        emitCfg._spawnAccum = (emitCfg._spawnAccum || 0) + (emitCfg.spawnRate || 60) / 60;
+        toSpawn = Math.min(emitCfg.count - live, Math.floor(emitCfg._spawnAccum));
+        emitCfg._spawnAccum -= toSpawn;
+      } else {
+        emitCfg._spawnAccum = 0;
       }
     } else if (emitCfg.emitterMode === 'burst') {
       if (emitCfg.burstPending) {
         toSpawn = emitCfg.count;
         emitCfg.burstPending = false;
+      }
+    } else if (emitCfg.emitterMode === 'pulse') {
+      pulseTimer++;
+      const pulseFrames = Math.max(10, Math.round((emitCfg.pulseInterval || 2) * 60));
+      if (pulseTimer >= pulseFrames) {
+        pulseTimer = 0;
+        toSpawn = emitCfg.count;
       }
     }
 
@@ -223,7 +234,14 @@ async function startExport(exportCfg, emitCfg) {
   if (simCfg.emitterMode === 'burst') simCfg.burstPending = true;
 
   const sim = createLocalSimulator(simCfg, frameSize);
-  const primeTicks = simCfg.emitterMode === 'burst' ? 0 : Math.round(simCfg.lifetime * 1.5);
+  // Prime so the simulation is in a steady state before we start capturing.
+  // Burst: no prime (fire is instant). Pulse: prime for exactly one interval
+  // so the first burst fires right as priming ends and particles are live from
+  // frame 0. Continuous: fill the pool (lifetime × 1.5 is enough).
+  const primeTicks =
+    simCfg.emitterMode === 'burst' ? 0 :
+    simCfg.emitterMode === 'pulse' ? Math.round((simCfg.pulseInterval || 2) * 60) :
+    Math.round(simCfg.lifetime * 1.5);
 
   statusEl.textContent = 'Priming simulation...';
   await yieldFrame();
@@ -282,16 +300,19 @@ async function startGifExport(gifCfg, emitCfg) {
     return;
   }
 
-  const { fps, duration } = gifCfg;
+  const { fps, duration, gifSize } = gifCfg;
   const totalFrames = Math.round(fps * duration);
   const delay       = Math.round(1000 / fps);
-  const frameSize   = 256;
+  const frameSize   = gifSize || 256;
 
   const simCfg = { ...emitCfg };
   if (simCfg.emitterMode === 'burst') simCfg.burstPending = true;
 
   const sim = createLocalSimulator(simCfg, frameSize);
-  const primeTicks = simCfg.emitterMode === 'burst' ? 0 : Math.round(simCfg.lifetime * 1.5);
+  const primeTicks =
+    simCfg.emitterMode === 'burst' ? 0 :
+    simCfg.emitterMode === 'pulse' ? Math.round((simCfg.pulseInterval || 2) * 60) :
+    Math.round(simCfg.lifetime * 1.5);
 
   statusEl.textContent = 'Priming simulation...';
   await yieldFrame();
@@ -334,9 +355,9 @@ async function startGifExport(gifCfg, emitCfg) {
     const url = URL.createObjectURL(blob);
     previewImg.src = url;
     dlLink.href = url;
-    dlLink.download = `pixeldust_${fps}fps_${duration}s.gif`;
+    dlLink.download = `pixeldust_${frameSize}px_${fps}fps_${duration}s.gif`;
     progressBar.style.width = '100%';
-    statusEl.textContent = `Done! ${totalFrames} frames @ ${fps} fps`;
+    statusEl.textContent = `Done! ${totalFrames} frames @ ${fps} fps (${frameSize}×${frameSize})`;
     resultEl.classList.remove('hidden');
   });
 
