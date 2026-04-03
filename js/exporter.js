@@ -14,8 +14,11 @@ function createLocalSimulator(emitCfg, frameSize) {
   const frameCtx = frameCanvas.getContext('2d');
   frameCtx.imageSmoothingEnabled = false;
 
-  const centerX = frameSize / 2;
-  const centerY = frameSize / 2;
+  // Emitter position: use provided proportional position, or default to center
+  const emitPX = Number.isFinite(emitCfg._emitterPX) ? emitCfg._emitterPX : 0.5;
+  const emitPY = Number.isFinite(emitCfg._emitterPY) ? emitCfg._emitterPY : 0.5;
+  const centerX = Math.round(frameSize * emitPX);
+  const centerY = Math.round(frameSize * emitPY);
   let loopTimer  = 0;
   let pulseTimer = 0;
 
@@ -309,14 +312,24 @@ async function captureFrames(renderCfg, emitCfg) {
 
   const sim = createLocalSimulator(simCfg, frameSize);
 
-  // Prime simulation to steady state
-  const primeTicks =
-    simCfg.emitterMode === 'burst' ? 0 :
-    simCfg.emitterMode === 'pulse' ? Math.round((simCfg.pulseInterval || 2) * 60) :
-    Math.round(simCfg.lifetime * 1.5);
+  // Start from a clean state (equivalent to hitting Reset)
+  // For continuous mode: prime just enough to fill the pool so the first
+  // frame isn't empty. For burst: fire immediately. For pulse: fire one burst.
+  sim.resetPool();
+  if (simCfg.emitterMode === 'burst') {
+    simCfg.burstPending = true;
+  }
 
   statusEl.textContent = 'Priming simulation\u2026';
   await yieldFrame();
+
+  // Prime: run enough ticks to get a visually interesting first frame
+  // but NOT a full steady-state prime (user wants to see the animation build up)
+  const primeTicks =
+    simCfg.emitterMode === 'burst' ? 0 :
+    simCfg.emitterMode === 'pulse' ? 0 :  // start fresh, first pulse fires at frame 0
+    Math.min(Math.round(simCfg.lifetime * 0.3), 30);  // just a few ticks so pool isn't empty
+
   for (let tick = 0; tick < primeTicks; tick++) sim.tick();
 
   // Capture frames
@@ -466,11 +479,14 @@ function previewLoop(now) {
 
 function updateExportFormatUI() {
   const fmt = document.getElementById('render-export-format').value;
-  const sheetOpts = document.getElementById('render-sheet-opts');
-  const gifOpts   = document.getElementById('render-gif-opts');
+  document.getElementById('render-sheet-opts').classList.toggle('hidden', fmt !== 'spritesheet');
+  document.getElementById('render-gif-opts').classList.toggle('hidden', fmt !== 'gif');
+  document.getElementById('render-frame-opts').classList.toggle('hidden', fmt !== 'frame');
+  document.getElementById('render-mp4-opts').classList.toggle('hidden', fmt !== 'mp4');
 
-  sheetOpts.classList.toggle('hidden', fmt !== 'spritesheet');
-  gifOpts.classList.toggle('hidden', fmt !== 'gif');
+  // Hide spritesheet preview when switching away from spritesheet
+  const sheetPreview = document.getElementById('spritesheet-preview-wrap');
+  if (fmt !== 'spritesheet') sheetPreview.classList.add('hidden');
 }
 
 /** Export: PNG Spritesheet */
@@ -509,6 +525,13 @@ async function exportSpritesheet() {
   }
 
   const dataUrl = exportCanvas.toDataURL('image/png');
+
+  // Show preview
+  const previewWrap = document.getElementById('spritesheet-preview-wrap');
+  const previewImg  = document.getElementById('spritesheet-preview-img');
+  previewImg.src = dataUrl;
+  previewWrap.classList.remove('hidden');
+
   triggerDownload(dataUrl, `pixeldust_sprite_${frameSize}x${frameSize}_${frames.length}f.png`);
 }
 
@@ -599,73 +622,106 @@ async function exportGif() {
   });
 }
 
-/** Export: PNG Frames as ZIP */
-async function exportFramesZip() {
+/** Export: Single Frame as PNG */
+async function exportSingleFrame() {
+  const frameSize = _capturedSize;
+  const idx = _previewFrame;
+  
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width  = frameSize;
+  tempCanvas.height = frameSize;
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.putImageData(_capturedFrames[idx], 0, 0);
+
+  const dataUrl = tempCanvas.toDataURL('image/png');
+  triggerDownload(dataUrl, `pixeldust_frame${idx}_${frameSize}px.png`);
+}
+
+/** Export: MP4 Video using MediaRecorder + canvas */
+async function exportMP4() {
   const encodeProgress = document.getElementById('render-encode-progress');
   const encodeBar      = document.getElementById('render-encode-bar');
   const encodeStatus   = document.getElementById('render-encode-status');
 
   encodeProgress.classList.remove('hidden');
   encodeBar.style.width = '0%';
-  encodeStatus.textContent = 'Packaging PNG frames\u2026';
+  encodeStatus.textContent = 'Encoding MP4\u2026';
 
   const frameSize = _capturedSize;
+  const fps       = _capturedFps;
+
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width  = frameSize;
   tempCanvas.height = frameSize;
   const tempCtx = tempCanvas.getContext('2d');
 
-  // We'll create individual PNGs and pack into a simple combined download
-  // Since we don't have JSZip, we'll download frames as individual PNGs
-  // bundled into a single spritesheet-style download or one-by-one
-  // Actually, let's just do individual downloads with a frame number
-  // For a better UX: create a single vertical strip PNG
-  const stripW = frameSize;
-  const stripH = frameSize * _capturedFrames.length;
-
-  // If strip would be too large (>16k pixels), fall back to grid layout
-  const maxDim = 16384;
-  let exportCanvas, ctx, cols, rows;
-
-  if (stripH <= maxDim) {
-    cols = 1;
-    rows = _capturedFrames.length;
-  } else {
-    cols = Math.ceil(Math.sqrt(_capturedFrames.length));
-    rows = Math.ceil(_capturedFrames.length / cols);
+  // Use MediaRecorder to create a webm/mp4
+  const stream = tempCanvas.captureStream(0); // 0 = manual frame control
+  const track = stream.getVideoTracks()[0];
+  
+  // Try mp4 first, fall back to webm
+  let mimeType = 'video/webm;codecs=vp9';
+  let fileExt = 'webm';
+  if (MediaRecorder.isTypeSupported('video/mp4')) {
+    mimeType = 'video/mp4';
+    fileExt = 'mp4';
+  } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+    mimeType = 'video/webm;codecs=vp9';
+    fileExt = 'webm';
+  } else if (MediaRecorder.isTypeSupported('video/webm')) {
+    mimeType = 'video/webm';
+    fileExt = 'webm';
   }
 
-  exportCanvas = document.getElementById('export-canvas');
-  exportCanvas.width  = cols * frameSize;
-  exportCanvas.height = rows * frameSize;
-  ctx = exportCanvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
+  const recorder = new MediaRecorder(stream, {
+    mimeType,
+    videoBitsPerSecond: 4000000,
+  });
 
-  if (_capturedTransparent) {
-    ctx.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
-  } else {
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-  }
+  const chunks = [];
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
-  for (let i = 0; i < _capturedFrames.length; i++) {
-    tempCtx.putImageData(_capturedFrames[i], 0, 0);
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    ctx.drawImage(tempCanvas, col * frameSize, row * frameSize);
+  return new Promise(resolve => {
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      encodeBar.style.width = '100%';
+      encodeStatus.textContent = `Video encoded! ${_capturedFrames.length} frames @ ${fps} fps`;
 
-    const pct = Math.round(((i + 1) / _capturedFrames.length) * 100);
-    encodeBar.style.width = pct + '%';
+      triggerDownload(url, `pixeldust_${frameSize}px_${fps}fps.${fileExt}`);
 
-    if (i % 8 === 0) await yieldFrame();
-  }
+      setTimeout(() => {
+        encodeProgress.classList.add('hidden');
+        URL.revokeObjectURL(url);
+      }, 2000);
+      resolve();
+    };
 
-  const dataUrl = exportCanvas.toDataURL('image/png');
-  triggerDownload(dataUrl, `pixeldust_frames_${frameSize}px_${_capturedFrames.length}f.png`);
+    recorder.start();
 
-  encodeBar.style.width = '100%';
-  encodeStatus.textContent = `Exported ${_capturedFrames.length} frames as PNG strip`;
-  setTimeout(() => encodeProgress.classList.add('hidden'), 2000);
+    // Feed frames at correct timing
+    const frameDelay = 1000 / fps;
+    let frameIdx = 0;
+
+    function feedNextFrame() {
+      if (frameIdx >= _capturedFrames.length) {
+        recorder.stop();
+        return;
+      }
+
+      tempCtx.putImageData(_capturedFrames[frameIdx], 0, 0);
+      // Request a frame from the captureStream
+      if (track.requestFrame) track.requestFrame();
+
+      const pct = Math.round(((frameIdx + 1) / _capturedFrames.length) * 100);
+      encodeBar.style.width = pct + '%';
+
+      frameIdx++;
+      setTimeout(feedNextFrame, frameDelay);
+    }
+
+    feedNextFrame();
+  });
 }
 
 
@@ -693,6 +749,7 @@ function runExport() {
   switch (fmt) {
     case 'spritesheet': return exportSpritesheet();
     case 'gif':         return exportGif();
-    case 'frames':      return exportFramesZip();
+    case 'mp4':         return exportMP4();
+    case 'frame':       return exportSingleFrame();
   }
 }

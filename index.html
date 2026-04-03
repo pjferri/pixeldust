@@ -15,7 +15,7 @@
       <div id="logo">
         <span class="logo-px">PX</span>
         <span class="logo-name">PixelDust</span>
-        <span class="logo-version">v0.1.8</span>
+        <span class="logo-version">v0.1.9</span>
       </div>
       <div id="topbar-controls">
         <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
@@ -451,6 +451,12 @@
               <button class="preset-btn" data-preset="mono">Mono</button>
               <button class="preset-btn" data-preset="sunset">Sunset</button>
               <button class="preset-btn" data-preset="ocean">Ocean</button>
+              <button class="preset-btn" data-preset="aurora">Aurora</button>
+              <button class="preset-btn" data-preset="candy">Candy</button>
+              <button class="preset-btn" data-preset="storm">Storm</button>
+              <button class="preset-btn" data-preset="forest">Forest</button>
+              <button class="preset-btn" data-preset="retro">Retro</button>
+              <button class="preset-btn" data-preset="royal">Royal</button>
               <button class="preset-btn" data-preset="lava">Lava</button>
               <button class="preset-btn" data-preset="neon">Neon</button>
             </div>
@@ -483,6 +489,7 @@
           <input type="checkbox" id="multi-color" style="display:none" />
           <input type="checkbox" id="use-gradient" style="display:none" />
           <input type="color" id="gradient-start" value="#ffff00" style="display:none" />
+          <input type="checkbox" id="loop-toggle" style="display:none" />
         </section>
 
         <!-- CANVAS SETTINGS -->
@@ -505,22 +512,22 @@
             </div>
           </div>
 
-          <label class="ctrl-row" title="Simulation speed — how fast the preview runs (does not affect exported GIF frame timing)">
-            <span>Sim speed</span>
+          <label class="ctrl-row" title="How fast the live preview runs — slows down or speeds up the animation on screen. Does not affect rendered exports.">
+            <span>Preview speed</span>
             <div class="slider-pair">
               <input type="range" id="speed-mult" min="0.1" max="3" value="1" step="0.05" />
               <span class="val-display" data-for="speed-mult">1.00</span>
             </div>
           </label>
 
-          <label class="ctrl-row">
-            <span>Loop preview</span>
-            <input type="checkbox" id="loop-toggle" class="toggle" />
-          </label>
-
           <label class="ctrl-row" title="Show the emitter position crosshair and spawn-area outline">
             <span>Show crosshair</span>
             <input type="checkbox" id="show-crosshair" class="toggle" />
+          </label>
+
+          <label class="ctrl-row" title="Show a frame-size guide rectangle on the canvas matching your render frame size">
+            <span>Show frame guide</span>
+            <input type="checkbox" id="show-frame-guide" class="toggle" />
           </label>
         </section>
 
@@ -531,7 +538,7 @@
           <label class="ctrl-row">
             <span>Frames</span>
             <div class="slider-pair">
-              <input type="range" id="render-frames" min="4" max="120" value="30" step="1" />
+              <input type="range" id="render-frames" min="4" max="300" value="30" step="1" />
               <span class="val-display" data-for="render-frames">30</span>
             </div>
           </label>
@@ -619,7 +626,8 @@
               <select id="render-export-format">
                 <option value="spritesheet">PNG Spritesheet</option>
                 <option value="gif">Animated GIF</option>
-                <option value="frames">PNG Frames (ZIP)</option>
+                <option value="mp4">MP4 Video</option>
+                <option value="frame">Single Frame (PNG)</option>
               </select>
               <button id="render-export-btn" class="btn btn-accent">Export</button>
             </div>
@@ -645,9 +653,24 @@
                 </div>
               </label>
             </div>
+
+            <!-- Single frame hint -->
+            <div id="render-frame-opts" class="hidden">
+              <p class="export-hint">Exports the current frame as a PNG image.</p>
+            </div>
+
+            <!-- MP4 hint -->
+            <div id="render-mp4-opts" class="hidden">
+              <p class="export-hint">Encodes all frames as an MP4 video.</p>
+            </div>
           </div>
 
-          <!-- Encoding progress (shown during GIF/ZIP encoding) -->
+          <!-- Spritesheet preview (shown when spritesheet selected + exported) -->
+          <div id="spritesheet-preview-wrap" class="hidden">
+            <img id="spritesheet-preview-img" alt="Spritesheet preview" />
+          </div>
+
+          <!-- Encoding progress (shown during GIF/MP4 encoding) -->
           <div id="render-encode-progress" class="hidden">
             <div id="render-encode-wrap">
               <div id="render-encode-bar"></div>

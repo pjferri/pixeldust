@@ -9,6 +9,7 @@
  * v0.1.6: expanded emitter shapes with arc controls and export/crosshair parity.
  * v0.1.7: vortex force control and galaxy preset.
  * v0.1.8: export and rendering mechanics overhaul.
+ * v0.1.9: fade-to color sync fix, unified render modal polish.
  */
 
 // ── Undo / Redo ────────────────────────────────────────────────────────────
@@ -81,6 +82,7 @@ function initSliderDisplays() {
 
 // Tracks which palette slot is currently selected (for editing via color picker)
 let _activePaletteIdx = 0;
+let _activeGradientIdx = 0;
 
 const COLOR_INPUT_FALLBACKS = {
   'color-picker': '#ffff00',
@@ -138,7 +140,6 @@ function buildPaletteGrid(colors, activeIdx = 0) {
     input.addEventListener('input', (e) => {
       activePalette[idx] = e.target.value;
       _activePaletteIdx = idx;
-      setSingleColor(e.target.value);
       pushConfig();
       updateGradientPreview();
     });
@@ -192,7 +193,7 @@ function syncColorUIFromMode(mode) {
   const cmEl = document.getElementById('color-mode');
   if (cmEl) cmEl.value = mode;
   // Rebuild gradient stops UI if fade is on
-  if (isFade) buildGradientStops(gradientStops);
+  if (isFade) buildGradientStops(gradientStops, _activeGradientIdx);
   updateColorModeUI();
 }
 
@@ -209,6 +210,8 @@ function applyColorValueToTarget(targetId, rawHex) {
         _activePaletteIdx >= 0 && _activePaletteIdx < activePalette.length) {
       activePalette[_activePaletteIdx] = hex;
       buildPaletteGrid(activePalette, _activePaletteIdx);
+      updateGradientPreview();
+      return;
     }
     setSingleColor(hex);
     return;
@@ -224,16 +227,28 @@ function applyColorValueToTarget(targetId, rawHex) {
 
 // ── Gradient stops grid ────────────────────────────────────────────────────
 
-function buildGradientStops(stops) {
+function buildGradientStops(stops, activeIdx = _activeGradientIdx) {
   const container = document.getElementById('gradient-stops');
   if (!container) return;
+  const clampedIdx = stops.length
+    ? Math.max(0, Math.min(activeIdx, stops.length - 1))
+    : 0;
   container.innerHTML = '';
   stops.forEach((hex, idx) => {
     const input = document.createElement('input');
     input.type = 'color';
     input.className = 'grad-stop';
     input.value = hex;
+    if (idx === clampedIdx) input.classList.add('active');
+    const selectStop = () => {
+      _activeGradientIdx = idx;
+      container.querySelectorAll('.grad-stop').forEach(s => s.classList.remove('active'));
+      input.classList.add('active');
+    };
+    input.addEventListener('click', selectStop);
+    input.addEventListener('focus', selectStop);
     input.addEventListener('input', (e) => {
+      _activeGradientIdx = idx;
       gradientStops[idx] = e.target.value;
       setGradientStops(gradientStops);
       // Sync first stop to hidden gradient-end for compat
@@ -243,6 +258,7 @@ function buildGradientStops(stops) {
     });
     container.appendChild(input);
   });
+  _activeGradientIdx = clampedIdx;
 }
 
 // ── Color mode ─────────────────────────────────────────────────────────────
@@ -304,6 +320,7 @@ function updateColorModeUI() {
   if (!isPalette) {
     const cp = document.getElementById('color-picker');
     const gs = document.getElementById('gradient-start');
+    if (cp) cp.value = normalizeHexColor(activeColor, COLOR_INPUT_FALLBACKS['color-picker']);
     if (cp && gs) gs.value = cp.value;
   }
 
@@ -409,7 +426,7 @@ function updateEmitterShapeRows() {
 function initUI() {
   initSliderDisplays();
   buildEffectPresetBar();
-  document.getElementById('loop-toggle').closest('.ctrl-row').title = 'Restarts the effect periodically so you can preview seamless loops.';
+  // loop-toggle is now hidden (loop preview moved to render modal)
 
   // Load from URL hash if present, else keep the neutral point-emitter defaults
   if (!loadFromHash()) {
@@ -468,7 +485,7 @@ function initUI() {
   document.getElementById('fade-to-toggle').addEventListener('change', () => {
     updateColorModeUI();
     if (document.getElementById('fade-to-toggle').checked) {
-      buildGradientStops(gradientStops);
+      buildGradientStops(gradientStops, _activeGradientIdx);
     }
     pushConfig();
   });
@@ -477,17 +494,19 @@ function initUI() {
   document.getElementById('grad-add').addEventListener('click', () => {
     const randomHex = '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
     gradientStops.push(randomHex);
+    _activeGradientIdx = gradientStops.length - 1;
     setGradientStops(gradientStops);
-    buildGradientStops(gradientStops);
+    buildGradientStops(gradientStops, _activeGradientIdx);
     document.getElementById('gradient-end').value = gradientStops[0];
     updateGradientPreview();
     pushConfig();
   });
   document.getElementById('grad-remove').addEventListener('click', () => {
     if (gradientStops.length <= 1) return;
-    gradientStops.pop();
+    gradientStops.splice(_activeGradientIdx, 1);
+    _activeGradientIdx = Math.min(_activeGradientIdx, gradientStops.length - 1);
     setGradientStops(gradientStops);
-    buildGradientStops(gradientStops);
+    buildGradientStops(gradientStops, _activeGradientIdx);
     document.getElementById('gradient-end').value = gradientStops[0];
     updateGradientPreview();
     pushConfig();
@@ -507,14 +526,13 @@ function initUI() {
     activePalette.splice(_activePaletteIdx, 1);
     _activePaletteIdx = Math.min(_activePaletteIdx, activePalette.length - 1);
     buildPaletteGrid(activePalette, _activePaletteIdx);
-    setSingleColor(activePalette[_activePaletteIdx]);
     pushConfig();
     updateGradientPreview();
   });
 
   // Initial visibility sync
   updateColorModeUI();
-  buildGradientStops(gradientStops);
+  buildGradientStops(gradientStops, _activeGradientIdx);
 
   // ── BG colour ─────────────────────────────────────────────────────────
 
@@ -839,7 +857,8 @@ function applyPalette(name) {
   if (!colors) return;
   activePalette = [...colors];
   buildPaletteGrid(activePalette);
-  setSingleColor(activePalette[0]);
+  _activePaletteIdx = 0;
+  updateGradientPreview();
   pushConfig();
 }
 
@@ -1196,7 +1215,14 @@ function triggerRender() {
   const fps         = parseInt(document.getElementById('render-fps').value, 10)         || 15;
   const transparentBg = document.getElementById('render-transparent')?.checked ?? false;
 
-  captureFrames({ frames, frameSize, fps, transparentBg }, { ...getEmitterConfig() });
+  // Pass emitter position as proportional coordinates so the simulator
+  // places the emitter at the same relative position within the frame
+  const cvs = getCanvas();
+  const emitPX = (cvs && emitterX >= 0) ? emitterX / cvs.width  : 0.5;
+  const emitPY = (cvs && emitterY >= 0) ? emitterY / cvs.height : 0.5;
+
+  const emitCfg = { ...getEmitterConfig(), _emitterPX: emitPX, _emitterPY: emitPY };
+  captureFrames({ frames, frameSize, fps, transparentBg }, emitCfg);
 }
 
 // ── Randomize ─────────────────────────────────────────────────────────────
@@ -1247,12 +1273,7 @@ function randomizeSettings() {
   set('shrink',         rng(0, 0.8, 0.05));
   set('trail-alpha',    rng(0.03, 0.25, 0.01));
 
-  // Randomize color mode (weighted: palette most common, gradient and palette-fade less so)
-  const colorModes = ['single', 'palette', 'palette', 'palette', 'gradient', 'palette-fade'];
-  const chosenMode = pick(colorModes);
-  syncColorUIFromMode(chosenMode);
-
-  // Randomize gradient stops
+  // Randomize gradient stops BEFORE syncing color UI so the fade-to panel shows correct colours
   const randomHex = () => '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
   const numStops = Math.random() < 0.3 ? 2 : 1; // 30% chance of multi-stop
   const newStops = [];
@@ -1260,18 +1281,27 @@ function randomizeSettings() {
   setGradientStops(newStops);
   set('gradient-end', newStops[0]);
 
+  // Randomize color mode (weighted: palette most common, gradient and palette-fade less so)
+  const colorModes = ['single', 'palette', 'palette', 'palette', 'gradient', 'palette-fade'];
+  const chosenMode = pick(colorModes);
+  syncColorUIFromMode(chosenMode);
+
   set('speed-variance', rng(0, 0.6, 0.05));
   set('velocity-decay', rng(0, 0.5, 0.05));
   set('death-count',    Math.random() < 0.2 ? rng(1, 4, 1) : 0); // 20% chance of death sparks
   set('death-speed',    rng(1, 4, 0.5));
   set('death-size',     rng(1, 4, 1));
 
-  setCheck('loop-toggle', false);
+  setCheck('loop-toggle', false);  // no-op if element removed
   setCheck('bounce', Math.random() < 0.3);
 
   // Random palette
   const paletteNames = Object.keys(PALETTES);
   applyPalette(pick(paletteNames));
+
+  // Rebuild fade-to stop inputs & gradient bar with the new random colours + palette
+  buildGradientStops(gradientStops, _activeGradientIdx);
+  updateGradientPreview();
 
   updateBurstRowVisibility();
   updateDeathParamsVisibility();

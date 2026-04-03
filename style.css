@@ -591,6 +591,11 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
   transform: scale(1.1);
 }
 
+.grad-stop.active {
+  border-color: #fff;
+  box-shadow: 0 0 4px rgba(255,255,255,0.3);
+}
+
 #gradient-tools {
   display: flex;
   flex-direction: column;
@@ -1034,6 +1039,40 @@ kbd {
 }
 
 
+
+/* ── Spritesheet preview in render modal ── */
+#spritesheet-preview-wrap {
+  margin: 8px 0;
+  text-align: center;
+}
+
+#spritesheet-preview-img {
+  max-width: 100%;
+  max-height: 200px;
+  border: 1px solid var(--border-light);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #000;
+}
+
+/* ── Export hints ── */
+.export-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin: 4px 0 0 4px;
+  padding-left: 4px;
+  border-left: 2px solid rgba(255,255,255,0.08);
+}
+
+/* ── Frame guide overlay on main canvas ── */
+.frame-guide-rect {
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  fill: none;
+  pointer-events: none;
+}
 
 /* ============================================================
    RESPONSIVE

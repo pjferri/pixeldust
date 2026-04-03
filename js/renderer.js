@@ -102,6 +102,7 @@ function renderFrame() {
 
   ctx.globalCompositeOperation = 'source-over';
   if (document.getElementById('show-crosshair')?.checked) drawEmitterCrosshair();
+  if (document.getElementById('show-frame-guide')?.checked) drawFrameGuide();
 }
 
 function drawParticle(ctx, p) {
@@ -457,6 +458,55 @@ function drawEmitterCrosshair() {
   ctx.fillRect(x - 1, y - 1, 2, 2);
   ctx.restore();
 }
+
+function drawFrameGuide() {
+  const frameSize = parseInt(document.getElementById('render-frame-size')?.value, 10) || 128;
+  const ex = emitterX >= 0 ? emitterX : canvasW / 2;
+  const ey = emitterY >= 0 ? emitterY : canvasH / 2;
+
+  // The frame guide shows where the render frame will be centered
+  // relative to the emitter position
+  const emitPX = ex / canvasW;
+  const emitPY = ey / canvasH;
+
+  // The render frame is frameSize x frameSize, but we need to show it
+  // at canvas scale. The render maps the emitter to (emitPX * frameSize, emitPY * frameSize)
+  // in the frame. So the frame spans from:
+  //   left = ex - emitPX * scale, top = ey - emitPY * scale
+  // where scale = canvasW (we show the guide at a proportional size)
+  // Actually, simpler: the frame captures frameSize pixels centered around
+  // the emitter at its proportional position. On the canvas, the guide
+  // rectangle shows what portion of the canvas will be visible.
+  const scale = canvasW / frameSize;  // canvas pixels per frame pixel
+  const guideW = frameSize * scale;   // this would be canvasW - i.e. full width
+  // That's not right. Let's think differently:
+  // The render frame is a square of frameSize x frameSize.
+  // The emitter is placed at (emitPX * frameSize, emitPY * frameSize) in that frame.
+  // On the canvas, the emitter is at (ex, ey).
+  // So the frame extends from:
+  //   canvas_left = ex - emitPX * frameSize_in_canvas_units
+  // But what are "frameSize_in_canvas_units"? The canvas and frame have different sizes.
+  // The simplest mapping: 1 frame pixel = 1 canvas pixel.
+  // So the guide rectangle is frameSize x frameSize canvas pixels, with
+  // emitter at (emitPX * frameSize, emitPY * frameSize) relative to rectangle origin.
+
+  const guideLeft = ex - emitPX * frameSize;
+  const guideTop  = ey - emitPY * frameSize;
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 3]);
+  ctx.strokeRect(guideLeft + 0.5, guideTop + 0.5, frameSize, frameSize);
+  ctx.setLineDash([]);
+
+  // Label
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.font = '9px monospace';
+  ctx.fillText(frameSize + '×' + frameSize, guideLeft + 3, guideTop + 10);
+  ctx.restore();
+}
+
 
 function setupEmitterInteraction() {
   canvas.style.cursor = 'crosshair';

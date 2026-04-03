@@ -34,6 +34,30 @@ const PALETTES = {
     '#00eeff', '#00bbcc', '#0088aa', '#006688',
     '#004466', '#aaeeff', '#55ddee', '#0044aa',
   ],
+  aurora: [
+    '#7df9ff', '#42d6ff', '#00b8d9', '#4cff9a',
+    '#7dffcf', '#c77dff', '#ff7ad9', '#e9fff8',
+  ],
+  candy: [
+    '#ff6fb5', '#ff8fab', '#ffb3c6', '#ffd6a5',
+    '#fff1a8', '#caffbf', '#9bf6ff', '#bdb2ff',
+  ],
+  storm: [
+    '#f3f6ff', '#c9d6ea', '#93a8c7', '#5f7391',
+    '#34435e', '#1b2338', '#5fd1ff', '#8ef9f3',
+  ],
+  forest: [
+    '#e8f5c8', '#a8d672', '#5fa84a', '#2f6b3b',
+    '#1f4a2b', '#7b4f2a', '#c48b3a', '#f7d774',
+  ],
+  retro: [
+    '#ff5e5b', '#ffb400', '#fff3b0', '#00cecb',
+    '#00a6a6', '#3d5a80', '#98c1d9', '#ee6c4d',
+  ],
+  royal: [
+    '#f7f2ff', '#d8c4ff', '#a67cff', '#6f4bff',
+    '#3521a1', '#1c144d', '#ffd166', '#ffef9f',
+  ],
   lava: [
     '#ff2200', '#dd1100', '#880000', '#660000',
     '#ff5500', '#aa2200', '#ff8800', '#331100',

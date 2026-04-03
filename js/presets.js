@@ -1,6 +1,6 @@
 /**
  * presets.js
- * Full effect presets — v0.1.8
+ * Full effect presets — v0.1.9
  * All presets now include: speedVariance, velocityDecay, deathCount/Speed/Size,
  * emitterSize (% of canvas), emitterAngle (line rotation degrees),
  * emitterPX / emitterPY (fractional canvas position for auto-placement).
