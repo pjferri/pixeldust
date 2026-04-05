@@ -10,6 +10,7 @@
  * v0.1.7: vortex force control and galaxy preset.
  * v0.1.8: export and rendering mechanics overhaul.
  * v0.1.9: fade-to color sync fix, unified render modal polish.
+ * v0.1.10: twinkle control and preset refresh.
  */
 
 // ── Undo / Redo ────────────────────────────────────────────────────────────
@@ -588,7 +589,7 @@ function initUI() {
     'emitter-shape', 'emitter-size', 'emitter-angle', 'emitter-arc',
     'particle-count', 'spawn-rate', 'speed', 'spread', 'direction', 'gravity', 'turbulence', 'drag', 'wind', 'bounce',
     'orbit', 'speed-variance', 'velocity-decay',
-    'particle-size', 'size-variance', 'particle-shape', 'start-alpha', 'rotation', 'hue-variation', 'effect-strength',
+    'particle-size', 'size-variance', 'particle-shape', 'start-alpha', 'twinkle', 'rotation', 'hue-variation', 'effect-strength',
     'lifetime', 'fade', 'shrink',
     'death-count', 'death-speed', 'death-size',
     'pulse-interval',
@@ -663,6 +664,16 @@ function initUI() {
 
   // ── Randomize ──────────────────────────────────────────────────────────
   document.getElementById('btn-randomize').addEventListener('click', randomizeSettings);
+  document.getElementById('btn-save-preset').addEventListener('click', saveAsCustomPreset);
+  document.getElementById('preset-name-ok').addEventListener('click', confirmSavePreset);
+  document.getElementById('preset-name-cancel').addEventListener('click', cancelSavePreset);
+  document.getElementById('preset-name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirmSavePreset();
+    if (e.key === 'Escape') cancelSavePreset();
+  });
+  document.getElementById('name-preset-modal').addEventListener('click', e => {
+    if (e.target.id === 'name-preset-modal') cancelSavePreset();
+  });
 
   // ── Keyboard shortcuts panel ──────────────────────────────────────────
   const shortcutsModal = document.getElementById('shortcuts-modal');
@@ -727,6 +738,7 @@ function initUI() {
 
 function buildEffectPresetBar() {
   const container = document.getElementById('effect-preset-btns');
+  container.innerHTML = '';
   Object.entries(EFFECT_PRESETS).forEach(([key, preset], idx) => {
     const btn = document.createElement('button');
     btn.className   = 'effect-preset-btn';
@@ -736,6 +748,35 @@ function buildEffectPresetBar() {
     btn.addEventListener('click', () => applyEffectPreset(key));
     container.appendChild(btn);
   });
+
+  // ── Custom user presets ──────────────────────────────────────────────
+  const custom = getCustomPresets();
+  const customKeys = Object.keys(custom);
+  if (customKeys.length) {
+    const sep = document.createElement('span');
+    sep.className = 'preset-sep';
+    sep.textContent = '|';
+    container.appendChild(sep);
+    customKeys.forEach(key => {
+      const p = custom[key];
+      const wrap = document.createElement('span');
+      wrap.className = 'custom-preset-wrap';
+      const btn = document.createElement('button');
+      btn.className = 'effect-preset-btn custom-preset-btn';
+      btn.textContent = p.label;
+      btn.title = p.label + ' (custom)';
+      btn.dataset.key = key;
+      btn.addEventListener('click', () => applyCustomPreset(key));
+      const del = document.createElement('button');
+      del.className = 'custom-preset-del';
+      del.textContent = '\u00d7';
+      del.title = 'Delete preset';
+      del.addEventListener('click', (e) => { e.stopPropagation(); deleteCustomPreset(key, del); });
+      wrap.appendChild(btn);
+      wrap.appendChild(del);
+      container.appendChild(wrap);
+    });
+  }
 }
 
 /**
@@ -787,6 +828,7 @@ function applyEffectPreset(name) {
   set('shadow-color',   c.shadowColor || '#120018');
   set('size-variance',  c.sizeVariance ?? 0);
   set('start-alpha',    c.startAlpha);
+  set('twinkle',        c.twinkle ?? 0);
   set('rotation',       c.rotation ?? 0);
   set('lifetime',       c.lifetime);
   set('fade',           c.fade);
@@ -814,6 +856,10 @@ function applyEffectPreset(name) {
   setCheck('bounce',        c.bounce ?? false);
 
   updateEffectControls();
+
+  if (!c.multiColor) {
+    setSingleColor(c.singleColor || c.gradientStart || activeColor);
+  }
 
   // Sync color-mode dropdown from preset flags, then update visibility
   syncColorUIFromMode(colorModeFromFlags(!!c.multiColor, !!c.useGradient));
@@ -924,6 +970,7 @@ function pushConfig() {
     effectStrength,
     shadowColor,
     startAlpha:    n('start-alpha') || 1,
+    twinkle:       n('twinkle'),
     rotation:      n('rotation'),
     lifetime:      i('lifetime'),
     fade:          n('fade'),
@@ -993,6 +1040,7 @@ function getFullSnapshot() {
     effectStrength: getEffectStrengthValue(),
     shadowColor:   getShadowColorValue(),
     startAlpha:    n('start-alpha'),
+    twinkle:       n('twinkle'),
     rotation:      n('rotation'),
     lifetime:      i('lifetime'),
     fade:          n('fade'),
@@ -1056,6 +1104,7 @@ function applySnapshot(snap) {
   set('shadow-color',   snap.shadowColor || '#120018');
   set('size-variance',  snap.sizeVariance ?? 0);
   set('start-alpha',    snap.startAlpha);
+  set('twinkle',        snap.twinkle ?? 0);
   set('rotation',       snap.rotation ?? 0);
   set('lifetime',       snap.lifetime);
   set('fade',           snap.fade);
@@ -1144,6 +1193,107 @@ function loadConfig(e) {
   reader.readAsText(file);
   // Reset input so the same file can be re-loaded
   e.target.value = '';
+}
+
+
+// ── Custom User Presets (localStorage) ────────────────────────────────────
+
+const CUSTOM_PRESETS_KEY = 'pixeldust_custom_presets';
+
+function getCustomPresets() {
+  try {
+    return JSON.parse(localStorage.getItem(CUSTOM_PRESETS_KEY)) || {};
+  } catch { return {}; }
+}
+
+function saveCustomPresets(presets) {
+  localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(presets));
+}
+
+function saveAsCustomPreset() {
+  // Show inline naming UI instead of prompt() to avoid blocking
+  const modal = document.getElementById('name-preset-modal');
+  const input = document.getElementById('preset-name-input');
+  if (!modal || !input) return;
+  input.value = '';
+  modal.classList.remove('hidden');
+  input.focus();
+}
+
+function confirmSavePreset() {
+  const input = document.getElementById('preset-name-input');
+  const modal = document.getElementById('name-preset-modal');
+  const name = (input?.value || '').trim();
+  if (!name) return;
+  modal.classList.add('hidden');
+  const key = 'custom_' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const presets = getCustomPresets();
+  presets[key] = {
+    label: name,
+    snapshot: getFullSnapshot(),
+    palette: [...activePalette],
+    gradientStops: [...gradientStops],
+  };
+  saveCustomPresets(presets);
+  buildEffectPresetBar();
+  // Flash feedback
+  const btn = document.getElementById('btn-save-preset');
+  if (btn) {
+    btn.classList.add('flash');
+    setTimeout(() => btn.classList.remove('flash'), 1200);
+  }
+}
+
+function cancelSavePreset() {
+  document.getElementById('name-preset-modal')?.classList.add('hidden');
+}
+
+function deleteCustomPreset(key, delBtn) {
+  const presets = getCustomPresets();
+  if (!presets[key]) return;
+  // Two-click delete: first click arms, second click confirms
+  if (!delBtn || delBtn.dataset.armed) {
+    delete presets[key];
+    saveCustomPresets(presets);
+    buildEffectPresetBar();
+    return;
+  }
+  // Arm the button — show confirmation state
+  delBtn.dataset.armed = '1';
+  delBtn.textContent = '\u2713';           // checkmark
+  delBtn.title = 'Click again to confirm delete';
+  delBtn.style.opacity = '1';
+  delBtn.style.background = '#cc3333';
+  // Disarm after 2 seconds if not clicked again
+  setTimeout(() => {
+    if (delBtn.dataset.armed) {
+      delete delBtn.dataset.armed;
+      delBtn.textContent = '\u00d7';
+      delBtn.title = 'Delete preset';
+      delBtn.style.background = '';
+      delBtn.style.opacity = '';
+    }
+  }, 2000);
+}
+
+function applyCustomPreset(key) {
+  const presets = getCustomPresets();
+  const preset = presets[key];
+  if (!preset) return;
+  // Highlight
+  document.querySelectorAll('.effect-preset-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.key === key);
+  });
+  applySnapshot(preset.snapshot);
+  if (preset.palette && preset.palette.length) {
+    activePalette = [...preset.palette];
+    buildPaletteGrid(activePalette);
+  }
+  if (preset.gradientStops && preset.gradientStops.length) {
+    setGradientStops(preset.gradientStops);
+    buildGradientStops(gradientStops, 0);
+  }
+  updateGradientPreview();
 }
 
 function shareConfig() {
@@ -1267,6 +1417,7 @@ function randomizeSettings() {
     ? pick(['#120018', '#1a0f2e', '#102033', '#2a1010', '#0f2416'])
     : '#120018');
   set('start-alpha',    rng(0.3, 1, 0.05));
+  set('twinkle',        Math.random() < 0.35 ? rng(0.15, 1.4, 0.05) : 0);
   set('rotation',       rng(0, 15, 0.5));
   set('lifetime',       rng(20, 200, 5));
   set('fade',           rng(0.2, 1, 0.05));

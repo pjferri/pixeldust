@@ -40,6 +40,7 @@
       <div id="effect-preset-btns"></div>
       <div class="topbar-sep" style="margin-left:4px"></div>
       <button id="btn-randomize" class="btn btn-secondary" title="Randomize settings (Z)">&#127922; Randomize</button>
+      <button id="btn-save-preset" class="btn btn-secondary" title="Save current settings as a custom preset">&#11088; Save Preset</button>
     </div>
 
     <!-- ===== MAIN LAYOUT ===== -->
@@ -272,6 +273,14 @@
             </div>
           </label>
 
+          <label class="ctrl-row" title="Pulses particle opacity over time for a shimmer or flicker effect.">
+            <span>Twinkle</span>
+            <div class="slider-pair">
+              <input type="range" id="twinkle" min="0" max="2" value="0" step="0.05" />
+              <span class="val-display" data-for="twinkle">0.00</span>
+            </div>
+          </label>
+
           <label class="ctrl-row">
             <span>Size var.</span>
             <div class="slider-pair">
@@ -471,7 +480,7 @@
             <div id="gradient-stops"></div>
             <div id="gradient-tools">
               <button type="button" id="grad-add" title="Add gradient stop">+</button>
-              <button type="button" id="grad-remove" title="Remove last stop">−</button>
+              <button type="button" id="grad-remove" title="Remove selected gradient stop">−</button>
             </div>
             <div id="gradient-preview">
               <div id="gradient-bar"></div>
@@ -733,5 +742,18 @@
   <script src="js/exporter.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
-</body>
+
+    <!-- ===== NAME PRESET MODAL ===== -->
+    <div id="name-preset-modal" class="modal hidden">
+      <div class="modal-box name-preset-box">
+        <h3>Save Custom Preset</h3>
+        <input type="text" id="preset-name-input" placeholder="My awesome effect..." maxlength="24" autocomplete="off" />
+        <div class="name-preset-btns">
+          <button id="preset-name-ok" class="btn btn-accent">Save</button>
+          <button id="preset-name-cancel" class="btn btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+  </body>
 </html>

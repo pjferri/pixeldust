@@ -6,6 +6,7 @@
  * v0.6: wind force, hue variation
  * v0.9: speedVariance, velocityDecay, grow mode (negative shrink)
  * v0.1.7: vortex/orbit force around each particle's spawn point
+ * v0.1.10: twinkle opacity shimmer
  */
 
 // ── Colour helpers ─────────────────────────────────────────────────────────
@@ -130,6 +131,9 @@ function createParticle(x, y, cfg) {
     useGradient:   !!cfg.useGradient,
     alpha:         cfg.startAlpha ?? 1,
     startAlpha:    cfg.startAlpha ?? 1,
+    twinkle:       Math.max(0, cfg.twinkle ?? 0),
+    twinklePhase:  Math.random() * Math.PI * 2,
+    twinkleRate:   0.08 + Math.random() * 0.16 + Math.max(0, cfg.twinkle ?? 0) * 0.03,
     angle:         Math.random() * Math.PI * 2,
     spin:          (Math.random() - 0.5) * 2 * ((cfg.rotation || 0) * Math.PI / 180),
     shape:         cfg.particleShape,
@@ -227,6 +231,11 @@ function updateParticle(p) {
 
   // ── Fade ──────────────────────────────────────────────────────────────────
   p.alpha = Math.max(0, p.startAlpha * (1 - t * p.fade));
+  if (p.twinkle > 0) {
+    const floor = Math.max(0.08, 1 - p.twinkle * 0.55);
+    const pulse = (Math.sin(p.twinklePhase + p.life * p.twinkleRate) + 1) * 0.5;
+    p.alpha *= floor + pulse * (1 - floor);
+  }
 
   // ── Shrink / Grow (shrink > 0 = shrinks, shrink < 0 = grows) ─────────────
   if (p.shrink !== 0) {

@@ -64,6 +64,7 @@ let cfg = {
   particleShape: 'square',
   blendMode:     'normal',
   startAlpha:    1,             // starting opacity of each particle
+  twinkle:       0,             // opacity shimmer amount (0 = off)
   rotation:      0,             // max rotation speed in degrees/frame (0 = no spin)
   sizeVariance:  0,             // ±px random size offset per particle
 
