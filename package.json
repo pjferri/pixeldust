@@ -1,4 +1,11 @@
 {
+  "name": "pixeldust",
+  "version": "1.0.0-rc.1",
+  "description": "PixelDust — a browser-based pixel-art particle effect designer. Design, preview, and export sprite effects as spritesheets, GIFs, and video.",
+  "private": true,
+  "scripts": {
+    "start": "serve ."
+  },
   "devDependencies": {
     "serve": "^14.2.6"
   }

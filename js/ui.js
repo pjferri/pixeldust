@@ -770,6 +770,7 @@ function initUI() {
   const closeOverlays  = () => {
     closeShortcuts();
     closeRenderModal();
+    cancelSavePreset();
   };
   document.getElementById('btn-shortcuts').addEventListener('click', openShortcuts);
   document.getElementById('btn-close-shortcuts').addEventListener('click', closeShortcuts);
@@ -1153,8 +1154,8 @@ function getFullSnapshot() {
     useGradient:   getColorModeFlags().useGradient,
     gradientStart: v('gradient-start'),
     gradientEnd:   gradientStops[0] || v('gradient-end'),
+    gradientStops: [...getGradientStops()],
     loop:          b('loop-toggle'),
-    bounce:        b('bounce'),
     // Save emitter position as canvas-relative fractions so it round-trips
     // correctly even if the canvas is resized between save and load.
     emitterPX:     (() => { const c = getCanvas(); return (c && emitterX >= 0) ? emitterX / c.width  : 0.5; })(),

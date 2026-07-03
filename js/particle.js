@@ -198,14 +198,6 @@ function getForceWells() {
   return _forceWells;
 }
 
-function getMouseForceState() {
-  return {
-    enabled: _mouseForceEnabled,
-    strength: _mouseForceStrength,
-    radius: _mouseForceRadius,
-  };
-}
-
 /**
  * Compute force contribution from a single well on a particle.
  * Uses inverse-distance falloff clamped to the well's radius.

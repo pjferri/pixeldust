@@ -15,7 +15,6 @@ let _trailCanvas = null;
 let _trailCtx    = null;
 
 let bgColor = '#0c0c0e';
-let trailAlpha = 0.12;       // kept for backward-compat mapping
 let blendMode = 'normal';
 let effectStrength = 1;
 let shadowColor = '#120018';
@@ -26,29 +25,7 @@ let _trailPersistence = 50;   // 0-100: maps to trail lifetime
 let _trailOpacity     = 100;  // 0-100: overall trail layer alpha
 let _trailSoftness    = 0;    // 0-100: blur applied to trail layer
 let _trailSweepCounter = 0;
-
-// ── Hybrid trail system: snapshot tracking + incremental canvas ───────────
-// We store snapshots for lifetime tracking, but render incrementally:
-// - New particles are drawn onto a persistent trail canvas each frame
-// - Fading is done via destination-out (like before) but with a guaranteed
-//   alpha floor sweep to kill ghosts
-// - Snapshot metadata tracks what was drawn when, so we can compute
-//   the correct fade rate from the lifetime
-// This gives O(aliveParticles) draw cost per frame instead of O(allTrailPoints). ─────────────────────────────────────────────
-// Each snapshot is a Float32Array: [x, y, size, r, g, b, alpha, shape, ...]
-// 8 fields per particle (TRAIL_STRIDE).  Snapshots are stored with their
-// birth frame number so we can compute age-based fade.
-const TRAIL_STRIDE = 8;
-const MAX_TRAIL_SNAPSHOTS = 800; // hard cap to bound memory
-let _trailSnapshots = [];  // { frame: number, pts: Float32Array, count: number }
-let _trailFrame     = 0;
-let _trailRecordInterval = 1; // record every Nth frame (dynamic for perf)
-
-// Shape index for compact storage
-const _SHAPE_IDX = { circle: 0, square: 1, triangle: 2, diamond: 3,
-                     star: 4, sparkle: 5, cross: 6, heart: 7, ring: 8 };
-const _IDX_SHAPE = ['circle','square','triangle','diamond',
-                    'star','sparkle','cross','heart','ring'];
+let _trailFrame        = 0;
 
 function normalizeEffectMode(mode) {
   switch (mode) {
@@ -103,117 +80,6 @@ function sizeCanvas() {
   _trailCanvas = null;
   _trailCtx = null;
   centerEmitter();
-}
-
-function _renderFrameSnapshotLegacy() {
-  const w = canvas.width;
-  const h = canvas.height;
-  const { r, g, b } = hexToRgb(bgColor);
-
-  // ── 1. Clear main canvas to background ────────────────────────────────
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = `rgb(${r},${g},${b})`;
-  ctx.fillRect(0, 0, w, h);
-
-  if (_trailEnabled && _trailPersistence > 0 && _trailOpacity > 0) {
-    _ensureTrailCanvas();
-    _trailFrame++;
-
-    // ── 2. Record current particles as a trail snapshot ───────────────
-    if (_trailFrame % _trailRecordInterval === 0) {
-      _recordTrailSnapshot(particles);
-    }
-
-    // ── 3. Expire old snapshots ───────────────────────────────────────
-    const lifetime = _persistenceToLifetimeFrames(_trailPersistence);
-    if (lifetime !== Infinity) {
-      const cutoff = _trailFrame - lifetime;
-      // Remove from front (oldest first)
-      while (_trailSnapshots.length > 0 && _trailSnapshots[0].frame < cutoff) {
-        _trailSnapshots.shift();
-      }
-    }
-    // Hard cap
-    while (_trailSnapshots.length > MAX_TRAIL_SNAPSHOTS) {
-      _trailSnapshots.shift();
-    }
-
-    // ── 4. Clear trail canvas and redraw all trail points ─────────────
-    _trailCtx.clearRect(0, 0, w, h);
-    _trailCtx.globalCompositeOperation = 'source-over';
-
-    const snapCount = _trailSnapshots.length;
-    for (let si = 0; si < snapCount; si++) {
-      const snap = _trailSnapshots[si];
-      const age = _trailFrame - snap.frame;
-      // Age-based fade: 1.0 at birth → 0.0 at lifetime
-      // For permanent trails (lifetime=Inf), ageFrac stays 1.0
-      const ageFrac = lifetime === Infinity ? 1.0 : Math.max(0, 1 - age / lifetime);
-      if (ageFrac <= 0) continue;
-
-      const pts = snap.pts;
-      const count = snap.count;
-      for (let i = 0; i < count; i++) {
-        const off = i * TRAIL_STRIDE;
-        const px    = pts[off];
-        const py    = pts[off + 1];
-        const psize = pts[off + 2];
-        const pr    = pts[off + 3];
-        const pg    = pts[off + 4];
-        const pb    = pts[off + 5];
-        const pa    = pts[off + 6];
-        const pshape = _IDX_SHAPE[pts[off + 7]] || 'square';
-
-        const finalAlpha = pa * ageFrac;
-        if (finalAlpha <= 0.005 || psize < 0.5) continue;
-
-        _trailCtx.globalAlpha = Math.min(1, finalAlpha);
-        _trailCtx.fillStyle = `rgb(${pr},${pg},${pb})`;
-        _drawTrailShape(_trailCtx, pshape, Math.round(px), Math.round(py), Math.max(1, Math.round(psize)));
-      }
-    }
-
-    // ── 5. Apply softness (blur) to trail canvas if enabled ───────────
-    if (_trailSoftness > 0 && (_softFrameCount = ((_softFrameCount || 0) + 1) % 3) === 0) {
-      const blurPx = (_trailSoftness / 100) * 3;
-      _trailCtx.filter = `blur(${blurPx.toFixed(1)}px)`;
-      _trailCtx.globalCompositeOperation = 'copy';
-      _trailCtx.globalAlpha = 1;
-      _trailCtx.drawImage(_trailCanvas, 0, 0);
-      _trailCtx.filter = 'none';
-      _trailCtx.globalCompositeOperation = 'source-over';
-    }
-
-    // ── 6. Composite trail canvas onto main canvas ────────────────────
-    ctx.globalAlpha = Math.max(0, Math.min(1, _trailOpacity / 100));
-    ctx.drawImage(_trailCanvas, 0, 0);
-    ctx.globalAlpha = 1;
-
-    // ── 7. Draw current particles crisply on top ──────────────────────
-    for (const p of particles) {
-      if (p.alive) drawParticle(ctx, p);
-    }
-
-    // ── 8. Adaptive record interval for performance ───────────────────
-    // If we have tons of snapshots, subsample to keep draw count manageable
-    const totalPoints = _trailSnapshots.reduce((s, sn) => s + sn.count, 0);
-    _trailRecordInterval = totalPoints > 40000 ? 3 : totalPoints > 20000 ? 2 : 1;
-
-  } else {
-    // Trails off or opacity 0 — wipe accumulated data
-    if (_trailSnapshots.length > 0) _trailSnapshots = [];
-    if (_trailCanvas) clearTrailCanvas();
-    for (const p of particles) {
-      if (p.alive) drawParticle(ctx, p);
-    }
-  }
-
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = 1;
-  if (document.getElementById('show-crosshair')?.checked) drawEmitterCrosshair();
-  if (document.getElementById('show-frame-guide')?.checked) drawFrameGuide();
-  drawForceWellIndicators();
 }
 
 /**
@@ -280,60 +146,6 @@ function _persistenceToLifetimeFrames(p) {
   // gives long trails but they ALWAYS eventually die (unless 100).
   const t = p / 100;
   return Math.round(3 + Math.pow(t, 2.2) * 360);
-}
-
-/**
- * Record a snapshot of all alive particles into the trail history.
- * Each particle is stored as 8 floats: x, y, size, r, g, b, alpha, shapeIdx
- */
-function _recordTrailSnapshot(particles) {
-  // Count alive particles first
-  let aliveCount = 0;
-  for (let i = 0; i < particles.length; i++) {
-    if (particles[i].alive) aliveCount++;
-  }
-  if (aliveCount === 0) return;
-
-  const pts = new Float32Array(aliveCount * TRAIL_STRIDE);
-  let idx = 0;
-  for (let i = 0; i < particles.length; i++) {
-    const p = particles[i];
-    if (!p.alive) continue;
-
-    // Resolve gradient colour at current life fraction
-    let drawR = p.r, drawG = p.g, drawB = p.b;
-    if (p.useGradient && typeof getGradientStopsRgb === 'function') {
-      const t = p.life / p.maxLife;
-      const stops = getGradientStopsRgb();
-      const n = stops.length;
-      const segT = t * n;
-      const segIdx = Math.min(Math.floor(segT), n - 1);
-      const localT = segT - segIdx;
-      let fR, fG, fB;
-      if (segIdx === 0) {
-        fR = p.r; fG = p.g; fB = p.b;
-      } else {
-        fR = stops[segIdx - 1].r; fG = stops[segIdx - 1].g; fB = stops[segIdx - 1].b;
-      }
-      const to = stops[segIdx];
-      drawR = Math.round(fR + (to.r - fR) * localT);
-      drawG = Math.round(fG + (to.g - fG) * localT);
-      drawB = Math.round(fB + (to.b - fB) * localT);
-    }
-
-    const off = idx * TRAIL_STRIDE;
-    pts[off]     = p.x;
-    pts[off + 1] = p.y;
-    pts[off + 2] = p.size;
-    pts[off + 3] = drawR;
-    pts[off + 4] = drawG;
-    pts[off + 5] = drawB;
-    pts[off + 6] = Math.max(0, Math.min(1, p.alpha));
-    pts[off + 7] = _SHAPE_IDX[p.shape] !== undefined ? _SHAPE_IDX[p.shape] : 1;
-    idx++;
-  }
-
-  _trailSnapshots.push({ frame: _trailFrame, pts, count: aliveCount });
 }
 
 /**
@@ -446,16 +258,6 @@ function _drawTrailShape(ctx, shape, x, y, size) {
     default: // square
       ctx.fillRect(x - Math.floor(size / 2), y - Math.floor(size / 2), size, size);
   }
-}
-
-/**
- * Legacy fade mapping — kept for backward-compat and exporter.
- */
-function _persistenceToFade(p) {
-  if (p >= 100) return 0;
-  if (p <= 0)   return 1;
-  const t = p / 100;
-  return Math.pow(1 - t, 1.4) * 0.32 + (1 - t) * 0.06;
 }
 
 function _resolveParticleDisplayColor(p) {
@@ -1074,13 +876,6 @@ function setupEmitterInteraction() {
 }
 
 function setRendererBg(hex)      { bgColor = hex; }
-function setTrailAlpha(alpha)    {
-  trailAlpha = alpha;
-  // Backward-compat: map legacy trailAlpha (0–1) to new persistence (0–100)
-  // trailAlpha 0 = no trail = persistence 0, trailAlpha 1 = infinite = persistence 100
-  _trailPersistence = Math.round(alpha * 100);
-  _trailEnabled = alpha > 0;
-}
 function setBlendMode(mode)      { blendMode = normalizeEffectMode(mode); }
 function setEffectStrength(value){ effectStrength = Math.max(0, Math.min(3, Number.isFinite(value) ? value : 1)); }
 function setShadowColor(hex)     { shadowColor = /^#[0-9a-f]{6}$/i.test(hex || '') ? hex : '#120018'; }
@@ -1089,31 +884,21 @@ function setShadowColor(hex)     { shadowColor = /^#[0-9a-f]{6}$/i.test(hex || '
 function setTrailEnabled(on) {
   const was = _trailEnabled;
   _trailEnabled = !!on;
-  if (was && !on) { _trailSnapshots = []; clearTrailCanvas(); }
+  if (was && !on) clearTrailCanvas();
 }
 function setTrailPersistence(val) {
   _trailPersistence = Math.max(0, Math.min(100, Number(val) || 0));
-  if (_trailPersistence <= 0) { _trailSnapshots = []; clearTrailCanvas(); }
+  if (_trailPersistence <= 0) clearTrailCanvas();
 }
 function setTrailOpacity(val) {
   _trailOpacity = Math.max(0, Math.min(100, Number(val) || 0));
-  if (_trailOpacity <= 0) { _trailSnapshots = []; clearTrailCanvas(); }
+  if (_trailOpacity <= 0) clearTrailCanvas();
 }
 function setTrailSoftness(val) {
   _trailSoftness = Math.max(0, Math.min(100, Number(val) || 0));
 }
 
-function getTrailState() {
-  return {
-    enabled: _trailEnabled,
-    persistence: _trailPersistence,
-    opacity: _trailOpacity,
-    softness: _trailSoftness,
-  };
-}
-
 function clearTrailCanvas() {
-  _trailSnapshots = [];
   _trailFrame = 0;
   _trailSweepCounter = 0;
   if (_trailCtx && _trailCanvas) {

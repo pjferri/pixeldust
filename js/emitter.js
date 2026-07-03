@@ -25,7 +25,6 @@ let emitterY = -1;
 
 /** True while the user is dragging the emitter on the canvas. */
 let emitterDragging = false;
-let emitterJustMoved = false;
 
 /** Frames elapsed since the last loop-reset (used by the loop feature). */
 let _loopTimer  = 0;
@@ -138,7 +137,6 @@ function setEmitterPos(x, y) {
   if (nx !== emitterX || ny !== emitterY) {
     emitterX = nx;
     emitterY = ny;
-    emitterJustMoved = true;
     // Note: we intentionally do NOT call clearCanvas() here.
     // The new trail system fades old positions naturally via destination-out
     // on the offscreen trail canvas.  Calling clearCanvas() on every drag
@@ -234,16 +232,13 @@ function tickEmitter() {
     _loopTimer++;
     const interval = Math.ceil(cfg.lifetime * 1.5) + 20;
     if (_loopTimer >= interval) {
-      _loopTimer = 0;
-  _pulseTimer = 0;
+      _loopTimer  = 0;
+      _pulseTimer = 0;
       resetParticles();
       clearCanvas();
       if (cfg.emitterMode === 'burst') cfg.burstPending = true;
-      if (cfg.emitterMode === 'pulse') _pulseTimer = 0;
     }
   }
-
-  emitterJustMoved = false;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────

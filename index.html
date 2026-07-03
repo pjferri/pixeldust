@@ -15,7 +15,7 @@
       <div id="logo">
         <span class="logo-px">PX</span>
         <span class="logo-name">PixelDust</span>
-        <span class="logo-version">v0.2.0</span>
+        <span class="logo-version">v1.0-rc</span>
       </div>
       <div id="topbar-controls">
         <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
@@ -663,11 +663,6 @@
             <input type="checkbox" id="render-transparent" class="toggle" />
           </label>
 
-          <label class="ctrl-row" title="Randomize spawn positions each render">
-            <span>Randomize seed</span>
-            <input type="checkbox" id="render-randomize" class="toggle" checked />
-          </label>
-
           <button id="btn-render" class="btn btn-accent full-width">&#9654; Render</button>
         </section>
 
@@ -821,6 +816,18 @@
 
 
 
+  <!-- ===== NAME PRESET MODAL ===== -->
+  <div id="name-preset-modal" class="modal hidden">
+    <div class="modal-box name-preset-box">
+      <h3>Save Custom Preset</h3>
+      <input type="text" id="preset-name-input" placeholder="My awesome effect..." maxlength="24" autocomplete="off" />
+      <div class="name-preset-btns">
+        <button id="preset-name-ok" class="btn btn-accent">Save</button>
+        <button id="preset-name-cancel" class="btn btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- JS modules (order matters: dependencies before dependents) -->
   <script src="js/palettes.js"></script>
   <script src="js/particle.js"></script>
@@ -830,18 +837,6 @@
   <script src="js/exporter.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
-
-    <!-- ===== NAME PRESET MODAL ===== -->
-    <div id="name-preset-modal" class="modal hidden">
-      <div class="modal-box name-preset-box">
-        <h3>Save Custom Preset</h3>
-        <input type="text" id="preset-name-input" placeholder="My awesome effect..." maxlength="24" autocomplete="off" />
-        <div class="name-preset-btns">
-          <button id="preset-name-ok" class="btn btn-accent">Save</button>
-          <button id="preset-name-cancel" class="btn btn-secondary">Cancel</button>
-        </div>
-      </div>
-    </div>
 
   </body>
 </html>
