@@ -553,89 +553,19 @@ function createLocalSimulator(emitCfg, frameSize) {
   let loopTimer = 0;
   let pulseTimer = 0;
 
-  const trailAlpha = Number.isFinite(emitCfg.trailAlpha) ? emitCfg.trailAlpha : 0.12;
   const bgHex = emitCfg.bgColor || '#0c0c0e';
   const transparentBg = !!emitCfg.transparentBg;
 
-  const trailEnabled = emitCfg.trailEnabled !== undefined ? !!emitCfg.trailEnabled : (trailAlpha > 0);
-  const trailPersistence = emitCfg.trailPersistence !== undefined ? emitCfg.trailPersistence : Math.round(trailAlpha * 100);
-  const trailOpacity = emitCfg.trailOpacity !== undefined ? emitCfg.trailOpacity : 100;
-  const trailSoftness = emitCfg.trailSoftness !== undefined ? emitCfg.trailSoftness : 0;
-
-  const trailCanvas = document.createElement('canvas');
-  trailCanvas.width = frameSize;
-  trailCanvas.height = frameSize;
-  const trailCtx = trailCanvas.getContext('2d');
-  trailCtx.imageSmoothingEnabled = false;
-
-  let trailFrame = 0;
-  let trailSweepCounter = 0;
-
-  function persistenceToLifetimeFrames(p) {
-    if (p >= 100) return Infinity;
-    if (p <= 0) return 0;
-    const t = p / 100;
-    return Math.round(3 + Math.pow(t, 2.2) * 360);
-  }
-
-  function trailFadeAlphaForLifetime(lifetime) {
-    if (!Number.isFinite(lifetime)) return 0;
-    if (lifetime <= 0) return 1;
-    const targetAlpha = 1 / 255;
-    return Math.max(0, Math.min(1, 1 - Math.pow(targetAlpha, 1 / Math.max(1, lifetime))));
-  }
-
-  function resolveParticleDisplayColor(p) {
-    let drawR = p.r;
-    let drawG = p.g;
-    let drawB = p.b;
-
-    if (p.useGradient && typeof getGradientStopsRgb === 'function') {
-      const t = p.life / p.maxLife;
-      const stops = getGradientStopsRgb();
-      const n = stops.length;
-      const segT = t * n;
-      const segIdx = Math.min(Math.floor(segT), n - 1);
-      const localT = segT - segIdx;
-      let fR, fG, fB;
-      if (segIdx === 0) {
-        fR = p.r; fG = p.g; fB = p.b;
-      } else {
-        fR = stops[segIdx - 1].r; fG = stops[segIdx - 1].g; fB = stops[segIdx - 1].b;
-      }
-      const to = stops[segIdx];
-      drawR = Math.round(fR + (to.r - fR) * localT);
-      drawG = Math.round(fG + (to.g - fG) * localT);
-      drawB = Math.round(fB + (to.b - fB) * localT);
-    }
-
-    return { r: drawR, g: drawG, b: drawB };
-  }
-
-  function drawTrailParticle(ctx, p) {
-    const alpha = Math.max(0, Math.min(1, p.alpha));
-    if (alpha <= 0.002 || p.size <= 0.2) return;
-    const color = resolveParticleDisplayColor(p);
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = `rgb(${color.r},${color.g},${color.b})`;
-    drawParticleShape(ctx, p.shape, Math.round(p.x), Math.round(p.y), Math.max(1, Math.round(p.size)));
-  }
-
-  function clearTransparentTrailPixels() {
-    const img = trailCtx.getImageData(0, 0, frameSize, frameSize);
-    const d = img.data;
-    let dirty = false;
-    for (let i = 3; i < d.length; i += 4) {
-      if (d[i] <= 6) {
-        if (d[i] !== 0 || d[i - 1] !== 0 || d[i - 2] !== 0 || d[i - 3] !== 0) dirty = true;
-        d[i - 3] = 0;
-        d[i - 2] = 0;
-        d[i - 1] = 0;
-        d[i] = 0;
-      }
-    }
-    if (dirty) trailCtx.putImageData(img, 0, 0);
-  }
+  // Shared trail system (trails.js) — recorded every simulation tick so
+  // exported frames get the same trails as the live preview.
+  const trails = createTrailSystem();
+  trails.configure(resolveTrailConfig(emitCfg));
+  const softness = resolveSoftness(emitCfg);
+  const composeCanvas = document.createElement('canvas');
+  composeCanvas.width = frameSize;
+  composeCanvas.height = frameSize;
+  const composeCtx = composeCanvas.getContext('2d');
+  composeCtx.imageSmoothingEnabled = false;
 
   function exportRotateEmitterOffset(dx, dy, angle) {
     const cos = Math.cos(angle);
@@ -745,9 +675,7 @@ function createLocalSimulator(emitCfg, frameSize) {
     loopTimer = 0;
     pulseTimer = 0;
     emitCfg._spawnAccum = 0;
-    trailFrame = 0;
-    trailSweepCounter = 0;
-    trailCtx.clearRect(0, 0, frameSize, frameSize);
+    trails.reset();
   }
 
   function liveCountLocal() {
@@ -815,6 +743,10 @@ function createLocalSimulator(emitCfg, frameSize) {
         if (emitCfg.emitterMode === 'burst') emitCfg.burstPending = true;
       }
     }
+
+    // Record trail history every simulation tick (this is what makes
+    // trails actually show up in renders at the correct density)
+    trails.record(pool, frameSize, frameSize);
   }
 
   function drawFrame() {
@@ -828,50 +760,22 @@ function createLocalSimulator(emitCfg, frameSize) {
       frameCtx.fillRect(0, 0, frameSize, frameSize);
     }
 
-    if (trailEnabled && trailPersistence > 0 && trailOpacity > 0) {
-      trailFrame++;
-      const lifetime = persistenceToLifetimeFrames(trailPersistence);
-      if (lifetime !== Infinity) {
-        const fadeAlpha = trailFadeAlphaForLifetime(lifetime);
-        if (fadeAlpha >= 1) {
-          trailCtx.clearRect(0, 0, frameSize, frameSize);
-        } else if (fadeAlpha > 0) {
-          trailCtx.save();
-          trailCtx.globalCompositeOperation = 'destination-out';
-          trailCtx.globalAlpha = fadeAlpha;
-          trailCtx.fillStyle = '#000';
-          trailCtx.fillRect(0, 0, frameSize, frameSize);
-          trailCtx.restore();
-
-          trailSweepCounter++;
-          if (trailSweepCounter >= 24) {
-            trailSweepCounter = 0;
-            clearTransparentTrailPixels();
-          }
-        }
-      }
-
-      trailCtx.save();
-      trailCtx.globalCompositeOperation = 'source-over';
-      for (const particle of pool) {
-        if (particle.alive) drawTrailParticle(trailCtx, particle);
-      }
-      trailCtx.restore();
-
-      frameCtx.save();
-      frameCtx.globalAlpha = Math.max(0, Math.min(1, trailOpacity / 100));
-      if (trailSoftness > 0) {
-        const blurPx = (trailSoftness / 100) * 3;
-        frameCtx.filter = `blur(${blurPx.toFixed(1)}px)`;
-      }
-      frameCtx.drawImage(trailCanvas, 0, 0);
-      frameCtx.restore();
-    } else {
-      trailCtx.clearRect(0, 0, frameSize, frameSize);
+    let target = frameCtx;
+    if (softness > 0) {
+      composeCtx.clearRect(0, 0, frameSize, frameSize);
+      target = composeCtx;
     }
 
+    trails.draw(target, frameSize, frameSize);
     for (const particle of pool) {
-      if (particle.alive) drawParticle(frameCtx, particle);
+      if (particle.alive) drawParticle(target, particle);
+    }
+
+    if (target !== frameCtx) {
+      frameCtx.save();
+      frameCtx.filter = `blur(${((softness / 100) * 3).toFixed(1)}px)`;
+      frameCtx.drawImage(composeCanvas, 0, 0);
+      frameCtx.restore();
     }
 
     frameCtx.globalCompositeOperation = 'source-over';

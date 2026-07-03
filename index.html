@@ -262,8 +262,25 @@
               <option value="star">Star ★</option>
               <option value="sparkle">Sparkle ✦</option>
               <option value="ring">Ring ◎</option>
+              <option value="image">Image…</option>
             </select>
           </label>
+
+          <!-- Custom particle image (shown when Shape = Image) -->
+          <div id="particle-image-row" class="hidden">
+            <label class="ctrl-row">
+              <span>Image</span>
+              <div style="display:flex;gap:4px;flex:1;justify-content:flex-end">
+                <button type="button" id="btn-particle-image" class="btn btn-secondary btn-sm">Choose image…</button>
+                <button type="button" id="btn-clear-image" class="btn btn-secondary btn-sm" title="Remove image">×</button>
+              </div>
+            </label>
+            <label class="ctrl-row" title="Multiply the image by the particle color (like Unity/Godot particle tinting)">
+              <span>Tint image</span>
+              <input type="checkbox" id="image-tint" class="toggle" checked />
+            </label>
+            <input type="file" id="particle-image-input" accept="image/*" style="display:none" />
+          </div>
 
           <label class="ctrl-row">
             <span>Opacity</span>
@@ -334,6 +351,14 @@
             </div>
           </div>
 
+          <label class="ctrl-row" title="Softens the whole effect (particles + trails) with a gentle blur">
+            <span>Soften</span>
+            <div class="slider-pair">
+              <input type="range" id="soften" min="0" max="100" value="0" step="1" />
+              <span class="val-display" data-for="soften">0</span>
+            </div>
+          </label>
+
         </section>
 
         <!-- TRAILS -->
@@ -346,33 +371,22 @@
           </label>
 
           <div id="trail-params">
-            <label class="ctrl-row" title="Trail lifetime — how long trail points last before fading away (0 = instant, 100 = permanent)">
-              <span>Persistence</span>
+            <label class="ctrl-row" title="How long each trail lasts, in seconds. Max = permanent (paint mode).">
+              <span>Length</span>
               <div class="slider-pair">
-                <input type="range" id="trail-persistence" min="0" max="100" value="12" step="1" />
-                <span class="val-display" data-for="trail-persistence">12</span>
+                <input type="range" id="trail-length" min="0" max="100" value="21" step="1" />
+                <span class="val-display" data-for="trail-length">0.26s</span>
               </div>
             </label>
 
-            <label class="ctrl-row" title="Overall brightness/visibility of the trail layer">
+            <label class="ctrl-row" title="Overall brightness/visibility of the trails">
               <span>Opacity</span>
               <div class="slider-pair">
                 <input type="range" id="trail-opacity" min="0" max="100" value="100" step="1" />
                 <span class="val-display" data-for="trail-opacity">100</span>
               </div>
             </label>
-
-            <label class="ctrl-row" title="Softens trails with a gentle blur (0 = crisp pixel trails)">
-              <span>Softness</span>
-              <div class="slider-pair">
-                <input type="range" id="trail-softness" min="0" max="100" value="0" step="1" />
-                <span class="val-display" data-for="trail-softness">0</span>
-              </div>
-            </label>
           </div>
-
-          <!-- Hidden compat element for legacy save/load -->
-          <input type="range" id="trail-alpha" min="0" max="1" value="0.12" step="0.01" style="display:none" />
         </section>
 
         <!-- FORCES -->
@@ -830,6 +844,7 @@
 
   <!-- JS modules (order matters: dependencies before dependents) -->
   <script src="js/palettes.js"></script>
+  <script src="js/trails.js"></script>
   <script src="js/particle.js"></script>
   <script src="js/presets.js"></script>
   <script src="js/emitter.js"></script>

@@ -95,7 +95,10 @@ let cfg = {
 
   // Export helpers
   bgColor:       '#0c0c0e',
-  trailAlpha:    0.12,
+  trailEnabled:  true,
+  trailSec:      0.35,
+  trailOpacity:  100,
+  softness:      0,
   speedMult:     1,
   effectStrength: 1,
 };

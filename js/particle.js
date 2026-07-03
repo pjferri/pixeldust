@@ -154,6 +154,35 @@ function createParticle(x, y, cfg) {
   };
 }
 
+// ── Display color ──────────────────────────────────────────────────────────
+
+/**
+ * Resolve a particle's current display color, applying the fade-to gradient
+ * (multi-stop) when enabled. Shared by the live renderer, the trail system,
+ * and the export simulator so all three always agree.
+ */
+function resolveParticleColor(p) {
+  if (!p.useGradient) return { r: p.r, g: p.g, b: p.b };
+  const t = p.life / p.maxLife;
+  const stops = getGradientStopsRgb();
+  const n = stops.length;
+  const segT = t * n;
+  const segIdx = Math.min(Math.floor(segT), n - 1);
+  const localT = segT - segIdx;
+  let fR, fG, fB;
+  if (segIdx === 0) {
+    fR = p.r; fG = p.g; fB = p.b;
+  } else {
+    fR = stops[segIdx - 1].r; fG = stops[segIdx - 1].g; fB = stops[segIdx - 1].b;
+  }
+  const to = stops[segIdx];
+  return {
+    r: Math.round(fR + (to.r - fR) * localT),
+    g: Math.round(fG + (to.g - fG) * localT),
+    b: Math.round(fB + (to.b - fB) * localT),
+  };
+}
+
 // ── Force Wells ───────────────────────────────────────────────────────────
 // Global force wells that attract or repel particles.
 // Each well: { x, y, strength, radius }

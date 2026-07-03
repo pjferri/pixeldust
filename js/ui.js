@@ -62,6 +62,31 @@ function _applyHistoryEntry(snap) {
 function speedCurve(raw)   { return raw * raw / 10; }
 function speedUncurve(spd) { return Math.sqrt(Math.max(0, spd) * 10); }
 
+// ── Trail length slider mapping (0-100 → seconds; 100 = permanent ∞) ──────
+function trailSliderToSec(v)   { return v >= 100 ? -1 : Math.pow(v / 100, 2) * 6; }
+function trailSecToSlider(sec) {
+  if (sec < 0) return 100;
+  return Math.max(0, Math.min(99, Math.round(Math.sqrt(Math.max(0, sec) / 6) * 100)));
+}
+function formatTrailLength(v) {
+  if (v >= 100) return '\u221e';
+  const sec = trailSliderToSec(v);
+  return sec < 0.05 ? 'off' : sec.toFixed(2) + 's';
+}
+
+/** Re-sync every slider's value display (used after bulk slider changes). */
+function refreshValDisplays() {
+  document.querySelectorAll('.val-display').forEach(display => {
+    const id = display.dataset.for;
+    const slider = document.getElementById(id);
+    if (!slider) return;
+    let v = parseFloat(slider.value);
+    if (id === 'speed') v = speedCurve(v);
+    display.textContent = id === 'trail-length' ? formatTrailLength(v)
+                        : Number.isInteger(v) ? String(v) : v.toFixed(2);
+  });
+}
+
 // ── Slider display sync ────────────────────────────────────────────────────
 
 function initSliderDisplays() {
@@ -72,7 +97,8 @@ function initSliderDisplays() {
     const update = () => {
       let v = parseFloat(slider.value);
       if (id === 'speed') v = speedCurve(v);
-      display.textContent = Number.isInteger(v) ? v : v.toFixed(2);
+      display.textContent = id === 'trail-length' ? formatTrailLength(v)
+                          : Number.isInteger(v) ? String(v) : v.toFixed(2);
     };
     slider.addEventListener('input', update);
     update();
@@ -543,27 +569,18 @@ function initUI() {
 
   // ── BG colour ─────────────────────────────────────────────────────────
 
-  // ── Trail controls ─────────────────────────────────────────────────────
-  document.getElementById('trail-enabled').addEventListener('change', e => {
-    setTrailEnabled(e.target.checked);
+  // ── Trail + soften controls (applied inside pushConfig) ───────────────
+  document.getElementById('trail-enabled').addEventListener('change', () => {
     updateTrailParamsVisibility();
     pushConfig();
   });
-  document.getElementById('trail-persistence').addEventListener('input', e => {
-    setTrailPersistence(parseInt(e.target.value, 10));
-    // Sync hidden legacy trail-alpha for save/load compat
-    document.getElementById('trail-alpha').value = (parseInt(e.target.value, 10) / 100).toFixed(2);
-    pushConfig();
-  });
-  document.getElementById('trail-opacity').addEventListener('input', e => {
-    setTrailOpacity(parseInt(e.target.value, 10));
-    pushConfig();
-  });
-  document.getElementById('trail-softness').addEventListener('input', e => {
-    setTrailSoftness(parseInt(e.target.value, 10));
-    pushConfig();
+  ['trail-length', 'trail-opacity', 'soften'].forEach(id => {
+    document.getElementById(id).addEventListener('input', pushConfig);
   });
   updateTrailParamsVisibility();
+
+  // ── Custom particle image ──────────────────────────────────────────────
+  initParticleImageControls();
 
   // ── Forces / Gravity Wells ────────────────────────────────────────────
   document.getElementById('mouse-force-enabled').addEventListener('change', e => {
@@ -923,12 +940,12 @@ function applyEffectPreset(name) {
   set('fade',           c.fade);
   set('shrink',         c.shrink);
   set('bg-color',       c.bgColor);
-  // Trail system: set new trail properties (backward-compat from trailAlpha)
-  set('trail-alpha',    c.trailAlpha);
-  setCheck('trail-enabled', c.trailEnabled !== undefined ? c.trailEnabled : (c.trailAlpha > 0));
-  set('trail-persistence',  c.trailPersistence !== undefined ? c.trailPersistence : Math.round((c.trailAlpha || 0.12) * 100));
-  set('trail-opacity',      c.trailOpacity !== undefined ? c.trailOpacity : 100);
-  set('trail-softness',     c.trailSoftness !== undefined ? c.trailSoftness : 0);
+  // Trails (presets may still use legacy trailPersistence — mapped across)
+  const _pSec = resolveTrailSec(c);
+  setCheck('trail-enabled', c.trailEnabled !== undefined ? c.trailEnabled : _pSec !== 0);
+  set('trail-length',  trailSecToSlider(_pSec));
+  set('trail-opacity', c.trailOpacity !== undefined ? c.trailOpacity : 100);
+  set('soften',        resolveSoftness(c));
   set('gradient-start', c.gradientStart || '#ffff00');
   set('gradient-end',   c.gradientEnd   || '#ff0000');
 
@@ -963,14 +980,7 @@ function applyEffectPreset(name) {
   if (palette && PALETTES[palette]) applyPalette(palette);
 
   // Re-sync all val-display spans
-  document.querySelectorAll('.val-display').forEach(display => {
-    const slider = document.getElementById(display.dataset.for);
-    if (slider) {
-      let v = parseFloat(slider.value);
-      if (display.dataset.for === 'speed') v = speedCurve(v);
-      display.textContent = Number.isInteger(v) ? v : v.toFixed(2);
-    }
-  });
+  refreshValDisplays();
 
   updateBurstRowVisibility();
   updateDeathParamsVisibility();
@@ -1077,11 +1087,11 @@ function pushConfig() {
     gradientStops: [...getGradientStops()],
     loop:          b('loop-toggle'),
     bgColor:       v('bg-color'),
-    trailAlpha:      n('trail-alpha'),
-    trailEnabled:    b('trail-enabled'),
-    trailPersistence: i('trail-persistence'),
-    trailOpacity:    i('trail-opacity'),
-    trailSoftness:   i('trail-softness'),
+    trailEnabled:  b('trail-enabled'),
+    trailSec:      trailSliderToSec(i('trail-length')),
+    trailOpacity:  i('trail-opacity'),
+    softness:      i('soften'),
+    imageTint:     b('image-tint'),
     speedVariance: n('speed-variance'),
     velocityDecay: n('velocity-decay'),
     deathCount:    i('death-count'),
@@ -1094,11 +1104,13 @@ function pushConfig() {
   setBlendMode(blendVal);
   setEffectStrength(effectStrength);
   setShadowColor(shadowColor);
-  // Apply new trail settings
-  setTrailEnabled(b('trail-enabled'));
-  setTrailPersistence(i('trail-persistence'));
-  setTrailOpacity(i('trail-opacity'));
-  setTrailSoftness(i('trail-softness'));
+  setTrailConfig(resolveTrailConfig({
+    trailEnabled: b('trail-enabled'),
+    trailSec:     trailSliderToSec(i('trail-length')),
+    trailOpacity: i('trail-opacity'),
+  }));
+  setSoftness(i('soften'));
+  setImageTint(b('image-tint'));
   setRendererBg(v('bg-color'));
 
   // Queue a history snapshot (debounced so fast slider drags collapse)
@@ -1144,11 +1156,12 @@ function getFullSnapshot() {
     fade:          n('fade'),
     shrink:        n('shrink'),
     bgColor:       v('bg-color'),
-    trailAlpha:    n('trail-alpha'),
-    trailEnabled:    b('trail-enabled'),
-    trailPersistence: i('trail-persistence'),
-    trailOpacity:    i('trail-opacity'),
-    trailSoftness:   i('trail-softness'),
+    trailEnabled:  b('trail-enabled'),
+    trailSec:      trailSliderToSec(i('trail-length')),
+    trailOpacity:  i('trail-opacity'),
+    softness:      i('soften'),
+    particleImage: getParticleImageData() || undefined,
+    imageTint:     b('image-tint'),
     colorMode:     v('color-mode'),
     multiColor:    getColorModeFlags().multiColor,
     useGradient:   getColorModeFlags().useGradient,
@@ -1212,12 +1225,19 @@ function applySnapshot(snap) {
   set('fade',           snap.fade);
   set('shrink',         snap.shrink);
   set('bg-color',       snap.bgColor);
-  set('trail-alpha',    snap.trailAlpha);
-  // Restore new trail properties (with backward-compat defaults from trailAlpha)
-  setCheck('trail-enabled', snap.trailEnabled !== undefined ? snap.trailEnabled : (snap.trailAlpha > 0));
-  set('trail-persistence', snap.trailPersistence !== undefined ? snap.trailPersistence : Math.round((snap.trailAlpha || 0.12) * 100));
-  set('trail-opacity',     snap.trailOpacity !== undefined ? snap.trailOpacity : 100);
-  set('trail-softness',    snap.trailSoftness !== undefined ? snap.trailSoftness : 0);
+  // Trails (legacy persistence/trailAlpha configs map through resolveTrailSec)
+  const _tSec = resolveTrailSec(snap);
+  setCheck('trail-enabled', snap.trailEnabled !== undefined ? snap.trailEnabled : _tSec !== 0);
+  set('trail-length',  trailSecToSlider(_tSec));
+  set('trail-opacity', snap.trailOpacity !== undefined ? snap.trailOpacity : 100);
+  set('soften',        resolveSoftness(snap));
+  // Custom particle image
+  setCheck('image-tint', snap.imageTint !== undefined ? snap.imageTint : true);
+  if (snap.particleImage) {
+    loadParticleImage(snap.particleImage, () => updateParticleImageUI());
+  } else if (snap.particleShape === 'image' && !hasParticleImage()) {
+    set('particle-shape', 'square');
+  }
   set('gradient-start', snap.gradientStart);
   set('gradient-end',   snap.gradientEnd);
 
@@ -1241,19 +1261,13 @@ function applySnapshot(snap) {
   }
   setSingleColor(snap.singleColor || activePalette[0] || activeColor);
 
-  document.querySelectorAll('.val-display').forEach(display => {
-    const slider = document.getElementById(display.dataset.for);
-    if (slider) {
-      let v = parseFloat(slider.value);
-      if (display.dataset.for === 'speed') v = speedCurve(v);
-      display.textContent = Number.isInteger(v) ? v : v.toFixed(2);
-    }
-  });
+  refreshValDisplays();
 
   updateBurstRowVisibility();
   updateDeathParamsVisibility();
   updateEmitterShapeRows();
   updateTrailParamsVisibility();
+  updateParticleImageUI();
   resetParticles();
   clearCanvas();
   pushConfig();
@@ -1405,7 +1419,9 @@ function applyCustomPreset(key) {
 }
 
 function shareConfig() {
-  const snap    = getFullSnapshot();
+  const snap = getFullSnapshot();
+  // Custom images are far too large for a URL — shared links fall back to squares
+  delete snap.particleImage;
   const encoded = btoa(JSON.stringify(snap));
   const url     = `${location.origin}${location.pathname}#cfg=${encoded}`;
   navigator.clipboard.writeText(url).then(() => {
@@ -1426,6 +1442,57 @@ function loadFromHash() {
   } catch {
     return false;
   }
+}
+
+// ── Custom particle image controls ────────────────────────────────────────
+
+function updateParticleImageUI() {
+  const row   = document.getElementById('particle-image-row');
+  const shape = document.getElementById('particle-shape')?.value;
+  if (row) row.classList.toggle('hidden', shape !== 'image');
+  const btn = document.getElementById('btn-particle-image');
+  if (btn) btn.textContent = hasParticleImage() ? '\u2713 Change image\u2026' : 'Choose image\u2026';
+}
+
+function initParticleImageControls() {
+  const shapeSel = document.getElementById('particle-shape');
+  const fileIn   = document.getElementById('particle-image-input');
+  const btn      = document.getElementById('btn-particle-image');
+  const clearBtn = document.getElementById('btn-clear-image');
+  if (!shapeSel || !fileIn || !btn || !clearBtn) return;
+
+  shapeSel.addEventListener('change', () => {
+    updateParticleImageUI();
+    // Picking "Image" with nothing loaded yet: open the file picker
+    if (shapeSel.value === 'image' && !hasParticleImage()) fileIn.click();
+  });
+
+  btn.addEventListener('click', () => fileIn.click());
+
+  fileIn.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      loadParticleImage(ev.target.result, ok => {
+        if (!ok) { alert('Could not load that image.'); return; }
+        updateParticleImageUI();
+        pushConfig();
+      });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+
+  clearBtn.addEventListener('click', () => {
+    clearParticleImage();
+    if (shapeSel.value === 'image') shapeSel.value = 'square';
+    updateParticleImageUI();
+    pushConfig();
+  });
+
+  document.getElementById('image-tint')?.addEventListener('change', pushConfig);
+  updateParticleImageUI();
 }
 
 // ── Copy canvas to clipboard ───────────────────────────────────────────────
@@ -1530,14 +1597,11 @@ function randomizeSettings() {
   set('lifetime',       rng(20, 200, 5));
   set('fade',           rng(0.2, 1, 0.05));
   set('shrink',         rng(0, 0.8, 0.05));
-  // Trail system
+  // Trails
   setCheck('trail-enabled', Math.random() > 0.15); // 85% chance trails are on
-  set('trail-persistence',  rng(5, 60, 1));
-  set('trail-opacity',      rng(50, 100, 5));
-  set('trail-softness',     Math.random() < 0.3 ? rng(5, 40, 5) : 0); // 30% chance of softness
-  // Sync legacy trail-alpha for compat
-  const _trailP = parseInt(document.getElementById('trail-persistence')?.value || '12', 10);
-  set('trail-alpha', (_trailP / 100).toFixed(2));
+  set('trail-length',  rng(12, 60, 1));
+  set('trail-opacity', rng(50, 100, 5));
+  set('soften',        Math.random() < 0.3 ? rng(5, 40, 5) : 0); // 30% chance of soften
 
   // Randomize gradient stops BEFORE syncing color UI so the fade-to panel shows correct colours
   const randomHex = () => '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
@@ -1576,14 +1640,7 @@ function randomizeSettings() {
   centerEmitter();
 
   // Re-sync all val-display spans
-  document.querySelectorAll('.val-display').forEach(display => {
-    const slider = document.getElementById(display.dataset.for);
-    if (slider) {
-      let v = parseFloat(slider.value);
-      if (display.dataset.for === 'speed') v = speedCurve(v);
-      display.textContent = Number.isInteger(v) ? v : v.toFixed(2);
-    }
-  });
+  refreshValDisplays();
 
   resetParticles();
   clearCanvas();
