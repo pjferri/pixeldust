@@ -159,6 +159,24 @@ body {
   box-shadow: 0 0 8px var(--accent-glow);
 }
 
+.btn-sm {
+  font-size: 10px;
+  padding: 2px 8px;
+  min-width: 28px;
+  line-height: 1.4;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.btn-sm:hover { background: var(--border); }
+.btn-sm.active {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+
 .full-width { width: 100%; }
 
 .hidden { display: none !important; }

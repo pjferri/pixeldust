@@ -5,7 +5,7 @@
  * v0.1.0: death particle simulation in local simulator; emitterSize/Angle support
  */
 
-function createLocalSimulator(emitCfg, frameSize) {
+function _createLocalSimulatorSnapshotLegacy(emitCfg, frameSize) {
   const pool = [];
   const frameCanvas = document.createElement('canvas');
   frameCanvas.width = frameSize;
@@ -25,6 +25,93 @@ function createLocalSimulator(emitCfg, frameSize) {
   const trailAlpha  = Number.isFinite(emitCfg.trailAlpha) ? emitCfg.trailAlpha : 0.12;
   const bgHex       = emitCfg.bgColor || '#0c0c0e';
   const transparentBg = !!emitCfg.transparentBg;
+
+  // New trail system properties (backward-compat from trailAlpha)
+  const trailEnabled     = emitCfg.trailEnabled !== undefined ? !!emitCfg.trailEnabled : (trailAlpha > 0);
+  const trailPersistence = emitCfg.trailPersistence !== undefined ? emitCfg.trailPersistence : Math.round(trailAlpha * 100);
+  const trailOpacity     = emitCfg.trailOpacity !== undefined ? emitCfg.trailOpacity : 100;
+  const trailSoftness    = emitCfg.trailSoftness !== undefined ? emitCfg.trailSoftness : 0;
+
+  // Offscreen trail canvas for exports
+  const trailCanvas = document.createElement('canvas');
+  trailCanvas.width = frameSize;
+  trailCanvas.height = frameSize;
+  const trailCtx = trailCanvas.getContext('2d');
+  trailCtx.imageSmoothingEnabled = false;
+
+  /** Maps persistence (0–100) to trail lifetime in frames (mirrors renderer.js) */
+  function persistenceToLifetimeFrames(p) {
+    if (p >= 100) return Infinity;
+    if (p <= 0)   return 0;
+    const t = p / 100;
+    return Math.round(3 + Math.pow(t, 2.2) * 360);
+  }
+
+  // Snapshot-based trail history for export (mirrors renderer.js)
+  const EXPORT_TRAIL_STRIDE = 8;
+  const exportTrailSnapshots = [];  // { frame, pts, count }
+  let exportTrailFrame = 0;
+
+  const _EX_SHAPE_IDX = { circle: 0, square: 1, triangle: 2, diamond: 3,
+                          star: 4, sparkle: 5, cross: 6, heart: 7, ring: 8 };
+  const _EX_IDX_SHAPE = ['circle','square','triangle','diamond',
+                         'star','sparkle','cross','heart','ring'];
+
+  function exportRecordSnapshot(pool) {
+    let aliveCount = 0;
+    for (let i = 0; i < pool.length; i++) if (pool[i].alive) aliveCount++;
+    if (aliveCount === 0) return;
+    const pts = new Float32Array(aliveCount * EXPORT_TRAIL_STRIDE);
+    let idx = 0;
+    for (let i = 0; i < pool.length; i++) {
+      const p = pool[i];
+      if (!p.alive) continue;
+      let drawR = p.r, drawG = p.g, drawB = p.b;
+      if (p.useGradient && typeof getGradientStopsRgb === 'function') {
+        const t = p.life / p.maxLife;
+        const stops = getGradientStopsRgb();
+        const n = stops.length;
+        const segT = t * n;
+        const segIdx = Math.min(Math.floor(segT), n - 1);
+        const localT = segT - segIdx;
+        let fR, fG, fB;
+        if (segIdx === 0) { fR = p.r; fG = p.g; fB = p.b; }
+        else { fR = stops[segIdx - 1].r; fG = stops[segIdx - 1].g; fB = stops[segIdx - 1].b; }
+        const to = stops[segIdx];
+        drawR = Math.round(fR + (to.r - fR) * localT);
+        drawG = Math.round(fG + (to.g - fG) * localT);
+        drawB = Math.round(fB + (to.b - fB) * localT);
+      }
+      const off = idx * EXPORT_TRAIL_STRIDE;
+      pts[off]     = p.x;
+      pts[off + 1] = p.y;
+      pts[off + 2] = p.size;
+      pts[off + 3] = drawR;
+      pts[off + 4] = drawG;
+      pts[off + 5] = drawB;
+      pts[off + 6] = Math.max(0, Math.min(1, p.alpha));
+      pts[off + 7] = _EX_SHAPE_IDX[p.shape] !== undefined ? _EX_SHAPE_IDX[p.shape] : 1;
+      idx++;
+    }
+    exportTrailSnapshots.push({ frame: exportTrailFrame, pts, count: aliveCount });
+  }
+
+  function exportDrawTrailShape(ctx, shape, x, y, size) {
+    switch (shape) {
+      case 'circle':
+        if (size <= 4) {
+          const r = Math.floor(size / 2);
+          for (let dy = -r; dy <= r; dy++)
+            for (let dx = -r; dx <= r; dx++)
+              if (dx*dx + dy*dy <= r*r + r*0.5) ctx.fillRect(x+dx, y+dy, 1, 1);
+        } else {
+          ctx.beginPath(); ctx.arc(x+0.5, y+0.5, size/2, 0, Math.PI*2); ctx.fill();
+        }
+        break;
+      default:
+        ctx.fillRect(x - Math.floor(size/2), y - Math.floor(size/2), size, size);
+    }
+  }
 
   function exportRotateEmitterOffset(dx, dy, angle) {
     const cos = Math.cos(angle);
@@ -215,19 +302,80 @@ function createLocalSimulator(emitCfg, frameSize) {
 
   // ── Rendering ─────────────────────────────────────────────────────────────
   function drawFrame() {
+    // 1. Clear main frame to background
     frameCtx.globalCompositeOperation = 'source-over';
     frameCtx.globalAlpha = 1;
     if (transparentBg) {
       frameCtx.clearRect(0, 0, frameSize, frameSize);
     } else {
       const { r, g, b } = hexToRgb(bgHex);
-      frameCtx.fillStyle = `rgba(${r},${g},${b},${1 - trailAlpha})`;
+      frameCtx.fillStyle = `rgb(${r},${g},${b})`;
       frameCtx.fillRect(0, 0, frameSize, frameSize);
     }
 
-    for (const particle of pool) {
-      if (particle.alive) drawParticle(frameCtx, particle);
+    if (trailEnabled && trailPersistence > 0 && trailOpacity > 0) {
+      exportTrailFrame++;
+
+      // 2. Record snapshot
+      exportRecordSnapshot(pool);
+
+      // 3. Expire old snapshots
+      const lifetime = persistenceToLifetimeFrames(trailPersistence);
+      if (lifetime !== Infinity) {
+        const cutoff = exportTrailFrame - lifetime;
+        while (exportTrailSnapshots.length > 0 && exportTrailSnapshots[0].frame < cutoff) {
+          exportTrailSnapshots.shift();
+        }
+      }
+      while (exportTrailSnapshots.length > 800) exportTrailSnapshots.shift();
+
+      // 4. Clear and redraw trail canvas from snapshots
+      trailCtx.clearRect(0, 0, frameSize, frameSize);
+      trailCtx.globalCompositeOperation = 'source-over';
+      for (let si = 0; si < exportTrailSnapshots.length; si++) {
+        const snap = exportTrailSnapshots[si];
+        const age = exportTrailFrame - snap.frame;
+        const ageFrac = lifetime === Infinity ? 1.0 : Math.max(0, 1 - age / lifetime);
+        if (ageFrac <= 0) continue;
+        const pts = snap.pts;
+        for (let i = 0; i < snap.count; i++) {
+          const off = i * EXPORT_TRAIL_STRIDE;
+          const finalAlpha = pts[off + 6] * ageFrac;
+          if (finalAlpha <= 0.005) continue;
+          trailCtx.globalAlpha = Math.min(1, finalAlpha);
+          trailCtx.fillStyle = `rgb(${pts[off+3]},${pts[off+4]},${pts[off+5]})`;
+          const shape = _EX_IDX_SHAPE[pts[off + 7]] || 'square';
+          exportDrawTrailShape(trailCtx, shape, Math.round(pts[off]), Math.round(pts[off+1]), Math.max(1, Math.round(pts[off+2])));
+        }
+      }
+
+      // 5. Apply softness if enabled
+      if (trailSoftness > 0) {
+        const blurPx = (trailSoftness / 100) * 3;
+        trailCtx.filter = `blur(${blurPx.toFixed(1)}px)`;
+        trailCtx.globalCompositeOperation = 'copy';
+        trailCtx.globalAlpha = 1;
+        trailCtx.drawImage(trailCanvas, 0, 0);
+        trailCtx.filter = 'none';
+        trailCtx.globalCompositeOperation = 'source-over';
+      }
+
+      // 6. Composite trail onto main frame
+      frameCtx.globalAlpha = Math.max(0, Math.min(1, trailOpacity / 100));
+      frameCtx.drawImage(trailCanvas, 0, 0);
+      frameCtx.globalAlpha = 1;
+
+      // 7. Draw current particles crisply on top
+      for (const particle of pool) {
+        if (particle.alive) drawParticle(frameCtx, particle);
+      }
+    } else {
+      // No trails — just draw particles
+      for (const particle of pool) {
+        if (particle.alive) drawParticle(frameCtx, particle);
+      }
     }
+
     frameCtx.globalCompositeOperation = 'source-over';
     frameCtx.globalAlpha = 1;
   }
@@ -752,4 +900,364 @@ function runExport() {
     case 'mp4':         return exportMP4();
     case 'frame':       return exportSingleFrame();
   }
+}
+
+// Override the older snapshot-redraw exporter trail simulator with the same
+// incremental trail compositor used by the live renderer.
+function createLocalSimulator(emitCfg, frameSize) {
+  const pool = [];
+  const frameCanvas = document.createElement('canvas');
+  frameCanvas.width = frameSize;
+  frameCanvas.height = frameSize;
+
+  const frameCtx = frameCanvas.getContext('2d');
+  frameCtx.imageSmoothingEnabled = false;
+
+  const emitPX = Number.isFinite(emitCfg._emitterPX) ? emitCfg._emitterPX : 0.5;
+  const emitPY = Number.isFinite(emitCfg._emitterPY) ? emitCfg._emitterPY : 0.5;
+  const centerX = Math.round(frameSize * emitPX);
+  const centerY = Math.round(frameSize * emitPY);
+  let loopTimer = 0;
+  let pulseTimer = 0;
+
+  const trailAlpha = Number.isFinite(emitCfg.trailAlpha) ? emitCfg.trailAlpha : 0.12;
+  const bgHex = emitCfg.bgColor || '#0c0c0e';
+  const transparentBg = !!emitCfg.transparentBg;
+
+  const trailEnabled = emitCfg.trailEnabled !== undefined ? !!emitCfg.trailEnabled : (trailAlpha > 0);
+  const trailPersistence = emitCfg.trailPersistence !== undefined ? emitCfg.trailPersistence : Math.round(trailAlpha * 100);
+  const trailOpacity = emitCfg.trailOpacity !== undefined ? emitCfg.trailOpacity : 100;
+  const trailSoftness = emitCfg.trailSoftness !== undefined ? emitCfg.trailSoftness : 0;
+
+  const trailCanvas = document.createElement('canvas');
+  trailCanvas.width = frameSize;
+  trailCanvas.height = frameSize;
+  const trailCtx = trailCanvas.getContext('2d');
+  trailCtx.imageSmoothingEnabled = false;
+
+  let trailFrame = 0;
+  let trailSweepCounter = 0;
+
+  function persistenceToLifetimeFrames(p) {
+    if (p >= 100) return Infinity;
+    if (p <= 0) return 0;
+    const t = p / 100;
+    return Math.round(3 + Math.pow(t, 2.2) * 360);
+  }
+
+  function trailFadeAlphaForLifetime(lifetime) {
+    if (!Number.isFinite(lifetime)) return 0;
+    if (lifetime <= 0) return 1;
+    const targetAlpha = 1 / 255;
+    return Math.max(0, Math.min(1, 1 - Math.pow(targetAlpha, 1 / Math.max(1, lifetime))));
+  }
+
+  function resolveParticleDisplayColor(p) {
+    let drawR = p.r;
+    let drawG = p.g;
+    let drawB = p.b;
+
+    if (p.useGradient && typeof getGradientStopsRgb === 'function') {
+      const t = p.life / p.maxLife;
+      const stops = getGradientStopsRgb();
+      const n = stops.length;
+      const segT = t * n;
+      const segIdx = Math.min(Math.floor(segT), n - 1);
+      const localT = segT - segIdx;
+      let fR, fG, fB;
+      if (segIdx === 0) {
+        fR = p.r; fG = p.g; fB = p.b;
+      } else {
+        fR = stops[segIdx - 1].r; fG = stops[segIdx - 1].g; fB = stops[segIdx - 1].b;
+      }
+      const to = stops[segIdx];
+      drawR = Math.round(fR + (to.r - fR) * localT);
+      drawG = Math.round(fG + (to.g - fG) * localT);
+      drawB = Math.round(fB + (to.b - fB) * localT);
+    }
+
+    return { r: drawR, g: drawG, b: drawB };
+  }
+
+  function drawTrailParticle(ctx, p) {
+    const alpha = Math.max(0, Math.min(1, p.alpha));
+    if (alpha <= 0.002 || p.size <= 0.2) return;
+    const color = resolveParticleDisplayColor(p);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = `rgb(${color.r},${color.g},${color.b})`;
+    drawParticleShape(ctx, p.shape, Math.round(p.x), Math.round(p.y), Math.max(1, Math.round(p.size)));
+  }
+
+  function clearTransparentTrailPixels() {
+    const img = trailCtx.getImageData(0, 0, frameSize, frameSize);
+    const d = img.data;
+    let dirty = false;
+    for (let i = 3; i < d.length; i += 4) {
+      if (d[i] <= 6) {
+        if (d[i] !== 0 || d[i - 1] !== 0 || d[i - 2] !== 0 || d[i - 3] !== 0) dirty = true;
+        d[i - 3] = 0;
+        d[i - 2] = 0;
+        d[i - 1] = 0;
+        d[i] = 0;
+      }
+    }
+    if (dirty) trailCtx.putImageData(img, 0, 0);
+  }
+
+  function exportRotateEmitterOffset(dx, dy, angle) {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return [
+      dx * cos - dy * sin,
+      dx * sin + dy * cos,
+    ];
+  }
+
+  function exportTriangleEmitterOffset(radius, angle) {
+    const top = { x: 0, y: -radius };
+    const right = { x: Math.sin(Math.PI / 3) * radius, y: radius * 0.5 };
+    const left = { x: -right.x, y: right.y };
+    const r1 = Math.sqrt(Math.random());
+    const r2 = Math.random();
+    const u = 1 - r1;
+    const v = r1 * (1 - r2);
+    const w = r1 * r2;
+    const dx = u * top.x + v * right.x + w * left.x;
+    const dy = u * top.y + v * right.y + w * left.y;
+    return exportRotateEmitterOffset(dx, dy, angle);
+  }
+
+  function spawnPoint() {
+    const size = Math.max(1, emitCfg.emitterSize || 18);
+    const radialSize = frameSize * (size / 100);
+    switch (emitCfg.emitterShape) {
+      case 'line': {
+        const hw = frameSize * (size / 100);
+        const angle = ((emitCfg.emitterAngle || 0) * Math.PI) / 180;
+        const t = (Math.random() * 2 - 1) * hw;
+        return [centerX + t * Math.cos(angle), centerY + t * Math.sin(angle)];
+      }
+      case 'circle': {
+        const a = Math.random() * Math.PI * 2;
+        return [centerX + Math.cos(a) * radialSize, centerY + Math.sin(a) * radialSize];
+      }
+      case 'disk': {
+        const radius = radialSize * Math.sqrt(Math.random());
+        const a = Math.random() * Math.PI * 2;
+        return [centerX + Math.cos(a) * radius, centerY + Math.sin(a) * radius];
+      }
+      case 'square': {
+        const angle = ((emitCfg.emitterAngle || 0) * Math.PI) / 180;
+        const dx = (Math.random() * 2 - 1) * radialSize;
+        const dy = (Math.random() * 2 - 1) * radialSize;
+        const [rx, ry] = exportRotateEmitterOffset(dx, dy, angle);
+        return [centerX + rx, centerY + ry];
+      }
+      case 'triangle': {
+        const angle = ((emitCfg.emitterAngle || 0) * Math.PI) / 180;
+        const [dx, dy] = exportTriangleEmitterOffset(radialSize, angle);
+        return [centerX + dx, centerY + dy];
+      }
+      case 'arc': {
+        const centerAngle = ((emitCfg.emitterAngle || 0) * Math.PI) / 180;
+        const halfSpan = (((emitCfg.emitterArc || 120) / 2) * Math.PI) / 180;
+        const a = centerAngle + (Math.random() * 2 - 1) * halfSpan;
+        return [centerX + Math.cos(a) * radialSize, centerY + Math.sin(a) * radialSize];
+      }
+      default:
+        return [centerX, centerY];
+    }
+  }
+
+  function spawnParticleToPool(x, y) {
+    const particle = createParticle(x, y, emitCfg);
+    for (let i = 0; i < pool.length; i++) {
+      if (!pool[i].alive) { pool[i] = particle; return; }
+    }
+    pool.push(particle);
+  }
+
+  function spawnDeathParticle(x, y) {
+    const angle = Math.random() * Math.PI * 2;
+    const spd = emitCfg.deathSpeed * (0.6 + Math.random() * 0.8);
+    const miniCfg = {
+      ...emitCfg,
+      speed: spd,
+      speedVariance: 0,
+      spread: 360,
+      direction: 0,
+      particleSize: Math.max(1, emitCfg.deathSize || 2),
+      sizeVariance: 0,
+      lifetime: 20 + Math.floor(Math.random() * 12),
+      fade: 1,
+      shrink: 0.6,
+      turbulence: 0,
+      drag: 0.9,
+      bounce: false,
+      velocityDecay: 0,
+      deathCount: 0,
+      _isDeathParticle: true,
+    };
+    const p = createParticle(x, y, miniCfg);
+    p.vx = Math.cos(angle) * spd;
+    p.vy = Math.sin(angle) * spd;
+    for (let i = 0; i < pool.length; i++) {
+      if (!pool[i].alive) { pool[i] = p; return; }
+    }
+    pool.push(p);
+  }
+
+  function resetPool() {
+    for (const particle of pool) particle.alive = false;
+    loopTimer = 0;
+    pulseTimer = 0;
+    emitCfg._spawnAccum = 0;
+    trailFrame = 0;
+    trailSweepCounter = 0;
+    trailCtx.clearRect(0, 0, frameSize, frameSize);
+  }
+
+  function liveCountLocal() {
+    let count = 0;
+    for (const particle of pool) {
+      if (particle.alive) count++;
+    }
+    return count;
+  }
+
+  function tick() {
+    const deathSparks = emitCfg.deathCount > 0 ? [] : null;
+
+    for (const particle of pool) {
+      if (particle.alive) {
+        updateParticle(particle);
+        if (!particle.alive && deathSparks && !particle.isDeathParticle) {
+          deathSparks.push({ x: particle.x, y: particle.y });
+        }
+      }
+    }
+
+    if (deathSparks) {
+      for (const { x, y } of deathSparks) {
+        const n = Math.min(emitCfg.deathCount, 8);
+        for (let d = 0; d < n; d++) spawnDeathParticle(x, y);
+      }
+    }
+
+    const live = liveCountLocal();
+    let toSpawn = 0;
+
+    if (emitCfg.emitterMode === 'continuous') {
+      if (live < emitCfg.count) {
+        emitCfg._spawnAccum = (emitCfg._spawnAccum || 0) + (emitCfg.spawnRate || 60) / 60;
+        toSpawn = Math.min(emitCfg.count - live, Math.floor(emitCfg._spawnAccum));
+        emitCfg._spawnAccum -= toSpawn;
+      } else {
+        emitCfg._spawnAccum = 0;
+      }
+    } else if (emitCfg.emitterMode === 'burst') {
+      if (emitCfg.burstPending) {
+        toSpawn = emitCfg.count;
+        emitCfg.burstPending = false;
+      }
+    } else if (emitCfg.emitterMode === 'pulse') {
+      pulseTimer++;
+      const pulseFrames = Math.max(10, Math.round((emitCfg.pulseInterval || 2) * 60));
+      if (pulseTimer >= pulseFrames) {
+        pulseTimer = 0;
+        toSpawn = emitCfg.count;
+      }
+    }
+
+    for (let i = 0; i < toSpawn; i++) {
+      const [x, y] = spawnPoint();
+      spawnParticleToPool(x, y);
+    }
+
+    if (emitCfg.loop) {
+      loopTimer++;
+      const interval = Math.ceil(emitCfg.lifetime * 1.5) + 20;
+      if (loopTimer >= interval) {
+        resetPool();
+        if (emitCfg.emitterMode === 'burst') emitCfg.burstPending = true;
+      }
+    }
+  }
+
+  function drawFrame() {
+    frameCtx.globalCompositeOperation = 'source-over';
+    frameCtx.globalAlpha = 1;
+    if (transparentBg) {
+      frameCtx.clearRect(0, 0, frameSize, frameSize);
+    } else {
+      const { r, g, b } = hexToRgb(bgHex);
+      frameCtx.fillStyle = `rgb(${r},${g},${b})`;
+      frameCtx.fillRect(0, 0, frameSize, frameSize);
+    }
+
+    if (trailEnabled && trailPersistence > 0 && trailOpacity > 0) {
+      trailFrame++;
+      const lifetime = persistenceToLifetimeFrames(trailPersistence);
+      if (lifetime !== Infinity) {
+        const fadeAlpha = trailFadeAlphaForLifetime(lifetime);
+        if (fadeAlpha >= 1) {
+          trailCtx.clearRect(0, 0, frameSize, frameSize);
+        } else if (fadeAlpha > 0) {
+          trailCtx.save();
+          trailCtx.globalCompositeOperation = 'destination-out';
+          trailCtx.globalAlpha = fadeAlpha;
+          trailCtx.fillStyle = '#000';
+          trailCtx.fillRect(0, 0, frameSize, frameSize);
+          trailCtx.restore();
+
+          trailSweepCounter++;
+          if (trailSweepCounter >= 24) {
+            trailSweepCounter = 0;
+            clearTransparentTrailPixels();
+          }
+        }
+      }
+
+      trailCtx.save();
+      trailCtx.globalCompositeOperation = 'source-over';
+      for (const particle of pool) {
+        if (particle.alive) drawTrailParticle(trailCtx, particle);
+      }
+      trailCtx.restore();
+
+      frameCtx.save();
+      frameCtx.globalAlpha = Math.max(0, Math.min(1, trailOpacity / 100));
+      if (trailSoftness > 0) {
+        const blurPx = (trailSoftness / 100) * 3;
+        frameCtx.filter = `blur(${blurPx.toFixed(1)}px)`;
+      }
+      frameCtx.drawImage(trailCanvas, 0, 0);
+      frameCtx.restore();
+    } else {
+      trailCtx.clearRect(0, 0, frameSize, frameSize);
+    }
+
+    for (const particle of pool) {
+      if (particle.alive) drawParticle(frameCtx, particle);
+    }
+
+    frameCtx.globalCompositeOperation = 'source-over';
+    frameCtx.globalAlpha = 1;
+  }
+
+  function clearFrame() {
+    frameCtx.globalCompositeOperation = 'source-over';
+    frameCtx.globalAlpha = 1;
+    if (transparentBg) {
+      frameCtx.clearRect(0, 0, frameSize, frameSize);
+    } else {
+      const { r, g, b } = hexToRgb(bgHex);
+      frameCtx.fillStyle = `rgb(${r},${g},${b})`;
+      frameCtx.fillRect(0, 0, frameSize, frameSize);
+    }
+  }
+
+  clearFrame();
+
+  return { canvas: frameCanvas, tick, drawFrame, resetPool };
 }

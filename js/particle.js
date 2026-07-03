@@ -154,6 +154,77 @@ function createParticle(x, y, cfg) {
   };
 }
 
+// ── Force Wells ───────────────────────────────────────────────────────────
+// Global force wells that attract or repel particles.
+// Each well: { x, y, strength, radius }
+//   strength > 0 = attract, strength < 0 = repel
+//   radius = falloff distance (force = 0 beyond this)
+
+const _forceWells = [];
+let _mouseForceEnabled = false;
+let _mouseForceStrength = 0;   // -10 to 10 (negative = repel)
+let _mouseForceRadius = 150;   // pixels
+let _mouseX = -1;
+let _mouseY = -1;
+
+function setMouseForce(enabled, strength, radius) {
+  _mouseForceEnabled = !!enabled;
+  _mouseForceStrength = strength ?? 0;
+  _mouseForceRadius = radius ?? 150;
+}
+
+function setMouseForcePos(x, y) {
+  _mouseX = x;
+  _mouseY = y;
+}
+
+function addForceWell(x, y, strength, radius) {
+  if (_forceWells.length >= 8) return false;
+  _forceWells.push({ x, y, strength: strength || 5, radius: radius || 150 });
+  return true;
+}
+
+function removeForceWell(index) {
+  if (index >= 0 && index < _forceWells.length) {
+    _forceWells.splice(index, 1);
+  }
+}
+
+function clearForceWells() {
+  _forceWells.length = 0;
+}
+
+function getForceWells() {
+  return _forceWells;
+}
+
+function getMouseForceState() {
+  return {
+    enabled: _mouseForceEnabled,
+    strength: _mouseForceStrength,
+    radius: _mouseForceRadius,
+  };
+}
+
+/**
+ * Compute force contribution from a single well on a particle.
+ * Uses inverse-distance falloff clamped to the well's radius.
+ */
+function _applyWellForce(p, wx, wy, strength, radius) {
+  const dx = wx - p.x;
+  const dy = wy - p.y;
+  const distSq = dx * dx + dy * dy;
+  if (distSq < 1 || distSq > radius * radius) return;
+  const dist = Math.sqrt(distSq);
+  // Smooth inverse falloff: stronger when close, zero at radius
+  const falloff = 1 - dist / radius;
+  // Force scales with strength and falloff^2 for natural gravity-like feel.
+  // The 0.5 base multiplier keeps things punchy at default settings.
+  const force = strength * falloff * falloff * 0.5;
+  p.vx += (dx / dist) * force;
+  p.vy += (dy / dist) * force;
+}
+
 // ── Per-frame update ───────────────────────────────────────────────────────
 
 /**
@@ -194,6 +265,17 @@ function updateParticle(p) {
   if (p.turbulence > 0) {
     p.vx += (Math.random() - 0.5) * p.turbulence * p.speedScale;
     p.vy += (Math.random() - 0.5) * p.turbulence * p.speedScale;
+  }
+
+  // ── Force wells (gravity wells / attractors) ─────────────────────────────
+  for (let i = 0; i < _forceWells.length; i++) {
+    const w = _forceWells[i];
+    _applyWellForce(p, w.x, w.y, w.strength, w.radius);
+  }
+
+  // ── Mouse force (interactive attractor/repeller) ─────────────────────────
+  if (_mouseForceEnabled && _mouseForceStrength !== 0 && _mouseX >= 0) {
+    _applyWellForce(p, _mouseX, _mouseY, _mouseForceStrength, _mouseForceRadius);
   }
 
   if (p.orbit !== 0) {

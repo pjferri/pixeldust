@@ -15,7 +15,7 @@
       <div id="logo">
         <span class="logo-px">PX</span>
         <span class="logo-name">PixelDust</span>
-        <span class="logo-version">v0.1.9</span>
+        <span class="logo-version">v0.2.0</span>
       </div>
       <div id="topbar-controls">
         <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
@@ -334,13 +334,101 @@
             </div>
           </div>
 
-          <label class="ctrl-row">
-            <span>Trail fade</span>
-            <div class="slider-pair">
-              <input type="range" id="trail-alpha" min="0" max="1" value="0.12" step="0.01" />
-              <span class="val-display" data-for="trail-alpha">0.12</span>
-            </div>
+        </section>
+
+        <!-- TRAILS -->
+        <section class="ctrl-group">
+          <h3 class="group-label">Trails</h3>
+
+          <label class="ctrl-row" title="Enable particle trails (motion history)">
+            <span>Enable</span>
+            <input type="checkbox" id="trail-enabled" class="toggle" checked />
           </label>
+
+          <div id="trail-params">
+            <label class="ctrl-row" title="Trail lifetime — how long trail points last before fading away (0 = instant, 100 = permanent)">
+              <span>Persistence</span>
+              <div class="slider-pair">
+                <input type="range" id="trail-persistence" min="0" max="100" value="12" step="1" />
+                <span class="val-display" data-for="trail-persistence">12</span>
+              </div>
+            </label>
+
+            <label class="ctrl-row" title="Overall brightness/visibility of the trail layer">
+              <span>Opacity</span>
+              <div class="slider-pair">
+                <input type="range" id="trail-opacity" min="0" max="100" value="100" step="1" />
+                <span class="val-display" data-for="trail-opacity">100</span>
+              </div>
+            </label>
+
+            <label class="ctrl-row" title="Softens trails with a gentle blur (0 = crisp pixel trails)">
+              <span>Softness</span>
+              <div class="slider-pair">
+                <input type="range" id="trail-softness" min="0" max="100" value="0" step="1" />
+                <span class="val-display" data-for="trail-softness">0</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Hidden compat element for legacy save/load -->
+          <input type="range" id="trail-alpha" min="0" max="1" value="0.12" step="0.01" style="display:none" />
+        </section>
+
+        <!-- FORCES -->
+        <section class="ctrl-group">
+          <h3 class="group-label">Forces</h3>
+
+          <label class="ctrl-row" title="Particles are attracted to or repelled from the mouse cursor">
+            <span>Mouse force</span>
+            <input type="checkbox" id="mouse-force-enabled" class="toggle" />
+          </label>
+
+          <div id="mouse-force-params" style="display:none">
+            <label class="ctrl-row" title="Positive = attract to cursor, Negative = repel from cursor">
+              <span>Strength</span>
+              <div class="slider-pair">
+                <input type="range" id="mouse-force-strength" min="-10" max="10" value="5" step="0.5" />
+                <span class="val-display" data-for="mouse-force-strength">5</span>
+              </div>
+            </label>
+
+            <label class="ctrl-row" title="Range of the mouse force effect in pixels">
+              <span>Radius</span>
+              <div class="slider-pair">
+                <input type="range" id="mouse-force-radius" min="30" max="400" value="150" step="5" />
+                <span class="val-display" data-for="mouse-force-radius">150</span>
+              </div>
+            </label>
+          </div>
+
+          <div class="ctrl-row-group" style="margin-top:6px">
+            <label class="ctrl-row" title="Click on the canvas to place a gravity well">
+              <span>Wells</span>
+              <div style="display:flex;gap:4px">
+                <button id="btn-place-well" class="btn btn-secondary btn-sm" title="Click canvas to place an attractor">+ Place</button>
+                <button id="btn-clear-wells" class="btn btn-secondary btn-sm" title="Remove all placed wells">Clear</button>
+              </div>
+            </label>
+
+            <label class="ctrl-row" title="Strength of the next well to place (positive = attract, negative = repel)">
+              <span>Well str.</span>
+              <div class="slider-pair">
+                <input type="range" id="well-strength" min="-10" max="10" value="5" step="0.5" />
+                <span class="val-display" data-for="well-strength">5</span>
+              </div>
+            </label>
+
+            <label class="ctrl-row" title="Range of the next well to place">
+              <span>Well radius</span>
+              <div class="slider-pair">
+                <input type="range" id="well-radius" min="30" max="400" value="150" step="5" />
+                <span class="val-display" data-for="well-radius">150</span>
+              </div>
+            </label>
+          </div>
+
+          <div id="force-well-list" style="margin-top:4px;font-size:11px;color:#999"></div>
         </section>
 
         <!-- LIFETIME -->

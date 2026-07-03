@@ -2,19 +2,53 @@
  * renderer.js
  * Canvas drawing, emitter crosshair, and canvas drag interaction.
  *
- * v0.1.0: ring particle shape; crosshair now visualises emitter shape extent
+ * v0.3.0: Unity-style trail system — point-based snapshots with age-based
+ *         fading.  Each frame records particle positions; trail points fade
+ *         linearly over a configurable lifetime.  No destination-out
+ *         compositing = no 8-bit alpha quantisation ghosts.
  */
 
 let canvas, ctx;
 
-// Ghost trail fix — pixel-snap counter
-let _snapCount = 0;
+// ── Trail system — offscreen buffer ────────────────────────────────────────
+let _trailCanvas = null;
+let _trailCtx    = null;
 
 let bgColor = '#0c0c0e';
-let trailAlpha = 0.12;
+let trailAlpha = 0.12;       // kept for backward-compat mapping
 let blendMode = 'normal';
 let effectStrength = 1;
 let shadowColor = '#120018';
+
+// Trail state
+let _trailEnabled     = true;
+let _trailPersistence = 50;   // 0-100: maps to trail lifetime
+let _trailOpacity     = 100;  // 0-100: overall trail layer alpha
+let _trailSoftness    = 0;    // 0-100: blur applied to trail layer
+let _trailSweepCounter = 0;
+
+// ── Hybrid trail system: snapshot tracking + incremental canvas ───────────
+// We store snapshots for lifetime tracking, but render incrementally:
+// - New particles are drawn onto a persistent trail canvas each frame
+// - Fading is done via destination-out (like before) but with a guaranteed
+//   alpha floor sweep to kill ghosts
+// - Snapshot metadata tracks what was drawn when, so we can compute
+//   the correct fade rate from the lifetime
+// This gives O(aliveParticles) draw cost per frame instead of O(allTrailPoints). ─────────────────────────────────────────────
+// Each snapshot is a Float32Array: [x, y, size, r, g, b, alpha, shape, ...]
+// 8 fields per particle (TRAIL_STRIDE).  Snapshots are stored with their
+// birth frame number so we can compute age-based fade.
+const TRAIL_STRIDE = 8;
+const MAX_TRAIL_SNAPSHOTS = 800; // hard cap to bound memory
+let _trailSnapshots = [];  // { frame: number, pts: Float32Array, count: number }
+let _trailFrame     = 0;
+let _trailRecordInterval = 1; // record every Nth frame (dynamic for perf)
+
+// Shape index for compact storage
+const _SHAPE_IDX = { circle: 0, square: 1, triangle: 2, diamond: 3,
+                     star: 4, sparkle: 5, cross: 6, heart: 7, ring: 8 };
+const _IDX_SHAPE = ['circle','square','triangle','diamond',
+                    'star','sparkle','cross','heart','ring'];
 
 function normalizeEffectMode(mode) {
   switch (mode) {
@@ -33,6 +67,15 @@ function normalizeEffectMode(mode) {
     default:
       return 'normal';
   }
+}
+
+function _ensureTrailCanvas() {
+  if (_trailCanvas && _trailCanvas.width === canvas.width && _trailCanvas.height === canvas.height) return;
+  _trailCanvas = document.createElement('canvas');
+  _trailCanvas.width = canvas.width;
+  _trailCanvas.height = canvas.height;
+  _trailCtx = _trailCanvas.getContext('2d');
+  _trailCtx.imageSmoothingEnabled = false;
 }
 
 function initRenderer(canvasEl) {
@@ -56,44 +99,485 @@ function sizeCanvas() {
   canvasW = size;
   canvasH = size;
   ctx.imageSmoothingEnabled = false;
+  // Reset trail canvas on resize
+  _trailCanvas = null;
+  _trailCtx = null;
   centerEmitter();
 }
 
+function _renderFrameSnapshotLegacy() {
+  const w = canvas.width;
+  const h = canvas.height;
+  const { r, g, b } = hexToRgb(bgColor);
+
+  // ── 1. Clear main canvas to background ────────────────────────────────
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = `rgb(${r},${g},${b})`;
+  ctx.fillRect(0, 0, w, h);
+
+  if (_trailEnabled && _trailPersistence > 0 && _trailOpacity > 0) {
+    _ensureTrailCanvas();
+    _trailFrame++;
+
+    // ── 2. Record current particles as a trail snapshot ───────────────
+    if (_trailFrame % _trailRecordInterval === 0) {
+      _recordTrailSnapshot(particles);
+    }
+
+    // ── 3. Expire old snapshots ───────────────────────────────────────
+    const lifetime = _persistenceToLifetimeFrames(_trailPersistence);
+    if (lifetime !== Infinity) {
+      const cutoff = _trailFrame - lifetime;
+      // Remove from front (oldest first)
+      while (_trailSnapshots.length > 0 && _trailSnapshots[0].frame < cutoff) {
+        _trailSnapshots.shift();
+      }
+    }
+    // Hard cap
+    while (_trailSnapshots.length > MAX_TRAIL_SNAPSHOTS) {
+      _trailSnapshots.shift();
+    }
+
+    // ── 4. Clear trail canvas and redraw all trail points ─────────────
+    _trailCtx.clearRect(0, 0, w, h);
+    _trailCtx.globalCompositeOperation = 'source-over';
+
+    const snapCount = _trailSnapshots.length;
+    for (let si = 0; si < snapCount; si++) {
+      const snap = _trailSnapshots[si];
+      const age = _trailFrame - snap.frame;
+      // Age-based fade: 1.0 at birth → 0.0 at lifetime
+      // For permanent trails (lifetime=Inf), ageFrac stays 1.0
+      const ageFrac = lifetime === Infinity ? 1.0 : Math.max(0, 1 - age / lifetime);
+      if (ageFrac <= 0) continue;
+
+      const pts = snap.pts;
+      const count = snap.count;
+      for (let i = 0; i < count; i++) {
+        const off = i * TRAIL_STRIDE;
+        const px    = pts[off];
+        const py    = pts[off + 1];
+        const psize = pts[off + 2];
+        const pr    = pts[off + 3];
+        const pg    = pts[off + 4];
+        const pb    = pts[off + 5];
+        const pa    = pts[off + 6];
+        const pshape = _IDX_SHAPE[pts[off + 7]] || 'square';
+
+        const finalAlpha = pa * ageFrac;
+        if (finalAlpha <= 0.005 || psize < 0.5) continue;
+
+        _trailCtx.globalAlpha = Math.min(1, finalAlpha);
+        _trailCtx.fillStyle = `rgb(${pr},${pg},${pb})`;
+        _drawTrailShape(_trailCtx, pshape, Math.round(px), Math.round(py), Math.max(1, Math.round(psize)));
+      }
+    }
+
+    // ── 5. Apply softness (blur) to trail canvas if enabled ───────────
+    if (_trailSoftness > 0 && (_softFrameCount = ((_softFrameCount || 0) + 1) % 3) === 0) {
+      const blurPx = (_trailSoftness / 100) * 3;
+      _trailCtx.filter = `blur(${blurPx.toFixed(1)}px)`;
+      _trailCtx.globalCompositeOperation = 'copy';
+      _trailCtx.globalAlpha = 1;
+      _trailCtx.drawImage(_trailCanvas, 0, 0);
+      _trailCtx.filter = 'none';
+      _trailCtx.globalCompositeOperation = 'source-over';
+    }
+
+    // ── 6. Composite trail canvas onto main canvas ────────────────────
+    ctx.globalAlpha = Math.max(0, Math.min(1, _trailOpacity / 100));
+    ctx.drawImage(_trailCanvas, 0, 0);
+    ctx.globalAlpha = 1;
+
+    // ── 7. Draw current particles crisply on top ──────────────────────
+    for (const p of particles) {
+      if (p.alive) drawParticle(ctx, p);
+    }
+
+    // ── 8. Adaptive record interval for performance ───────────────────
+    // If we have tons of snapshots, subsample to keep draw count manageable
+    const totalPoints = _trailSnapshots.reduce((s, sn) => s + sn.count, 0);
+    _trailRecordInterval = totalPoints > 40000 ? 3 : totalPoints > 20000 ? 2 : 1;
+
+  } else {
+    // Trails off or opacity 0 — wipe accumulated data
+    if (_trailSnapshots.length > 0) _trailSnapshots = [];
+    if (_trailCanvas) clearTrailCanvas();
+    for (const p of particles) {
+      if (p.alive) drawParticle(ctx, p);
+    }
+  }
+
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  if (document.getElementById('show-crosshair')?.checked) drawEmitterCrosshair();
+  if (document.getElementById('show-frame-guide')?.checked) drawFrameGuide();
+  drawForceWellIndicators();
+}
+
+/**
+ * Draw small visual indicators for placed gravity wells.
+ * Attractors show as cyan rings, repellers as red rings.
+ */
+function drawForceWellIndicators() {
+  const wells = typeof getForceWells === 'function' ? getForceWells() : [];
+  if (wells.length === 0) return;
+
+  ctx.save();
+  ctx.lineWidth = 1;
+
+  for (const w of wells) {
+    const isAttract = w.strength > 0;
+    const color = isAttract ? 'rgba(0,220,255,0.6)' : 'rgba(255,80,80,0.6)';
+    const colorFaint = isAttract ? 'rgba(0,220,255,0.12)' : 'rgba(255,80,80,0.12)';
+
+    // Radius ring (faint)
+    ctx.setLineDash([3, 4]);
+    ctx.strokeStyle = colorFaint;
+    ctx.beginPath();
+    ctx.arc(w.x, w.y, w.radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Center dot
+    ctx.setLineDash([]);
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.arc(w.x, w.y, 4, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // +/- indicator
+    ctx.fillStyle = color;
+    ctx.fillRect(w.x - 3, w.y - 0.5, 6, 1);
+    if (isAttract) {
+      ctx.fillRect(w.x - 0.5, w.y - 3, 1, 6);
+    }
+  }
+  ctx.restore();
+}
+
+// ── Unity-style trail helper functions ─────────────────────────────────────
+
+/**
+ * Maps persistence (0–100) to trail lifetime in frames.
+ * Modelled after Unity's TrailRenderer.time — the slider controls how many
+ * seconds (frames) of history are kept.
+ *
+ * At ~15 fps (typical for this app):
+ *   0   → 0 frames     (no trail)
+ *   10  → ~5 frames    (flash, ~0.3s)
+ *   30  → ~12 frames   (~0.8s)
+ *   50  → ~40 frames   (~2.7s)
+ *   70  → ~100 frames  (~6.7s)
+ *   85  → ~190 frames  (~12.7s)
+ *   95  → ~310 frames  (~20.7s)
+ *   100 → Infinity      (permanent)
+ */
+function _persistenceToLifetimeFrames(p) {
+  if (p >= 100) return Infinity;
+  if (p <= 0)   return 0;
+  // Quadratic curve: short trails feel snappy, high persistence
+  // gives long trails but they ALWAYS eventually die (unless 100).
+  const t = p / 100;
+  return Math.round(3 + Math.pow(t, 2.2) * 360);
+}
+
+/**
+ * Record a snapshot of all alive particles into the trail history.
+ * Each particle is stored as 8 floats: x, y, size, r, g, b, alpha, shapeIdx
+ */
+function _recordTrailSnapshot(particles) {
+  // Count alive particles first
+  let aliveCount = 0;
+  for (let i = 0; i < particles.length; i++) {
+    if (particles[i].alive) aliveCount++;
+  }
+  if (aliveCount === 0) return;
+
+  const pts = new Float32Array(aliveCount * TRAIL_STRIDE);
+  let idx = 0;
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
+    if (!p.alive) continue;
+
+    // Resolve gradient colour at current life fraction
+    let drawR = p.r, drawG = p.g, drawB = p.b;
+    if (p.useGradient && typeof getGradientStopsRgb === 'function') {
+      const t = p.life / p.maxLife;
+      const stops = getGradientStopsRgb();
+      const n = stops.length;
+      const segT = t * n;
+      const segIdx = Math.min(Math.floor(segT), n - 1);
+      const localT = segT - segIdx;
+      let fR, fG, fB;
+      if (segIdx === 0) {
+        fR = p.r; fG = p.g; fB = p.b;
+      } else {
+        fR = stops[segIdx - 1].r; fG = stops[segIdx - 1].g; fB = stops[segIdx - 1].b;
+      }
+      const to = stops[segIdx];
+      drawR = Math.round(fR + (to.r - fR) * localT);
+      drawG = Math.round(fG + (to.g - fG) * localT);
+      drawB = Math.round(fB + (to.b - fB) * localT);
+    }
+
+    const off = idx * TRAIL_STRIDE;
+    pts[off]     = p.x;
+    pts[off + 1] = p.y;
+    pts[off + 2] = p.size;
+    pts[off + 3] = drawR;
+    pts[off + 4] = drawG;
+    pts[off + 5] = drawB;
+    pts[off + 6] = Math.max(0, Math.min(1, p.alpha));
+    pts[off + 7] = _SHAPE_IDX[p.shape] !== undefined ? _SHAPE_IDX[p.shape] : 1;
+    idx++;
+  }
+
+  _trailSnapshots.push({ frame: _trailFrame, pts, count: aliveCount });
+}
+
+/**
+ * Draw a single trail particle shape — simplified version of drawParticleShape
+ * without the full effect pipeline (trails are always source-over).
+ */
+function _drawTrailShape(ctx, shape, x, y, size) {
+  switch (shape) {
+    case 'circle':
+      if (size <= 4) {
+        const r = Math.floor(size / 2);
+        for (let dy = -r; dy <= r; dy++) {
+          for (let dx = -r; dx <= r; dx++) {
+            if (dx * dx + dy * dy <= r * r + r * 0.5) {
+              ctx.fillRect(x + dx, y + dy, 1, 1);
+            }
+          }
+        }
+      } else {
+        ctx.beginPath();
+        ctx.arc(x + 0.5, y + 0.5, size / 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    case 'ring': {
+      const r = size / 2;
+      if (r < 2.5) {
+        ctx.fillRect(x, y, 1, 1);
+      } else {
+        const innerR = Math.max(0.5, r * 0.45);
+        ctx.beginPath();
+        ctx.arc(x + 0.5, y + 0.5, r, 0, Math.PI * 2, false);
+        ctx.arc(x + 0.5, y + 0.5, innerR, 0, Math.PI * 2, true);
+        ctx.fill('evenodd');
+      }
+      break;
+    }
+    case 'triangle': {
+      const h = Math.ceil(size / 2);
+      ctx.beginPath();
+      ctx.moveTo(x, y - h);
+      ctx.lineTo(x + h, y + h);
+      ctx.lineTo(x - h, y + h);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+    case 'diamond': {
+      const h = Math.ceil(size / 2);
+      ctx.beginPath();
+      ctx.moveTo(x, y - h);
+      ctx.lineTo(x + h, y);
+      ctx.lineTo(x, y + h);
+      ctx.lineTo(x - h, y);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+    case 'cross': {
+      const t = Math.max(1, Math.floor(size / 3));
+      ctx.fillRect(x - Math.floor(size / 2), y - t, size, t * 2);
+      ctx.fillRect(x - t, y - Math.floor(size / 2), t * 2, size);
+      break;
+    }
+    case 'star': {
+      const outerR = size / 2;
+      const innerR = outerR * 0.42;
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const angle = (i * Math.PI) / 5 - Math.PI / 2;
+        const radius = i % 2 === 0 ? outerR : innerR;
+        const px = x + Math.cos(angle) * radius;
+        const py = y + Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+    case 'heart': {
+      if (size <= 2) {
+        ctx.fillRect(x, y, 1, 1);
+      } else {
+        const half = size / 2;
+        ctx.beginPath();
+        ctx.moveTo(x, y + half * 0.95);
+        ctx.bezierCurveTo(x + half * 1.25, y + half * 0.25, x + half * 1.15, y - half * 0.75, x, y - half * 0.1);
+        ctx.bezierCurveTo(x - half * 1.15, y - half * 0.75, x - half * 1.25, y + half * 0.25, x, y + half * 0.95);
+        ctx.closePath();
+        ctx.fill();
+      }
+      break;
+    }
+    case 'sparkle': {
+      const long = size / 2;
+      const short = Math.max(1, Math.round(size / 5));
+      ctx.beginPath();
+      ctx.moveTo(x, y - long);
+      ctx.lineTo(x + short, y - short);
+      ctx.lineTo(x + long, y);
+      ctx.lineTo(x + short, y + short);
+      ctx.lineTo(x, y + long);
+      ctx.lineTo(x - short, y + short);
+      ctx.lineTo(x - long, y);
+      ctx.lineTo(x - short, y - short);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+    default: // square
+      ctx.fillRect(x - Math.floor(size / 2), y - Math.floor(size / 2), size, size);
+  }
+}
+
+/**
+ * Legacy fade mapping — kept for backward-compat and exporter.
+ */
+function _persistenceToFade(p) {
+  if (p >= 100) return 0;
+  if (p <= 0)   return 1;
+  const t = p / 100;
+  return Math.pow(1 - t, 1.4) * 0.32 + (1 - t) * 0.06;
+}
+
+function _resolveParticleDisplayColor(p) {
+  let drawR = p.r;
+  let drawG = p.g;
+  let drawB = p.b;
+
+  if (p.useGradient) {
+    const t = p.life / p.maxLife;
+    const stops = getGradientStopsRgb();
+    const n = stops.length;
+    const segT = t * n;
+    const segIdx = Math.min(Math.floor(segT), n - 1);
+    const localT = segT - segIdx;
+    let fR, fG, fB;
+    if (segIdx === 0) {
+      fR = p.r; fG = p.g; fB = p.b;
+    } else {
+      fR = stops[segIdx - 1].r; fG = stops[segIdx - 1].g; fB = stops[segIdx - 1].b;
+    }
+    const to = stops[segIdx];
+    drawR = Math.round(fR + (to.r - fR) * localT);
+    drawG = Math.round(fG + (to.g - fG) * localT);
+    drawB = Math.round(fB + (to.b - fB) * localT);
+  }
+
+  return { r: drawR, g: drawG, b: drawB };
+}
+
+function _trailFadeAlphaForLifetime(lifetime) {
+  if (!Number.isFinite(lifetime)) return 0;
+  if (lifetime <= 0) return 1;
+  const targetAlpha = 1 / 255;
+  return Math.max(0, Math.min(1, 1 - Math.pow(targetAlpha, 1 / Math.max(1, lifetime))));
+}
+
+function _drawParticleToTrailLayer(targetCtx, p) {
+  const alpha = Math.max(0, Math.min(1, p.alpha));
+  if (alpha <= 0.002 || p.size <= 0.2) return;
+
+  const color = _resolveParticleDisplayColor(p);
+  targetCtx.globalAlpha = alpha;
+  targetCtx.fillStyle = `rgb(${color.r},${color.g},${color.b})`;
+  _drawTrailShape(
+    targetCtx,
+    p.shape,
+    Math.round(p.x),
+    Math.round(p.y),
+    Math.max(1, Math.round(p.size))
+  );
+}
+
+function _clearTransparentTrailPixels() {
+  if (!_trailCtx || !_trailCanvas) return;
+  const img = _trailCtx.getImageData(0, 0, _trailCanvas.width, _trailCanvas.height);
+  const d = img.data;
+  let dirty = false;
+  for (let i = 3; i < d.length; i += 4) {
+    if (d[i] <= 6) {
+      if (d[i] !== 0 || d[i - 1] !== 0 || d[i - 2] !== 0 || d[i - 3] !== 0) dirty = true;
+      d[i - 3] = 0;
+      d[i - 2] = 0;
+      d[i - 1] = 0;
+      d[i] = 0;
+    }
+  }
+  if (dirty) _trailCtx.putImageData(img, 0, 0);
+}
+
+// Override the older snapshot-redraw trail renderer with an incremental compositor.
 function renderFrame() {
   const w = canvas.width;
   const h = canvas.height;
   const { r, g, b } = hexToRgb(bgColor);
 
   ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = `rgb(${r},${g},${b})`;
+  ctx.fillRect(0, 0, w, h);
 
-  // If no particles are alive, do a full opaque clear so residual glow is erased
-  if (liveCount() === 0) {
-    ctx.fillStyle = `rgb(${r},${g},${b})`;
-    ctx.fillRect(0, 0, w, h);
-  } else {
-    ctx.fillStyle = `rgba(${r},${g},${b},${1 - trailAlpha})`;
-    ctx.fillRect(0, 0, w, h);
-  }
+  if (_trailEnabled && _trailPersistence > 0 && _trailOpacity > 0) {
+    _ensureTrailCanvas();
+    _trailFrame++;
 
-  // ── Pixel-snap ghost fix ─────────────────────────────────────────────
-  // 8-bit canvas quantization can leave pixels stuck 1–2 units from the
-  // background colour, creating a faint permanent "ghost."  Every 3rd
-  // frame we scan the canvas and snap any pixel within ±3 of the bg to
-  // the exact bg value.  Because this runs BEFORE drawParticle(), active
-  // particle content is always painted fresh on top — no visual impact.
-  _snapCount = (_snapCount + 1) % 3;
-  if (_snapCount === 0) {
-    const img = ctx.getImageData(0, 0, w, h);
-    const d = img.data;
-    const T = 3; // threshold
-    for (let i = 0, n = d.length; i < n; i += 4) {
-      if (d[i]   - r <= T && r - d[i]   <= T &&
-          d[i+1] - g <= T && g - d[i+1] <= T &&
-          d[i+2] - b <= T && b - d[i+2] <= T) {
-        d[i] = r; d[i+1] = g; d[i+2] = b;
+    const lifetime = _persistenceToLifetimeFrames(_trailPersistence);
+    if (lifetime !== Infinity) {
+      const fadeAlpha = _trailFadeAlphaForLifetime(lifetime);
+      if (fadeAlpha >= 1) {
+        _trailCtx.clearRect(0, 0, w, h);
+      } else if (fadeAlpha > 0) {
+        _trailCtx.save();
+        _trailCtx.globalCompositeOperation = 'destination-out';
+        _trailCtx.globalAlpha = fadeAlpha;
+        _trailCtx.fillStyle = '#000';
+        _trailCtx.fillRect(0, 0, w, h);
+        _trailCtx.restore();
+
+        _trailSweepCounter++;
+        if (_trailSweepCounter >= 24) {
+          _trailSweepCounter = 0;
+          _clearTransparentTrailPixels();
+        }
       }
     }
-    ctx.putImageData(img, 0, 0);
+
+    _trailCtx.save();
+    _trailCtx.globalCompositeOperation = 'source-over';
+    for (const p of particles) {
+      if (p.alive) _drawParticleToTrailLayer(_trailCtx, p);
+    }
+    _trailCtx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, _trailOpacity / 100));
+    if (_trailSoftness > 0) {
+      const blurPx = (_trailSoftness / 100) * 3;
+      ctx.filter = `blur(${blurPx.toFixed(1)}px)`;
+    }
+    ctx.drawImage(_trailCanvas, 0, 0);
+    ctx.restore();
+  } else if (_trailCanvas) {
+    clearTrailCanvas();
   }
 
   for (const p of particles) {
@@ -101,8 +585,10 @@ function renderFrame() {
   }
 
   ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
   if (document.getElementById('show-crosshair')?.checked) drawEmitterCrosshair();
   if (document.getElementById('show-frame-guide')?.checked) drawFrameGuide();
+  drawForceWellIndicators();
 }
 
 function drawParticle(ctx, p) {
@@ -508,6 +994,17 @@ function drawFrameGuide() {
 }
 
 
+/** Mode for canvas interactions: 'emitter' (default) or 'force' (place wells) */
+let _canvasInteractionMode = 'emitter';
+let _pendingForceStrength = 5;
+let _pendingForceRadius = 150;
+
+function setCanvasInteractionMode(mode) { _canvasInteractionMode = mode; }
+function setPendingForceWell(strength, radius) {
+  _pendingForceStrength = strength;
+  _pendingForceRadius = radius;
+}
+
 function setupEmitterInteraction() {
   canvas.style.cursor = 'crosshair';
   let dragging = false;
@@ -524,32 +1021,51 @@ function setupEmitterInteraction() {
   }
 
   canvas.addEventListener('mousedown', e => {
+    const { x, y } = getPos(e);
+    if (_canvasInteractionMode === 'force') {
+      addForceWell(x, y, _pendingForceStrength, _pendingForceRadius);
+      if (typeof _onForceWellsChanged === 'function') _onForceWellsChanged();
+      return;
+    }
     dragging = true;
     setEmitterDragging(true);
-    const { x, y } = getPos(e);
     setEmitterPos(x, y);
   });
 
   canvas.addEventListener('mousemove', e => {
-    if (!dragging) return;
     const { x, y } = getPos(e);
+    // Always update mouse force position (for interactive mouse force)
+    if (typeof setMouseForcePos === 'function') setMouseForcePos(x, y);
+    if (!dragging || _canvasInteractionMode === 'force') return;
     setEmitterPos(x, y);
   });
 
   canvas.addEventListener('mouseup',    () => { dragging = false; setEmitterDragging(false); });
-  canvas.addEventListener('mouseleave', () => { dragging = false; setEmitterDragging(false); });
+  canvas.addEventListener('mouseleave', () => {
+    dragging = false;
+    setEmitterDragging(false);
+    if (typeof setMouseForcePos === 'function') setMouseForcePos(-1, -1);
+  });
 
   canvas.addEventListener('touchstart', e => {
+    const { x, y } = getPos(e);
+    if (_canvasInteractionMode === 'force') {
+      addForceWell(x, y, _pendingForceStrength, _pendingForceRadius);
+      if (typeof _onForceWellsChanged === 'function') _onForceWellsChanged();
+      e.preventDefault();
+      return;
+    }
     dragging = true;
     setEmitterDragging(true);
-    const { x, y } = getPos(e);
     setEmitterPos(x, y);
+    if (typeof setMouseForcePos === 'function') setMouseForcePos(x, y);
     e.preventDefault();
   }, { passive: false });
 
   canvas.addEventListener('touchmove', e => {
-    if (!dragging) return;
     const { x, y } = getPos(e);
+    if (typeof setMouseForcePos === 'function') setMouseForcePos(x, y);
+    if (!dragging || _canvasInteractionMode === 'force') return;
     setEmitterPos(x, y);
     e.preventDefault();
   }, { passive: false });
@@ -558,10 +1074,52 @@ function setupEmitterInteraction() {
 }
 
 function setRendererBg(hex)      { bgColor = hex; }
-function setTrailAlpha(alpha)    { trailAlpha = alpha; }
+function setTrailAlpha(alpha)    {
+  trailAlpha = alpha;
+  // Backward-compat: map legacy trailAlpha (0–1) to new persistence (0–100)
+  // trailAlpha 0 = no trail = persistence 0, trailAlpha 1 = infinite = persistence 100
+  _trailPersistence = Math.round(alpha * 100);
+  _trailEnabled = alpha > 0;
+}
 function setBlendMode(mode)      { blendMode = normalizeEffectMode(mode); }
 function setEffectStrength(value){ effectStrength = Math.max(0, Math.min(3, Number.isFinite(value) ? value : 1)); }
 function setShadowColor(hex)     { shadowColor = /^#[0-9a-f]{6}$/i.test(hex || '') ? hex : '#120018'; }
+
+// ── Trail setters ─────────────────────────────────────────────────────────
+function setTrailEnabled(on) {
+  const was = _trailEnabled;
+  _trailEnabled = !!on;
+  if (was && !on) { _trailSnapshots = []; clearTrailCanvas(); }
+}
+function setTrailPersistence(val) {
+  _trailPersistence = Math.max(0, Math.min(100, Number(val) || 0));
+  if (_trailPersistence <= 0) { _trailSnapshots = []; clearTrailCanvas(); }
+}
+function setTrailOpacity(val) {
+  _trailOpacity = Math.max(0, Math.min(100, Number(val) || 0));
+  if (_trailOpacity <= 0) { _trailSnapshots = []; clearTrailCanvas(); }
+}
+function setTrailSoftness(val) {
+  _trailSoftness = Math.max(0, Math.min(100, Number(val) || 0));
+}
+
+function getTrailState() {
+  return {
+    enabled: _trailEnabled,
+    persistence: _trailPersistence,
+    opacity: _trailOpacity,
+    softness: _trailSoftness,
+  };
+}
+
+function clearTrailCanvas() {
+  _trailSnapshots = [];
+  _trailFrame = 0;
+  _trailSweepCounter = 0;
+  if (_trailCtx && _trailCanvas) {
+    _trailCtx.clearRect(0, 0, _trailCanvas.width, _trailCanvas.height);
+  }
+}
 
 function clearCanvas() {
   const { r, g, b } = hexToRgb(bgColor);
@@ -569,6 +1127,7 @@ function clearCanvas() {
   ctx.globalAlpha = 1;
   ctx.fillStyle = `rgb(${r},${g},${b})`;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  clearTrailCanvas();
 }
 
 function getCanvas() { return canvas; }

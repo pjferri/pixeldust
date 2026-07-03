@@ -139,9 +139,12 @@ function setEmitterPos(x, y) {
     emitterX = nx;
     emitterY = ny;
     emitterJustMoved = true;
-    // Immediately clear the canvas so no ghost trail lingers at the old position.
-    // clearCanvas() is defined in renderer.js (all files share the global scope).
-    if (typeof clearCanvas === 'function') clearCanvas();
+    // Note: we intentionally do NOT call clearCanvas() here.
+    // The new trail system fades old positions naturally via destination-out
+    // on the offscreen trail canvas.  Calling clearCanvas() on every drag
+    // would destroy the trail effect and cause jarring visual resets.
+    // The main canvas is already cleared to background every frame in
+    // renderFrame(), so no ghost artefacts are possible there.
   }
 }
 

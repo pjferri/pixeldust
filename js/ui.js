@@ -341,6 +341,12 @@ function updateDeathParamsVisibility() {
   if (row) row.classList.toggle('hidden', count === 0);
 }
 
+function updateTrailParamsVisibility() {
+  const enabled = document.getElementById('trail-enabled')?.checked ?? true;
+  const params  = document.getElementById('trail-params');
+  if (params) params.classList.toggle('hidden', !enabled);
+}
+
 const EFFECT_MODE_META = {
   normal: {
     usesStrength: false,
@@ -537,11 +543,93 @@ function initUI() {
 
   // ── BG colour ─────────────────────────────────────────────────────────
 
-  // ── Trail alpha ───────────────────────────────────────────────────────
-  document.getElementById('trail-alpha').addEventListener('input', e => {
-    setTrailAlpha(parseFloat(e.target.value));
+  // ── Trail controls ─────────────────────────────────────────────────────
+  document.getElementById('trail-enabled').addEventListener('change', e => {
+    setTrailEnabled(e.target.checked);
+    updateTrailParamsVisibility();
     pushConfig();
   });
+  document.getElementById('trail-persistence').addEventListener('input', e => {
+    setTrailPersistence(parseInt(e.target.value, 10));
+    // Sync hidden legacy trail-alpha for save/load compat
+    document.getElementById('trail-alpha').value = (parseInt(e.target.value, 10) / 100).toFixed(2);
+    pushConfig();
+  });
+  document.getElementById('trail-opacity').addEventListener('input', e => {
+    setTrailOpacity(parseInt(e.target.value, 10));
+    pushConfig();
+  });
+  document.getElementById('trail-softness').addEventListener('input', e => {
+    setTrailSoftness(parseInt(e.target.value, 10));
+    pushConfig();
+  });
+  updateTrailParamsVisibility();
+
+  // ── Forces / Gravity Wells ────────────────────────────────────────────
+  document.getElementById('mouse-force-enabled').addEventListener('change', e => {
+    const on = e.target.checked;
+    document.getElementById('mouse-force-params').style.display = on ? '' : 'none';
+    const str = parseFloat(document.getElementById('mouse-force-strength').value);
+    const rad = parseInt(document.getElementById('mouse-force-radius').value, 10);
+    setMouseForce(on, str, rad);
+  });
+  document.getElementById('mouse-force-strength').addEventListener('input', e => {
+    const str = parseFloat(e.target.value);
+    const rad = parseInt(document.getElementById('mouse-force-radius').value, 10);
+    setMouseForce(document.getElementById('mouse-force-enabled').checked, str, rad);
+  });
+  document.getElementById('mouse-force-radius').addEventListener('input', e => {
+    const str = parseFloat(document.getElementById('mouse-force-strength').value);
+    const rad = parseInt(e.target.value, 10);
+    setMouseForce(document.getElementById('mouse-force-enabled').checked, str, rad);
+  });
+
+  let _placingWells = false;
+  document.getElementById('btn-place-well').addEventListener('click', () => {
+    _placingWells = !_placingWells;
+    document.getElementById('btn-place-well').classList.toggle('active', _placingWells);
+    setCanvasInteractionMode(_placingWells ? 'force' : 'emitter');
+    const str = parseFloat(document.getElementById('well-strength').value);
+    const rad = parseInt(document.getElementById('well-radius').value, 10);
+    setPendingForceWell(str, rad);
+  });
+  document.getElementById('well-strength').addEventListener('input', () => {
+    const str = parseFloat(document.getElementById('well-strength').value);
+    const rad = parseInt(document.getElementById('well-radius').value, 10);
+    setPendingForceWell(str, rad);
+  });
+  document.getElementById('well-radius').addEventListener('input', () => {
+    const str = parseFloat(document.getElementById('well-strength').value);
+    const rad = parseInt(document.getElementById('well-radius').value, 10);
+    setPendingForceWell(str, rad);
+  });
+  document.getElementById('btn-clear-wells').addEventListener('click', () => {
+    clearForceWells();
+    _updateForceWellList();
+  });
+
+  // Callback when a well is placed from the canvas click handler
+  window._onForceWellsChanged = _updateForceWellList;
+
+  function _updateForceWellList() {
+    const wells = getForceWells();
+    const container = document.getElementById('force-well-list');
+    if (wells.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+    container.innerHTML = wells.map((w, i) => {
+      const type = w.strength > 0 ? '⊕' : '⊖';
+      const color = w.strength > 0 ? '#5cf' : '#f66';
+      return `<span style="color:${color};cursor:pointer" title="Click to remove" data-well-idx="${i}">${type} (${Math.round(w.x)},${Math.round(w.y)}) str:${w.strength}</span>`;
+    }).join('&nbsp;&nbsp;');
+    container.querySelectorAll('[data-well-idx]').forEach(el => {
+      el.addEventListener('click', () => {
+        removeForceWell(parseInt(el.dataset.wellIdx, 10));
+        _updateForceWellList();
+      });
+    });
+  }
 
   // ── Blend mode ────────────────────────────────────────────────────────
   document.getElementById('blend-mode').addEventListener('change', e => {
@@ -834,7 +922,12 @@ function applyEffectPreset(name) {
   set('fade',           c.fade);
   set('shrink',         c.shrink);
   set('bg-color',       c.bgColor);
+  // Trail system: set new trail properties (backward-compat from trailAlpha)
   set('trail-alpha',    c.trailAlpha);
+  setCheck('trail-enabled', c.trailEnabled !== undefined ? c.trailEnabled : (c.trailAlpha > 0));
+  set('trail-persistence',  c.trailPersistence !== undefined ? c.trailPersistence : Math.round((c.trailAlpha || 0.12) * 100));
+  set('trail-opacity',      c.trailOpacity !== undefined ? c.trailOpacity : 100);
+  set('trail-softness',     c.trailSoftness !== undefined ? c.trailSoftness : 0);
   set('gradient-start', c.gradientStart || '#ffff00');
   set('gradient-end',   c.gradientEnd   || '#ff0000');
 
@@ -856,6 +949,7 @@ function applyEffectPreset(name) {
   setCheck('bounce',        c.bounce ?? false);
 
   updateEffectControls();
+  updateTrailParamsVisibility();
 
   if (!c.multiColor) {
     setSingleColor(c.singleColor || c.gradientStart || activeColor);
@@ -982,7 +1076,11 @@ function pushConfig() {
     gradientStops: [...getGradientStops()],
     loop:          b('loop-toggle'),
     bgColor:       v('bg-color'),
-    trailAlpha:    n('trail-alpha'),
+    trailAlpha:      n('trail-alpha'),
+    trailEnabled:    b('trail-enabled'),
+    trailPersistence: i('trail-persistence'),
+    trailOpacity:    i('trail-opacity'),
+    trailSoftness:   i('trail-softness'),
     speedVariance: n('speed-variance'),
     velocityDecay: n('velocity-decay'),
     deathCount:    i('death-count'),
@@ -995,16 +1093,15 @@ function pushConfig() {
   setBlendMode(blendVal);
   setEffectStrength(effectStrength);
   setShadowColor(shadowColor);
-  setTrailAlpha(n('trail-alpha'));
+  // Apply new trail settings
+  setTrailEnabled(b('trail-enabled'));
+  setTrailPersistence(i('trail-persistence'));
+  setTrailOpacity(i('trail-opacity'));
+  setTrailSoftness(i('trail-softness'));
   setRendererBg(v('bg-color'));
 
   // Queue a history snapshot (debounced so fast slider drags collapse)
   _schedulePush();
-
-  // Clear ghost trails left over from the previous config state.
-  // Runs every push so sub-pixel quantization ghosts can't survive even
-  // one frame past a slider or emitter change.
-  clearCanvas();
 }
 
 // ── Save / Load / Share ────────────────────────────────────────────────────
@@ -1047,6 +1144,10 @@ function getFullSnapshot() {
     shrink:        n('shrink'),
     bgColor:       v('bg-color'),
     trailAlpha:    n('trail-alpha'),
+    trailEnabled:    b('trail-enabled'),
+    trailPersistence: i('trail-persistence'),
+    trailOpacity:    i('trail-opacity'),
+    trailSoftness:   i('trail-softness'),
     colorMode:     v('color-mode'),
     multiColor:    getColorModeFlags().multiColor,
     useGradient:   getColorModeFlags().useGradient,
@@ -1111,6 +1212,11 @@ function applySnapshot(snap) {
   set('shrink',         snap.shrink);
   set('bg-color',       snap.bgColor);
   set('trail-alpha',    snap.trailAlpha);
+  // Restore new trail properties (with backward-compat defaults from trailAlpha)
+  setCheck('trail-enabled', snap.trailEnabled !== undefined ? snap.trailEnabled : (snap.trailAlpha > 0));
+  set('trail-persistence', snap.trailPersistence !== undefined ? snap.trailPersistence : Math.round((snap.trailAlpha || 0.12) * 100));
+  set('trail-opacity',     snap.trailOpacity !== undefined ? snap.trailOpacity : 100);
+  set('trail-softness',    snap.trailSoftness !== undefined ? snap.trailSoftness : 0);
   set('gradient-start', snap.gradientStart);
   set('gradient-end',   snap.gradientEnd);
 
@@ -1146,6 +1252,7 @@ function applySnapshot(snap) {
   updateBurstRowVisibility();
   updateDeathParamsVisibility();
   updateEmitterShapeRows();
+  updateTrailParamsVisibility();
   resetParticles();
   clearCanvas();
   pushConfig();
@@ -1422,7 +1529,14 @@ function randomizeSettings() {
   set('lifetime',       rng(20, 200, 5));
   set('fade',           rng(0.2, 1, 0.05));
   set('shrink',         rng(0, 0.8, 0.05));
-  set('trail-alpha',    rng(0.03, 0.25, 0.01));
+  // Trail system
+  setCheck('trail-enabled', Math.random() > 0.15); // 85% chance trails are on
+  set('trail-persistence',  rng(5, 60, 1));
+  set('trail-opacity',      rng(50, 100, 5));
+  set('trail-softness',     Math.random() < 0.3 ? rng(5, 40, 5) : 0); // 30% chance of softness
+  // Sync legacy trail-alpha for compat
+  const _trailP = parseInt(document.getElementById('trail-persistence')?.value || '12', 10);
+  set('trail-alpha', (_trailP / 100).toFixed(2));
 
   // Randomize gradient stops BEFORE syncing color UI so the fade-to panel shows correct colours
   const randomHex = () => '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
@@ -1457,6 +1571,7 @@ function randomizeSettings() {
   updateBurstRowVisibility();
   updateDeathParamsVisibility();
   updateEmitterShapeRows();
+  updateTrailParamsVisibility();
   centerEmitter();
 
   // Re-sync all val-display spans
