@@ -718,11 +718,12 @@ function initUI() {
     updateDeathParamsVisibility();
   }
 
-  // ── 1:1 frame preview — canvas simulates at the render frame size ────
-  const _applyCanvasMode = () => { sizeCanvas(); clearCanvas(); resetParticles(); };
-  document.getElementById('match-frame').addEventListener('change', _applyCanvasMode);
-  document.getElementById('render-frame-size').addEventListener('change', () => {
-    if (isFramePreview()) _applyCanvasMode();
+  // ── Canvas size — the canvas IS the exported sprite ──────────────────
+  document.getElementById('canvas-size').addEventListener('change', () => {
+    sizeCanvas();
+    clearCanvas();
+    resetParticles();
+    pushConfig();
   });
   // Keep the frames display ("N (x.xs)") in sync when FPS changes
   document.getElementById('render-fps').addEventListener('input', refreshValDisplays);
@@ -1200,6 +1201,7 @@ function getFullSnapshot() {
     trailOpacity:  i('trail-opacity'),
     trailSoftness: i('trail-softness'),
     softness:      i('soften'),
+    canvasSize:    v('canvas-size') || 'auto',
     particleImage: getParticleImageData() || undefined,
     imageTint:     b('image-tint'),
     colorMode:     v('color-mode'),
@@ -1271,6 +1273,14 @@ function applySnapshot(snap) {
   set('trail-opacity', snap.trailOpacity !== undefined ? snap.trailOpacity : 100);
   set('trail-softness', snap.trailSoftness !== undefined ? snap.trailSoftness : 0);
   set('soften',        resolveSoftness(snap));
+  // Canvas size (the exported sprite size)
+  if (snap.canvasSize !== undefined) {
+    const cs = document.getElementById('canvas-size');
+    if (cs && cs.value !== String(snap.canvasSize)) {
+      cs.value = snap.canvasSize;
+      sizeCanvas();
+    }
+  }
   // Custom particle image
   setCheck('image-tint', snap.imageTint !== undefined ? snap.imageTint : true);
   if (snap.particleImage) {
@@ -1574,7 +1584,7 @@ function toggleFullscreen() {
 
 function triggerRender() {
   const frames      = parseInt(document.getElementById('render-frames').value, 10)      || 30;
-  const frameSize   = parseInt(document.getElementById('render-frame-size').value, 10)  || 128;
+  const frameSize   = getCanvas().width;   // WYSIWYG: export exactly the canvas
   const fps         = parseInt(document.getElementById('render-fps').value, 10)         || 15;
   const transparentBg = document.getElementById('render-transparent')?.checked ?? false;
 

@@ -614,6 +614,17 @@
         <section class="ctrl-group">
           <h3 class="group-label">Canvas</h3>
 
+          <label class="ctrl-row" title="The canvas IS your sprite — renders and exports capture it pixel-for-pixel at this size. Small sizes stay zoomed-in for comfortable editing but show true chunky pixels.">
+            <span>Canvas size</span>
+            <select id="canvas-size">
+              <option value="auto" selected>Default (big)</option>
+              <option value="512">512×512</option>
+              <option value="256">256×256</option>
+              <option value="128">128×128</option>
+              <option value="64">64×64</option>
+            </select>
+          </label>
+
           <label class="ctrl-row">
             <span>BG Color</span>
             <input type="color" id="bg-color" value="#0c0c0e" />
@@ -638,19 +649,9 @@
             </div>
           </label>
 
-          <label class="ctrl-row" title="Preview exactly what a render will capture: the canvas simulates at the render frame's pixel size, shown enlarged with crisp pixels. What you see is what you export.">
-            <span>1:1 frame preview</span>
-            <input type="checkbox" id="match-frame" class="toggle" />
-          </label>
-
           <label class="ctrl-row" title="Show the emitter position crosshair and spawn-area outline">
             <span>Show crosshair</span>
             <input type="checkbox" id="show-crosshair" class="toggle" />
-          </label>
-
-          <label class="ctrl-row" title="Outline the exact region a render will capture (not needed in 1:1 frame preview)">
-            <span>Show frame guide</span>
-            <input type="checkbox" id="show-frame-guide" class="toggle" />
           </label>
         </section>
 
@@ -658,15 +659,7 @@
         <section class="ctrl-group">
           <h3 class="group-label">Render &amp; Export</h3>
 
-          <label class="ctrl-row">
-            <span>Frame size</span>
-            <select id="render-frame-size">
-              <option value="64">64×64</option>
-              <option value="128" selected>128×128</option>
-              <option value="256">256×256</option>
-              <option value="512">512×512</option>
-            </select>
-          </label>
+          <p class="export-hint" style="margin:2px 0 8px" title="Frame size, emitter position, and look all come straight from the canvas.">Captures the canvas exactly as you see it.</p>
 
           <label class="ctrl-row">
             <span>Frames</span>

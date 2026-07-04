@@ -25,7 +25,8 @@ An internet connection is only needed for GIF export (gif.js is loaded from a CD
 - Unity-style point-history trail system with length in seconds (up to permanent “paint mode”), opacity, and trail-softness controls
 - Custom image particles: upload any image to use as the particle + trail sprite, with optional color tinting
 - Standalone Soften effect that blurs the whole composed effect
-- Render pipeline: renders start from a clean reset, live spritesheet layout preview, 1:1 frame-preview mode on the canvas, animated preview with scrubber, and export to spritesheet + JSON, GIF, video (MP4/WebM), or PNG
+- WYSIWYG canvas: pick a canvas size (default big, or 64/128/256/512 sprite sizes shown zoomed with crisp pixels) and renders capture it pixel-for-pixel — no separate frame settings
+- Render pipeline: renders start from a clean reset, live spritesheet layout preview, animated preview with scrubber, and export to spritesheet + JSON, GIF, video (MP4/WebM), or PNG
 - Save/load configs as JSON, shareable URLs, undo/redo, keyboard shortcuts (press `?` in the app)
 
 ## Project structure

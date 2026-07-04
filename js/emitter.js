@@ -126,6 +126,17 @@ function liveCount() {
 }
 
 /**
+ * Alive MAIN particles only (death sparks excluded). Used for the spawn
+ * gate so a wave of dying particles' sparks can't fill the population
+ * budget and choke the emitter into a visible gap.
+ */
+function liveMainCount() {
+  let n = 0;
+  for (const p of particles) if (p.alive && !p.isDeathParticle) n++;
+  return n;
+}
+
+/**
  * Move the emitter origin to (x, y) in canvas pixels.
  * Called by the canvas drag handler in renderer.js.
  */
@@ -198,7 +209,7 @@ function tickEmitter() {
   }
 
   // ── Spawn new particles ───────────────────────────────────────────────
-  const live = liveCount();
+  const live = liveMainCount();
   let toSpawn = 0;
 
   if (cfg.emitterMode === 'continuous') {

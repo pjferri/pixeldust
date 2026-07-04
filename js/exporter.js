@@ -693,6 +693,15 @@ function createLocalSimulator(emitCfg, frameSize) {
     return count;
   }
 
+  // Main particles only — death sparks must not choke the spawn gate
+  function liveMainCountLocal() {
+    let count = 0;
+    for (const particle of pool) {
+      if (particle.alive && !particle.isDeathParticle) count++;
+    }
+    return count;
+  }
+
   function tick() {
     const deathSparks = emitCfg.deathCount > 0 ? [] : null;
 
@@ -716,7 +725,7 @@ function createLocalSimulator(emitCfg, frameSize) {
       }
     }
 
-    const live = liveCountLocal();
+    const live = liveMainCountLocal();
     let toSpawn = 0;
 
     if (emitCfg.emitterMode === 'continuous') {
