@@ -1602,174 +1602,107 @@ function triggerRender() {
 // ── Randomize ─────────────────────────────────────────────────────────────
 
 function randomizeSettings() {
-  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
-  const rng  = (lo, hi, step) => {
+  const pick  = arr => arr[Math.floor(Math.random() * arr.length)];
+  const rng   = (lo, hi, step) => {
     const steps = Math.round((hi - lo) / step);
     return lo + Math.round(Math.random() * steps) * step;
   };
+
   const set      = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
   const setCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
 
-  // ── Motion archetypes ──────────────────────────────────────────────────
-  // Instead of uniform noise over every slider, pick one coherent recipe
-  // and jitter inside it. Spawn rate is always balanced to count/lifetime
-  // so continuous effects flow steadily instead of pulsing.
-  const ARCHETYPES = [
-    { // fountain / geyser
-      mode: 'continuous', emitter: ['point', 'line'], py: [0.82, 0.95],
-      dir: [258, 282], spread: [10, 42], speed: [2.5, 5.5], grav: [-0.65, -0.2],
-      turb: [0.3, 1.4], drag: [0.95, 0.99], life: [55, 110], shrink: [0.3, 0.6],
-      shapes: ['triangle', 'circle', 'square', 'diamond'], style: ['glow', 'glow', 'prism'],
-      trail: [0.15, 0.4], vel: [0.05, 0.25], death: 0.4,
-    },
-    { // rainfall / streaks
-      mode: 'continuous', emitter: ['line'], py: [0, 0.02], esize: [40, 50],
-      dir: [86, 98], spread: [2, 22], speed: [3.5, 9.5], grav: [0.05, 0.4],
-      turb: [0, 0.4], drag: [0.99, 1], life: [45, 130], shrink: [0, 0.1],
-      shapes: ['square', 'circle'], style: ['glow', 'shadow', 'normal'],
-      trail: [0.25, 0.6], vel: [0, 0.05], death: 0.15, psize: [1, 3],
-    },
-    { // explosion burst
-      mode: 'burst', emitter: ['point'], py: [0.4, 0.6],
-      dir: [260, 280], spread: [355, 360], speed: [6, 9.5], grav: [-0.1, 0.35],
-      turb: [0, 0.6], drag: [0.9, 0.96], life: [40, 90], shrink: [0.3, 0.7],
-      shapes: ['square', 'star', 'circle', 'ring'], style: ['glow', 'glow', 'prism'],
-      trail: [0.3, 0.6], vel: [0.2, 0.5], death: 0.85,
-    },
-    { // orbit / galaxy swirl
-      mode: 'continuous', emitter: ['disk', 'circle'], py: [0.42, 0.58], esize: [6, 22],
-      dir: [0, 359], spread: [355, 360], speed: [0.8, 2.6], grav: [-0.02, 0.02],
-      turb: [0, 0.3], drag: [0.98, 0.995], life: [110, 260], shrink: [0, 0.2],
-      orbit: [0.8, 2.2], shapes: ['sparkle', 'circle', 'ring', 'star'], style: ['prism', 'glow'],
-      trail: [0.15, 0.4], vel: [0, 0.1], death: 0.1, twinkleBias: 0.7,
-    },
-    { // ambient float (fireflies, dust)
-      mode: 'continuous', emitter: ['disk'], py: [0.4, 0.6], esize: [34, 50],
-      dir: [0, 359], spread: [355, 360], speed: [0.2, 0.8], grav: [-0.08, 0.05],
-      turb: [0.3, 0.9], drag: [0.99, 1], life: [180, 340], shrink: [0, 0.1],
-      shapes: ['circle', 'sparkle', 'star'], style: ['glow'],
-      trail: [0.04, 0.12], vel: [0, 0.05], death: 0.1, twinkleBias: 0.9, tsoft: [10, 25],
-    },
-    { // beam / laser sweep
-      mode: 'continuous', emitter: ['line'], py: [0.35, 0.65], px: [0.03, 0.08], esize: [3, 8], eangle: 90,
-      dir: [-4, 4], spread: [1, 6], speed: [8, 10], grav: [0, 0],
-      turb: [0, 0.05], drag: [1, 1], life: [50, 90], shrink: [0, 0],
-      shapes: ['square', 'circle'], style: ['glow'], strength: [1.8, 2.6],
-      trail: [0.6, 1.2], vel: [0, 0], death: 0.5, psize: [1, 3], fade: [0.1, 0.3],
-    },
-    { // rising embers / bubbles
-      mode: 'continuous', emitter: ['line'], py: [0.9, 0.97], esize: [30, 50],
-      dir: [262, 278], spread: [14, 40], speed: [0.3, 1.2], grav: [-0.45, -0.06],
-      turb: [0.3, 0.9], drag: [0.99, 1], life: [150, 300], shrink: [-0.4, 0.2],
-      shapes: ['circle', 'ring', 'diamond'], style: ['glow'],
-      trail: [0.05, 0.15], vel: [0, 0.08], death: 0.25, twinkleBias: 0.5, tsoft: [8, 28],
-    },
-    { // vortex flame (phoenix / magic)
-      mode: 'continuous', emitter: ['arc', 'point'], py: [0.55, 0.75], eangle: 270,
-      dir: [258, 274], spread: [35, 60], speed: [2.5, 4.5], grav: [-0.6, -0.3],
-      turb: [0.6, 1.4], drag: [0.96, 0.985], life: [75, 130], shrink: [0.3, 0.55],
-      orbit: [0.4, 1.0], shapes: ['diamond', 'star', 'triangle'], style: ['glow', 'prism'],
-      trail: [0.2, 0.4], vel: [0.08, 0.2], death: 0.6,
-    },
-  ];
+  // ── The original "playing with magic" randomizer ─────────────────────
+  // One wide, mostly-uncorrelated probability space with a few hand-tuned
+  // weights, always blooming from the CENTER of the canvas. Sane ranges
+  // that still produce interesting results — including the occasional
+  // glorious accident. Deliberately NOT archetype/recipe based.
+  const chosenEmitterShape = pick(['point', 'point', 'line', 'circle', 'disk', 'square', 'triangle', 'arc']);
+  set('emitter-shape',  chosenEmitterShape);
+  set('emitter-size',   rng(8, 40, 1));
+  set('emitter-angle',  rng(0, 360, 1));
+  set('emitter-arc',    rng(30, 300, 5));
+  set('emitter-mode',   pick(['continuous', 'continuous', 'continuous', 'burst', 'pulse'])); // weight continuous
+  set('pulse-interval', rng(0.5, 6, 0.5));
+  set('speed-mult',     1);
+  set('particle-count', rng(30, 300, 10));
+  set('spawn-rate',     rng(20, 200, 10));
+  set('speed',          speedUncurve(rng(0.5, 8, 0.5)).toFixed(2));
+  set('spread',         rng(5, 360, 5));
+  set('direction',      rng(0, 359, 1));
+  set('gravity',        rng(-0.5, 0.5, 0.05));
+  set('turbulence',     rng(0, 1.5, 0.05));
+  set('drag',           rng(0.88, 1.0, 0.005));
+  set('wind',           rng(-0.2, 0.2, 0.01));
+  set('orbit',          Math.random() < 0.45 ? rng(-2, 2, 0.05) : 0);
+  set('hue-variation',  rng(0, 45, 1));
+  set('particle-size',  rng(1, 10, 1));
+  set('size-variance',  rng(0, 4, 1));
+  set('particle-shape', pick(['square', 'circle', 'triangle', 'diamond', 'cross', 'heart', 'star', 'sparkle', 'ring']));
+  const chosenBlendMode = pick(['normal', 'glow', 'glow', 'glow', 'prism', 'shadow']);
+  set('blend-mode', chosenBlendMode);
+  set('effect-strength', chosenBlendMode === 'normal' ? 0 : rng(0.35, 2.6, 0.05));
+  set('shadow-color', chosenBlendMode === 'shadow'
+    ? pick(['#120018', '#1a0f2e', '#102033', '#2a1010', '#0f2416'])
+    : '#120018');
+  set('start-alpha',    rng(0.3, 1, 0.05));
+  set('twinkle',        Math.random() < 0.35 ? rng(0.15, 1.4, 0.05) : 0);
+  set('rotation',       rng(0, 15, 0.5));
+  set('lifetime',       rng(20, 200, 5));
+  set('fade',           rng(0.2, 1, 0.05));
+  set('shrink',         rng(0, 0.8, 0.05));
 
-  const A = pick(ARCHETYPES);
-  const R = (range, step) => rng(range[0], range[1], step ?? (range[1] - range[0] > 20 ? 1 : 0.05));
-
-  set('emitter-shape', pick(A.emitter));
-  set('emitter-size',  A.esize ? rng(A.esize[0], A.esize[1], 1) : rng(8, 30, 1));
-  set('emitter-angle', A.eangle !== undefined ? A.eangle : rng(0, 360, 1));
-  set('emitter-arc',   rng(90, 220, 5));
-  set('emitter-mode',  A.mode);
-  set('pulse-interval', rng(0.5, 4, 0.5));
-  set('speed-mult',    1);
-
-  // Balanced population: pick count + lifetime, derive the spawn rate
-  const lifetime = rng(A.life[0], A.life[1], 5);
-  const count    = rng(80, 320, 10);
-  const rate     = Math.max(4, Math.min(300, Math.round((count * 60) / lifetime)));
-  set('particle-count', count);
-  set('spawn-rate',     rate);
-  set('lifetime',       lifetime);
-
-  set('speed',      speedUncurve(R(A.speed)).toFixed(2));
-  set('spread',     Math.round(R(A.spread)));
-  const dirRaw = Math.round(R(A.dir));
-  set('direction',  ((dirRaw % 360) + 360) % 360);
-  set('gravity',    R(A.grav, 0.05).toFixed(2));
-  set('turbulence', R(A.turb, 0.05).toFixed(2));
-  set('drag',       R(A.drag, 0.005).toFixed(3));
-  set('wind',       (Math.random() < 0.3 ? rng(-0.15, 0.15, 0.01) : 0));
-  set('orbit',      A.orbit ? R(A.orbit, 0.05).toFixed(2) : (Math.random() < 0.2 ? rng(-1.5, 1.5, 0.05) : 0));
-  set('velocity-decay', R(A.vel, 0.02).toFixed(2));
-  set('speed-variance', rng(0.15, 0.6, 0.05));
-
-  const psize = A.psize ? rng(A.psize[0], A.psize[1], 1) : rng(2, 6, 1);
-  set('particle-size', psize);
-  set('size-variance', rng(0, Math.max(1, Math.round(psize / 2)), 1));
-  set('particle-shape', pick(A.shapes));
-  set('hue-variation',  rng(5, 35, 1));
-
-  const style = pick(A.style);
-  set('blend-mode', style);
-  set('effect-strength', style === 'normal' ? 1
-    : A.strength ? R(A.strength, 0.05).toFixed(2) : rng(1.0, 2.2, 0.05));
-  set('shadow-color', pick(['#120018', '#1a0f2e', '#102033', '#0f2416']));
-  set('start-alpha', rng(0.7, 1, 0.05));
-  set('twinkle', Math.random() < (A.twinkleBias || 0.3) ? rng(0.3, 1.3, 0.05) : 0);
-  set('rotation', pick(A.shapes).match(/circle|ring/) ? 0 : rng(0, 12, 0.5));
-  set('fade', A.fade ? R(A.fade, 0.05).toFixed(2) : rng(0.5, 1, 0.05));
-  set('shrink', R(A.shrink, 0.05).toFixed(2));
-
-  const wantDeath = Math.random() < A.death;
-  set('death-count', wantDeath ? rng(1, 5, 1) : 0);
-  set('death-speed', rng(1.5, 3.5, 0.5));
-  set('death-size',  rng(1, 2, 1));
-
-  setCheck('bounce', false);
-
-  // Trails: coherent with the archetype
-  setCheck('trail-enabled', true);
-  set('trail-length',  trailSecToSlider(R(A.trail, 0.01)));
-  set('trail-opacity', rng(65, 95, 5));
-  set('trail-softness', A.tsoft ? rng(A.tsoft[0], A.tsoft[1], 1) : (Math.random() < 0.25 ? rng(4, 15, 1) : 0));
+  // Trails — same distribution as the classic persistence roll (5-60),
+  // mapped through the legacy curve onto the seconds-based Length slider
+  setCheck('trail-enabled', Math.random() > 0.15); // 85% chance trails are on
+  set('trail-length',   trailSecToSlider(_persistenceToSec(rng(5, 60, 1))));
+  set('trail-opacity',  rng(50, 100, 5));
+  set('trail-softness', Math.random() < 0.3 ? rng(5, 40, 5) : 0); // 30% chance of softness
   set('soften', 0);
 
-  // Colors: random palette + usually a fade-to-dark gradient (that dark
-  // tail is a big part of what makes effects feel luminous)
+  // Randomize gradient stops BEFORE syncing color UI so the fade-to panel
+  // shows correct colours. Fully random colors — surprises included.
+  const randomHex = () => '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+  const numStops = Math.random() < 0.3 ? 2 : 1; // 30% chance of multi-stop
+  const newStops = [];
+  for (let s = 0; s < numStops; s++) newStops.push(randomHex());
+  setGradientStops(newStops);
+  set('gradient-end', newStops[0]);
+
+  // Randomize color mode (weighted: palette most common, gradient and palette-fade less so)
+  const colorModes = ['single', 'palette', 'palette', 'palette', 'gradient', 'palette-fade'];
+  const chosenMode = pick(colorModes);
+  syncColorUIFromMode(chosenMode);
+
+  set('speed-variance', rng(0, 0.6, 0.05));
+  set('velocity-decay', rng(0, 0.5, 0.05));
+  set('death-count',    Math.random() < 0.2 ? rng(1, 4, 1) : 0); // 20% chance of death sparks
+  set('death-speed',    rng(1, 4, 0.5));
+  set('death-size',     rng(1, 4, 1));
+
+  setCheck('bounce', Math.random() < 0.3);
+
+  // Random palette
   const paletteNames = Object.keys(PALETTES);
   applyPalette(pick(paletteNames));
-  const darkTails = ['#200a38', '#0a1030', '#2d0505', '#04201a', '#1c1c1c', '#30104a', '#001433'];
-  if (Math.random() < 0.75) {
-    setGradientStops([pick(darkTails)]);
-    syncColorUIFromMode('palette-fade');
-  } else {
-    setGradientStops(['#ff0000']);
-    syncColorUIFromMode('palette');
-  }
-  set('gradient-end', gradientStops[0]);
-  set('bg-color', pick(['#060306', '#04081a', '#05030e', '#020610', '#020208', '#080810', '#030010']));
-  syncBgPresetSelection(document.getElementById('bg-color').value);
 
-  buildGradientStops(gradientStops, 0);
+  // Rebuild fade-to stop inputs & gradient bar with the new random colours + palette
+  buildGradientStops(gradientStops, _activeGradientIdx);
   updateGradientPreview();
+
   updateBurstRowVisibility();
   updateDeathParamsVisibility();
   updateEmitterShapeRows();
   updateTrailParamsVisibility();
   updateEffectControls();
+
+  // Every roll blooms from the center — no scene-staging, no pre-warm.
+  // Watching it spawn in from nothing is part of the show.
   centerEmitter();
-  if (A.py) {
-    const cvs = getCanvas();
-    const px = A.px ? R(A.px, 0.01) : rng(0.3, 0.7, 0.05);
-    if (cvs) setEmitterPos(cvs.width * px, cvs.height * R(A.py, 0.01));
-  }
 
   refreshValDisplays();
   resetParticles();
   clearCanvas();
   pushConfig();
-  warmUpSimulation();
 
   if (document.getElementById('emitter-mode').value === 'burst') {
     setTimeout(() => { cfg.burstPending = true; }, 100);
