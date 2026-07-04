@@ -30,6 +30,7 @@ const TRAIL_MAX_POINTS        = 45000;  // hard cap on stored points
 const TRAIL_INTERVAL_2_AT     = 12000;  // record every 2nd tick above this
 const TRAIL_INTERVAL_3_AT     = 24000;  // record every 3rd tick above this
 const TRAIL_PERMANENT_HISTORY = 90;     // snapshots kept while permanent
+const TRAIL_DRAW_BUDGET       = 18000;  // max stamps drawn per frame
 
 // ── Custom particle image (shared app-wide) ───────────────────────────────
 
@@ -136,20 +137,23 @@ function _persistenceToSec(p) {
   return (3 + Math.pow(p / 100, 2.2) * 360) / 60;
 }
 
-/** Normalized trail settings {enabled, lengthFrames, opacity} from a config. */
+/** Normalized trail settings from a config (legacy keys map across). */
 function resolveTrailConfig(c) {
   const sec = resolveTrailSec(c);
   const enabled = c.trailEnabled !== undefined ? !!c.trailEnabled : sec !== 0;
   const lengthFrames = sec < 0 ? Infinity : Math.round(sec * 60);
   const rawOp = c.trailOpacity !== undefined ? c.trailOpacity : 100;
-  return { enabled, lengthFrames, opacity: Math.max(0, Math.min(1, rawOp / 100)) };
+  return {
+    enabled,
+    lengthFrames,
+    opacity: Math.max(0, Math.min(1, rawOp / 100)),
+    softness: typeof c.trailSoftness === 'number' ? c.trailSoftness : 0,
+  };
 }
 
-/** Soften amount (0-100) from a config; legacy trailSoftness maps across. */
+/** Whole-effect Soften amount (0-100). Trail-only blur lives in trailSoftness. */
 function resolveSoftness(c) {
-  if (typeof c.softness === 'number') return c.softness;
-  if (typeof c.trailSoftness === 'number') return c.trailSoftness;
-  return 0;
+  return typeof c.softness === 'number' ? c.softness : 0;
 }
 
 // ── Trail stamp drawing (simplified shapes, source-over only) ─────────────
@@ -257,8 +261,10 @@ function createTrailSystem() {
   let recordInterval = 1;
   let stampCanvas = null;    // permanent (∞) mode accumulator
   let stampCtx = null;
+  let layerCanvas = null;    // per-frame trail layer (composited with opacity)
+  let layerCtx = null;
 
-  const cfg = { enabled: true, lengthFrames: 45, opacity: 1, permanent: false };
+  const cfg = { enabled: true, lengthFrames: 45, opacity: 1, softness: 0, permanent: false };
 
   function configure(c) {
     const wasPermanent = cfg.permanent;
@@ -268,6 +274,7 @@ function createTrailSystem() {
       cfg.lengthFrames = cfg.permanent ? Infinity : Math.max(0, c.lengthFrames);
     }
     if (c.opacity !== undefined) cfg.opacity = Math.max(0, Math.min(1, c.opacity));
+    if (c.softness !== undefined) cfg.softness = Math.max(0, Math.min(100, c.softness));
     // Leaving permanent mode: drop the stamp accumulator; the point history
     // takes over and old permanent marks fade out of existence cleanly.
     if (wasPermanent && !cfg.permanent && stampCtx) {
@@ -282,6 +289,7 @@ function createTrailSystem() {
     tick = 0;
     recordInterval = 1;
     if (stampCtx) stampCtx.clearRect(0, 0, stampCanvas.width, stampCanvas.height);
+    if (layerCtx) layerCtx.clearRect(0, 0, layerCanvas.width, layerCanvas.height);
   }
 
   function _ensureStamp(w, h) {
@@ -291,6 +299,15 @@ function createTrailSystem() {
     stampCanvas.height = h;
     stampCtx = stampCanvas.getContext('2d');
     stampCtx.imageSmoothingEnabled = false;
+  }
+
+  function _ensureLayer(w, h) {
+    if (layerCanvas && layerCanvas.width === w && layerCanvas.height === h) return;
+    layerCanvas = document.createElement('canvas');
+    layerCanvas.width = w;
+    layerCanvas.height = h;
+    layerCtx = layerCanvas.getContext('2d');
+    layerCtx.imageSmoothingEnabled = false;
   }
 
   function _isActive() {
@@ -358,7 +375,7 @@ function createTrailSystem() {
     for (let i = 0; i < snap.count; i++) {
       const off = i * TRAIL_PT_STRIDE;
       const a = pts[off + 6] * alphaScale;
-      if (a <= 0.004) continue;
+      if (a <= 0.01) continue;
       const size = Math.max(1, Math.round(pts[off + 2]));
       const r = pts[off + 3], g = pts[off + 4], b = pts[off + 5];
       ctx.globalAlpha = Math.min(1, a);
@@ -367,26 +384,61 @@ function createTrailSystem() {
     }
   }
 
-  /** Draw the trail history onto a target context. */
+  /**
+   * Draw the trail history onto a target context.
+   *
+   * Points are first flattened onto an internal trail layer, which is then
+   * composited once with the trail opacity (and optional trail softness
+   * blur). This matches the classic renderer's semantics: overlapping trail
+   * stamps can never exceed the opacity ceiling, keeping dense trails
+   * crisp instead of stacking up to full brightness and muddying.
+   *
+   * Fading is exponential (exp(-5.5·age/len) ≈ the old destination-out
+   * decay to 1/255 over the trail lifetime): bright heads, fast-dying
+   * tails.
+   */
   function draw(ctx, w, h) {
     if (!_isActive()) return;
+
+    let source;
+    if (cfg.permanent) {
+      if (!stampCanvas) return;
+      source = stampCanvas;
+    } else {
+      if (!snapshots.length) return;
+      _ensureLayer(w, h);
+      layerCtx.clearRect(0, 0, w, h);
+      layerCtx.globalCompositeOperation = 'source-over';
+
+      const len = cfg.lengthFrames;
+
+      // Draw budget: cap per-frame stamp count, dropping the oldest
+      // (dimmest) snapshots first when over budget.
+      let start = snapshots.length - 1;
+      let budget = TRAIL_DRAW_BUDGET;
+      while (start > 0 && budget - snapshots[start].count > 0) {
+        budget -= snapshots[start].count;
+        start--;
+      }
+
+      for (let si = start; si < snapshots.length; si++) {
+        const snap = snapshots[si];
+        const age = tick - snap.tick;
+        if (age >= len) continue;
+        const ageFrac = Math.exp(-5.5 * age / len);
+        if (ageFrac <= 0.008) continue;
+        _drawSnapshot(layerCtx, snap, ageFrac);
+      }
+      source = layerCanvas;
+    }
+
     ctx.save();
     ctx.globalCompositeOperation = 'source-over';
-
-    if (cfg.permanent) {
-      if (stampCanvas) {
-        ctx.globalAlpha = cfg.opacity;
-        ctx.drawImage(stampCanvas, 0, 0);
-      }
-    } else {
-      const len = cfg.lengthFrames;
-      for (let si = 0; si < snapshots.length; si++) {
-        const snap = snapshots[si];
-        const ageFrac = 1 - (tick - snap.tick) / len;
-        if (ageFrac <= 0) continue;
-        _drawSnapshot(ctx, snap, ageFrac * cfg.opacity);
-      }
+    ctx.globalAlpha = cfg.opacity;
+    if (cfg.softness > 0) {
+      ctx.filter = `blur(${((cfg.softness / 100) * 3).toFixed(1)}px)`;
     }
+    ctx.drawImage(source, 0, 0);
     ctx.restore();
   }
 

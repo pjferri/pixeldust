@@ -127,7 +127,7 @@
           </div>
 
           <label class="ctrl-row" title="Burst / Pulse: particles per burst. Continuous: maximum alive at once.">
-            <span>Count</span>
+            <span id="count-label">Max alive</span>
             <div class="slider-pair">
               <input type="range" id="particle-count" min="1" max="500" value="120" step="1" />
               <span class="val-display" data-for="particle-count">120</span>
@@ -351,7 +351,7 @@
             </div>
           </div>
 
-          <label class="ctrl-row" title="Softens the whole effect (particles + trails) with a gentle blur">
+          <label class="ctrl-row" title="Blurs the WHOLE effect — particles and trails together. For soft trails under crisp particles use Trails → Softness.">
             <span>Soften</span>
             <div class="slider-pair">
               <input type="range" id="soften" min="0" max="100" value="0" step="1" />
@@ -384,6 +384,14 @@
               <div class="slider-pair">
                 <input type="range" id="trail-opacity" min="0" max="100" value="100" step="1" />
                 <span class="val-display" data-for="trail-opacity">100</span>
+              </div>
+            </label>
+
+            <label class="ctrl-row" title="Softens only the trails with a gentle blur — particles stay crisp (0 = crisp pixel trails)">
+              <span>Softness</span>
+              <div class="slider-pair">
+                <input type="range" id="trail-softness" min="0" max="100" value="0" step="1" />
+                <span class="val-display" data-for="trail-softness">0</span>
               </div>
             </label>
           </div>
@@ -630,6 +638,11 @@
             </div>
           </label>
 
+          <label class="ctrl-row" title="Preview exactly what a render will capture: the canvas simulates at the render frame's pixel size, shown enlarged with crisp pixels. What you see is what you export.">
+            <span>1:1 frame preview</span>
+            <input type="checkbox" id="match-frame" class="toggle" />
+          </label>
+
           <label class="ctrl-row" title="Show the emitter position crosshair and spawn-area outline">
             <span>Show crosshair</span>
             <input type="checkbox" id="show-crosshair" class="toggle" />
@@ -646,14 +659,6 @@
           <h3 class="group-label">Render &amp; Export</h3>
 
           <label class="ctrl-row">
-            <span>Frames</span>
-            <div class="slider-pair">
-              <input type="range" id="render-frames" min="4" max="600" value="30" step="1" />
-              <span class="val-display" data-for="render-frames">30</span>
-            </div>
-          </label>
-
-          <label class="ctrl-row">
             <span>Frame size</span>
             <select id="render-frame-size">
               <option value="64">64×64</option>
@@ -663,10 +668,14 @@
             </select>
           </label>
 
-          <label class="ctrl-row" title="Preview exactly what a render will capture: the canvas simulates at the frame's pixel size, shown enlarged with crisp pixels. What you see is what you export.">
-            <span>1:1 frame preview</span>
-            <input type="checkbox" id="match-frame" class="toggle" />
+          <label class="ctrl-row">
+            <span>Frames</span>
+            <div class="slider-pair">
+              <input type="range" id="render-frames" min="4" max="600" value="30" step="1" />
+              <span class="val-display" data-for="render-frames">30</span>
+            </div>
           </label>
+
 
           <label class="ctrl-row">
             <span>FPS</span>

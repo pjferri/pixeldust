@@ -22,7 +22,7 @@ An internet connection is only needed for GIF export (gif.js is loaded from a CD
 - Physics: gravity, wind, drag, turbulence, vortex, velocity decay, wall bounce, gravity wells, and interactive mouse force
 - 9 particle shapes, glow/prism/shadow render styles, twinkle, spin, hue variation
 - Color palettes, multi-stop fade-to gradients, and 15 palette presets
-- Unity-style point-history trail system with length (up to permanent “paint mode”) and opacity controls
+- Unity-style point-history trail system with length in seconds (up to permanent “paint mode”), opacity, and trail-softness controls
 - Custom image particles: upload any image to use as the particle + trail sprite, with optional color tinting
 - Standalone Soften effect that blurs the whole composed effect
 - Render pipeline: renders start from a clean reset, live spritesheet layout preview, 1:1 frame-preview mode on the canvas, animated preview with scrubber, and export to spritesheet + JSON, GIF, video (MP4/WebM), or PNG

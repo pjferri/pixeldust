@@ -581,7 +581,7 @@ function initUI() {
     updateTrailParamsVisibility();
     pushConfig();
   });
-  ['trail-length', 'trail-opacity', 'soften'].forEach(id => {
+  ['trail-length', 'trail-opacity', 'trail-softness', 'soften'].forEach(id => {
     document.getElementById(id).addEventListener('input', pushConfig);
   });
   updateTrailParamsVisibility();
@@ -960,6 +960,7 @@ function applyEffectPreset(name) {
   setCheck('trail-enabled', c.trailEnabled !== undefined ? c.trailEnabled : _pSec !== 0);
   set('trail-length',  trailSecToSlider(_pSec));
   set('trail-opacity', c.trailOpacity !== undefined ? c.trailOpacity : 100);
+  set('trail-softness', c.trailSoftness !== undefined ? c.trailSoftness : 0);
   set('soften',        resolveSoftness(c));
   set('gradient-start', c.gradientStart || '#ffff00');
   set('gradient-end',   c.gradientEnd   || '#ff0000');
@@ -1031,6 +1032,13 @@ function applyPalette(name) {
 
 function updateBurstRowVisibility() {
   const mode = document.getElementById('emitter-mode').value;
+  // The Count slider means different things per mode — say so
+  const countLabel = document.getElementById('count-label');
+  if (countLabel) {
+    countLabel.textContent = mode === 'continuous' ? 'Max alive'
+                           : mode === 'burst'      ? 'Burst size'
+                           : 'Pulse size';
+  }
   document.getElementById('burst-row').classList.toggle('hidden', mode !== 'burst');
   const pRow = document.getElementById('pulse-interval-row');
   if (pRow) pRow.classList.toggle('hidden', mode !== 'pulse');
@@ -1103,6 +1111,7 @@ function pushConfig() {
     trailEnabled:  b('trail-enabled'),
     trailSec:      trailSliderToSec(i('trail-length')),
     trailOpacity:  i('trail-opacity'),
+    trailSoftness: i('trail-softness'),
     softness:      i('soften'),
     imageTint:     b('image-tint'),
     speedVariance: n('speed-variance'),
@@ -1118,9 +1127,10 @@ function pushConfig() {
   setEffectStrength(effectStrength);
   setShadowColor(shadowColor);
   setTrailConfig(resolveTrailConfig({
-    trailEnabled: b('trail-enabled'),
-    trailSec:     trailSliderToSec(i('trail-length')),
-    trailOpacity: i('trail-opacity'),
+    trailEnabled:  b('trail-enabled'),
+    trailSec:      trailSliderToSec(i('trail-length')),
+    trailOpacity:  i('trail-opacity'),
+    trailSoftness: i('trail-softness'),
   }));
   setSoftness(i('soften'));
   setImageTint(b('image-tint'));
@@ -1172,6 +1182,7 @@ function getFullSnapshot() {
     trailEnabled:  b('trail-enabled'),
     trailSec:      trailSliderToSec(i('trail-length')),
     trailOpacity:  i('trail-opacity'),
+    trailSoftness: i('trail-softness'),
     softness:      i('soften'),
     particleImage: getParticleImageData() || undefined,
     imageTint:     b('image-tint'),
@@ -1242,6 +1253,7 @@ function applySnapshot(snap) {
   setCheck('trail-enabled', snap.trailEnabled !== undefined ? snap.trailEnabled : _tSec !== 0);
   set('trail-length',  trailSecToSlider(_tSec));
   set('trail-opacity', snap.trailOpacity !== undefined ? snap.trailOpacity : 100);
+  set('trail-softness', snap.trailSoftness !== undefined ? snap.trailSoftness : 0);
   set('soften',        resolveSoftness(snap));
   // Custom particle image
   setCheck('image-tint', snap.imageTint !== undefined ? snap.imageTint : true);
@@ -1550,6 +1562,17 @@ function triggerRender() {
   const fps         = parseInt(document.getElementById('render-fps').value, 10)         || 15;
   const transparentBg = document.getElementById('render-transparent')?.checked ?? false;
 
+  // Memory guard: captured frames are raw RGBA (frames × size² × 4 bytes).
+  const estMB = Math.round((frames * frameSize * frameSize * 4) / (1024 * 1024));
+  if (estMB > 400) {
+    alert(`That render would need ~${estMB} MB of memory (${frames} frames at ${frameSize}px). ` +
+          'Lower the frame count or frame size — e.g. 512px renders work best under ~150 frames.');
+    return;
+  }
+  if (estMB > 150 && !confirm(`Heads up: this render will use ~${estMB} MB of memory and may be slow. Continue?`)) {
+    return;
+  }
+
   // Pass emitter position as proportional coordinates so the simulator
   // places the emitter at the same relative position within the frame
   const cvs = getCanvas();
@@ -1611,7 +1634,8 @@ function randomizeSettings() {
   setCheck('trail-enabled', Math.random() > 0.15); // 85% chance trails are on
   set('trail-length',  rng(12, 60, 1));
   set('trail-opacity', rng(50, 100, 5));
-  set('soften',        Math.random() < 0.3 ? rng(5, 40, 5) : 0); // 30% chance of soften
+  set('trail-softness', Math.random() < 0.3 ? rng(5, 40, 5) : 0); // 30% soft trails
+  set('soften',         Math.random() < 0.1 ? rng(5, 25, 5) : 0); // 10% whole-effect blur
 
   // Randomize gradient stops BEFORE syncing color UI so the fade-to panel shows correct colours
   const randomHex = () => '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
