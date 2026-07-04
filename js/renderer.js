@@ -53,21 +53,43 @@ function initRenderer(canvasEl) {
 function sizeCanvas() {
   const area = canvas.closest('#canvas-area') || canvas.parentElement.parentElement;
   const pad = 56;
-  const size = Math.max(256, Math.min(
+  const displaySize = Math.max(256, Math.min(
     area.clientWidth - pad,
     area.clientHeight - pad,
     720
   ));
-  canvas.width = size;
-  canvas.height = size;
-  canvasW = size;
-  canvasH = size;
+
+  if (isFramePreview()) {
+    // 1:1 mode — simulate at exactly the render frame size, shown enlarged
+    // with crisp pixels. What you see is what a render captures.
+    const frameSize = parseInt(document.getElementById('render-frame-size')?.value, 10) || 128;
+    const scale = Math.max(1, Math.floor(displaySize / frameSize));
+    canvas.width  = frameSize;
+    canvas.height = frameSize;
+    canvas.style.width  = (frameSize * scale) + 'px';
+    canvas.style.height = (frameSize * scale) + 'px';
+    canvas.style.imageRendering = 'pixelated';
+  } else {
+    canvas.width  = displaySize;
+    canvas.height = displaySize;
+    canvas.style.width  = displaySize + 'px';
+    canvas.style.height = displaySize + 'px';
+    canvas.style.imageRendering = '';
+  }
+
+  canvasW = canvas.width;
+  canvasH = canvas.height;
   ctx.imageSmoothingEnabled = false;
   // Reset compose layer + trails on resize
   _composeCanvas = null;
   _composeCtx = null;
   _liveTrails.reset();
   centerEmitter();
+}
+
+/** True when the canvas is in 1:1 render-frame preview mode. */
+function isFramePreview() {
+  return !!document.getElementById('match-frame')?.checked;
 }
 
 /**
@@ -152,7 +174,7 @@ function renderFrame() {
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
   if (document.getElementById('show-crosshair')?.checked) drawEmitterCrosshair();
-  if (document.getElementById('show-frame-guide')?.checked) drawFrameGuide();
+  if (!isFramePreview() && document.getElementById('show-frame-guide')?.checked) drawFrameGuide();
   drawForceWellIndicators();
 }
 

@@ -76,17 +76,11 @@ async function captureFrames(renderCfg, emitCfg) {
     simCfg.burstPending = true;
   }
 
-  statusEl.textContent = 'Priming simulation\u2026';
   await yieldFrame();
 
-  // Prime: run enough ticks to get a visually interesting first frame
-  // but NOT a full steady-state prime (user wants to see the animation build up)
-  const primeTicks =
-    simCfg.emitterMode === 'burst' ? 0 :
-    simCfg.emitterMode === 'pulse' ? 0 :  // start fresh, first pulse fires at frame 0
-    Math.min(Math.round(simCfg.lifetime * 0.3), 30);  // just a few ticks so pool isn't empty
-
-  for (let tick = 0; tick < primeTicks; tick++) sim.tick();
+  // The render starts from a clean reset — the first frame is the very
+  // first simulation tick, exactly like pressing Reset and watching the
+  // effect build up from nothing.
 
   // Capture frames
   // We want each rendered frame to represent 1/fps seconds of simulation.
@@ -240,19 +234,23 @@ function updateExportFormatUI() {
   document.getElementById('render-frame-opts').classList.toggle('hidden', fmt !== 'frame');
   document.getElementById('render-mp4-opts').classList.toggle('hidden', fmt !== 'mp4');
 
-  // Hide spritesheet preview when switching away from spritesheet
+  // Spritesheet gets a live layout preview; hide it for other formats
   const sheetPreview = document.getElementById('spritesheet-preview-wrap');
   if (fmt !== 'spritesheet') sheetPreview.classList.add('hidden');
+  else refreshSheetPreview();
 }
 
-/** Export: PNG Spritesheet */
-async function exportSpritesheet() {
+/** Build the spritesheet onto the hidden export canvas. */
+function buildSpritesheetCanvas() {
   const frames    = _capturedFrames;
   const frameSize = _capturedSize;
-  const cols      = parseInt(document.getElementById('render-cols').value, 10) || 4;
-  const rows      = Math.ceil(frames.length / cols);
-  const sheetW    = cols * frameSize;
-  const sheetH    = rows * frameSize;
+  const cols      = Math.min(
+    parseInt(document.getElementById('render-cols').value, 10) || 4,
+    Math.max(1, frames.length)
+  );
+  const rows   = Math.ceil(frames.length / cols);
+  const sheetW = cols * frameSize;
+  const sheetH = rows * frameSize;
 
   const exportCanvas = document.getElementById('export-canvas');
   exportCanvas.width  = sheetW;
@@ -267,7 +265,6 @@ async function exportSpritesheet() {
     ctx.clearRect(0, 0, sheetW, sheetH);
   }
 
-  // Draw each frame into the grid
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width  = frameSize;
   tempCanvas.height = frameSize;
@@ -275,34 +272,46 @@ async function exportSpritesheet() {
 
   for (let i = 0; i < frames.length; i++) {
     tempCtx.putImageData(frames[i], 0, 0);
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    ctx.drawImage(tempCanvas, col * frameSize, row * frameSize);
+    ctx.drawImage(tempCanvas, (i % cols) * frameSize, Math.floor(i / cols) * frameSize);
   }
+  return { canvas: exportCanvas, cols, rows, frameSize, count: frames.length };
+}
 
-  const dataUrl = exportCanvas.toDataURL('image/png');
+/**
+ * Live spritesheet layout preview — shown as soon as the Spritesheet
+ * format is selected (and re-laid-out when Columns changes), so the
+ * sheet can be planned before exporting.
+ */
+let _sheetPreviewTimer = null;
+function refreshSheetPreview() {
+  clearTimeout(_sheetPreviewTimer);
+  _sheetPreviewTimer = setTimeout(() => {
+    if (!_capturedFrames.length) return;
+    if (document.getElementById('render-export-format').value !== 'spritesheet') return;
+    const { canvas } = buildSpritesheetCanvas();
+    document.getElementById('spritesheet-preview-img').src = canvas.toDataURL('image/png');
+    document.getElementById('spritesheet-preview-wrap').classList.remove('hidden');
+  }, 120);
+}
 
-  // Show preview
-  const previewWrap = document.getElementById('spritesheet-preview-wrap');
-  const previewImg  = document.getElementById('spritesheet-preview-img');
-  previewImg.src = dataUrl;
-  previewWrap.classList.remove('hidden');
+/** Export: PNG Spritesheet (+ companion JSON metadata) */
+async function exportSpritesheet() {
+  const { canvas, cols, rows, frameSize, count } = buildSpritesheetCanvas();
+  const dataUrl = canvas.toDataURL('image/png');
 
-  const baseName = `pixeldust_sprite_${frameSize}x${frameSize}_${frames.length}f`;
+  const baseName = `pixeldust_sprite_${frameSize}x${frameSize}_${count}f`;
   triggerDownload(dataUrl, `${baseName}.png`);
 
-  // Companion JSON metadata (frame rects + timing) so the sheet can be
-  // dropped straight into game engines / animation tools.
   const meta = {
     image:           `${baseName}.png`,
     frameWidth:      frameSize,
     frameHeight:     frameSize,
-    frameCount:      frames.length,
+    frameCount:      count,
     columns:         cols,
     rows:            rows,
     fps:             _capturedFps,
     frameDurationMs: Math.round(1000 / _capturedFps),
-    frames: frames.map((_, i) => ({
+    frames: Array.from({ length: count }, (_, i) => ({
       index: i,
       x: (i % cols) * frameSize,
       y: Math.floor(i / cols) * frameSize,
@@ -550,7 +559,6 @@ function createLocalSimulator(emitCfg, frameSize) {
   const emitPY = Number.isFinite(emitCfg._emitterPY) ? emitCfg._emitterPY : 0.5;
   const centerX = Math.round(frameSize * emitPX);
   const centerY = Math.round(frameSize * emitPY);
-  let loopTimer = 0;
   let pulseTimer = 0;
 
   const bgHex = emitCfg.bgColor || '#0c0c0e';
@@ -672,7 +680,6 @@ function createLocalSimulator(emitCfg, frameSize) {
 
   function resetPool() {
     for (const particle of pool) particle.alive = false;
-    loopTimer = 0;
     pulseTimer = 0;
     emitCfg._spawnAccum = 0;
     trails.reset();
@@ -733,15 +740,6 @@ function createLocalSimulator(emitCfg, frameSize) {
     for (let i = 0; i < toSpawn; i++) {
       const [x, y] = spawnPoint();
       spawnParticleToPool(x, y);
-    }
-
-    if (emitCfg.loop) {
-      loopTimer++;
-      const interval = Math.ceil(emitCfg.lifetime * 1.5) + 20;
-      if (loopTimer >= interval) {
-        resetPool();
-        if (emitCfg.emitterMode === 'burst') emitCfg.burstPending = true;
-      }
     }
 
     // Record trail history every simulation tick (this is what makes

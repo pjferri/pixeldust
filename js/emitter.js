@@ -26,8 +26,7 @@ let emitterY = -1;
 /** True while the user is dragging the emitter on the canvas. */
 let emitterDragging = false;
 
-/** Frames elapsed since the last loop-reset (used by the loop feature). */
-let _loopTimer  = 0;
+/** Frames until the next pulse-mode burst. */
 let _pulseTimer = 0;
 
 /** Fractional spawn accumulator so sub-frame spawn rates work correctly. */
@@ -86,9 +85,6 @@ let cfg = {
   gradientEnd:   '#ff0000',
   shadowColor:   '#120018',
 
-  // Loop
-  loop:          false,
-
   // Burst state (transient)
   burstPending:  false,
   pulseInterval: 2,            // seconds between auto-bursts in pulse mode
@@ -118,7 +114,6 @@ function getEmitterConfig() {
 /** Kill all particles (keeps pool array, reuses slots). */
 function resetParticles() {
   for (const p of particles) p.alive = false;
-  _loopTimer  = 0;
   _pulseTimer = 0;
   _spawnAccum = 0;
 }
@@ -230,18 +225,6 @@ function tickEmitter() {
     spawnParticle(sx, sy);
   }
 
-  // ── Loop auto-reset ───────────────────────────────────────────────────
-  if (cfg.loop) {
-    _loopTimer++;
-    const interval = Math.ceil(cfg.lifetime * 1.5) + 20;
-    if (_loopTimer >= interval) {
-      _loopTimer  = 0;
-      _pulseTimer = 0;
-      resetParticles();
-      clearCanvas();
-      if (cfg.emitterMode === 'burst') cfg.burstPending = true;
-    }
-  }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────

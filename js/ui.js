@@ -74,6 +74,12 @@ function formatTrailLength(v) {
   return sec < 0.05 ? 'off' : sec.toFixed(2) + 's';
 }
 
+/** "45 (3.0s)" — frame count with its duration at the current render FPS. */
+function formatRenderFrames(v) {
+  const fps = parseFloat(document.getElementById('render-fps')?.value) || 15;
+  return v + ' (' + (v / fps).toFixed(1) + 's)';
+}
+
 /** Re-sync every slider's value display (used after bulk slider changes). */
 function refreshValDisplays() {
   document.querySelectorAll('.val-display').forEach(display => {
@@ -83,6 +89,7 @@ function refreshValDisplays() {
     let v = parseFloat(slider.value);
     if (id === 'speed') v = speedCurve(v);
     display.textContent = id === 'trail-length' ? formatTrailLength(v)
+                        : id === 'render-frames' ? formatRenderFrames(v)
                         : Number.isInteger(v) ? String(v) : v.toFixed(2);
   });
 }
@@ -98,6 +105,7 @@ function initSliderDisplays() {
       let v = parseFloat(slider.value);
       if (id === 'speed') v = speedCurve(v);
       display.textContent = id === 'trail-length' ? formatTrailLength(v)
+                          : id === 'render-frames' ? formatRenderFrames(v)
                           : Number.isInteger(v) ? String(v) : v.toFixed(2);
     };
     slider.addEventListener('input', update);
@@ -459,7 +467,6 @@ function updateEmitterShapeRows() {
 function initUI() {
   initSliderDisplays();
   buildEffectPresetBar();
-  // loop-toggle is now hidden (loop preview moved to render modal)
 
   // Load from URL hash if present, else keep the neutral point-emitter defaults
   if (!loadFromHash()) {
@@ -670,8 +677,6 @@ function initUI() {
     setSpeedMult(parseFloat(e.target.value));
   });
 
-  // ── Loop toggle ───────────────────────────────────────────────────────
-  document.getElementById('loop-toggle').addEventListener('change', pushConfig);
   document.getElementById('show-crosshair').addEventListener('change', () => { /* renderer reads this live */ });
 
   // ── Emitter mode / burst ──────────────────────────────────────────────
@@ -713,6 +718,15 @@ function initUI() {
     updateDeathParamsVisibility();
   }
 
+  // ── 1:1 frame preview — canvas simulates at the render frame size ────
+  const _applyCanvasMode = () => { sizeCanvas(); clearCanvas(); resetParticles(); };
+  document.getElementById('match-frame').addEventListener('change', _applyCanvasMode);
+  document.getElementById('render-frame-size').addEventListener('change', () => {
+    if (isFramePreview()) _applyCanvasMode();
+  });
+  // Keep the frames display ("N (x.xs)") in sync when FPS changes
+  document.getElementById('render-fps').addEventListener('input', refreshValDisplays);
+
   // ── Unified Render & Export ──────────────────────────────────────────
   document.getElementById('btn-render').addEventListener('click', triggerRender);
   document.getElementById('btn-render-top').addEventListener('click', triggerRender);
@@ -746,6 +760,7 @@ function initUI() {
 
   // Export format switch
   document.getElementById('render-export-format').addEventListener('change', updateExportFormatUI);
+  document.getElementById('render-cols').addEventListener('input', refreshSheetPreview);
   document.getElementById('render-export-btn').addEventListener('click', runExport);
 
   // ── Save / Load / Share ───────────────────────────────────────────────
@@ -963,7 +978,6 @@ function applyEffectPreset(name) {
   set('death-size',      c.deathSize ?? 2);
   set('pulse-interval',  c.pulseInterval ?? 2);
 
-  setCheck('loop-toggle',   c.loop ?? false);
   setCheck('bounce',        c.bounce ?? false);
 
   updateEffectControls();
@@ -1085,7 +1099,6 @@ function pushConfig() {
     gradientStart: v('gradient-start'),
     gradientEnd:   v('gradient-end'),
     gradientStops: [...getGradientStops()],
-    loop:          b('loop-toggle'),
     bgColor:       v('bg-color'),
     trailEnabled:  b('trail-enabled'),
     trailSec:      trailSliderToSec(i('trail-length')),
@@ -1168,7 +1181,6 @@ function getFullSnapshot() {
     gradientStart: v('gradient-start'),
     gradientEnd:   gradientStops[0] || v('gradient-end'),
     gradientStops: [...getGradientStops()],
-    loop:          b('loop-toggle'),
     // Save emitter position as canvas-relative fractions so it round-trips
     // correctly even if the canvas is resized between save and load.
     emitterPX:     (() => { const c = getCanvas(); return (c && emitterX >= 0) ? emitterX / c.width  : 0.5; })(),
@@ -1247,8 +1259,6 @@ function applySnapshot(snap) {
   } else if (snap.gradientEnd) {
     setGradientStops([snap.gradientEnd]);
   }
-
-  setCheck('loop-toggle',  snap.loop);
 
   // Restore color-mode dropdown from snapshot flags
   const restoredMode = snap.colorMode || colorModeFromFlags(!!snap.multiColor, !!snap.useGradient);
@@ -1622,7 +1632,6 @@ function randomizeSettings() {
   set('death-speed',    rng(1, 4, 0.5));
   set('death-size',     rng(1, 4, 1));
 
-  setCheck('loop-toggle', false);  // no-op if element removed
   setCheck('bounce', Math.random() < 0.3);
 
   // Random palette
