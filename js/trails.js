@@ -30,7 +30,7 @@ const TRAIL_MAX_POINTS        = 45000;  // hard cap on stored points
 const TRAIL_INTERVAL_2_AT     = 12000;  // record every 2nd tick above this
 const TRAIL_INTERVAL_3_AT     = 24000;  // record every 3rd tick above this
 const TRAIL_PERMANENT_HISTORY = 90;     // snapshots kept while permanent
-const TRAIL_DRAW_BUDGET       = 18000;  // max stamps drawn per frame
+const TRAIL_DRAW_BUDGET       = 14000;  // max stamps drawn per frame
 
 // ── Custom particle image (shared app-wide) ───────────────────────────────
 
@@ -160,12 +160,9 @@ function resolveSoftness(c) {
 
 function drawTrailStamp(ctx, shapeIdx, x, y, size, r, g, b) {
   switch (shapeIdx) {
-    case 0: { // circle
-      if (size <= 4) {
-        const rad = Math.floor(size / 2);
-        for (let dy = -rad; dy <= rad; dy++)
-          for (let dx = -rad; dx <= rad; dx++)
-            if (dx * dx + dy * dy <= rad * rad + rad * 0.5) ctx.fillRect(x + dx, y + dy, 1, 1);
+    case 0: { // circle — trail stamps use cheap draws (they're faded anyway)
+      if (size <= 2) {
+        ctx.fillRect(x - (size >> 1), y - (size >> 1), size, size);
       } else {
         ctx.beginPath(); ctx.arc(x + 0.5, y + 0.5, size / 2, 0, Math.PI * 2); ctx.fill();
       }
@@ -426,7 +423,7 @@ function createTrailSystem() {
         const age = tick - snap.tick;
         if (age >= len) continue;
         const ageFrac = Math.exp(-5.5 * age / len);
-        if (ageFrac <= 0.008) continue;
+        if (ageFrac <= 0.014) continue;
         _drawSnapshot(layerCtx, snap, ageFrac);
       }
       source = layerCanvas;

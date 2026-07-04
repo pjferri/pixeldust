@@ -20,6 +20,7 @@ let _composeCtx    = null;
 
 let bgColor = '#0c0c0e';
 let blendMode = 'normal';
+let _denseFrame = false;   // >260 alive: skip the faintest halo pass
 let effectStrength = 1;
 let shadowColor = '#120018';
 
@@ -160,6 +161,9 @@ function renderFrame() {
   }
 
   _liveTrails.draw(target, w, h);
+  let alive = 0;
+  for (const p of particles) if (p.alive) alive++;
+  _denseFrame = alive > 260;
   for (const p of particles) {
     if (p.alive) drawParticle(target, p);
   }
@@ -194,11 +198,11 @@ function drawParticle(ctx, p) {
     const softBias = Math.max(0, 1.2 - intensity) / 1.2;
     drawParticlePass(ctx, p, x, y, s * (1.35 + intensity * 0.25), color, alpha * (0.02 + softBias * 0.06), 'screen', 1.04 + softBias * 0.08);
     drawParticlePass(ctx, p, x, y, s * (1.18 + intensity * 0.4), color, alpha * (0.04 + intensity * 0.05), 'lighter');
-    drawParticlePass(ctx, p, x, y, s * (1.65 + intensity * 0.9), color, alpha * (0.015 + intensity * 0.035), 'lighter');
+    if (!_denseFrame) drawParticlePass(ctx, p, x, y, s * (1.65 + intensity * 0.9), color, alpha * (0.015 + intensity * 0.035), 'lighter');
     if (intensity > 1.4) {
       drawParticlePass(ctx, p, x, y, s * (1 + intensity * 0.24), color, alpha * Math.min(0.95, 0.14 + intensity * 0.18), 'lighter');
     }
-    drawParticlePass(ctx, p, x, y, s, color, alpha, 'source-over', 1 + intensity * 0.08);
+    drawParticlePass(ctx, p, x, y, s, color, alpha, 'source-over', 1 + intensity * 0.08, true);
     return;
   }
 
@@ -211,7 +215,7 @@ function drawParticle(ctx, p) {
     drawParticlePass(ctx, p, x + fringeOffset, y, s * (1 + intensity * 0.12), cyan, alpha * (0.12 + intensity * 0.04), 'lighter');
     drawParticlePass(ctx, p, x, y - fringeOffset, s * (1 + intensity * 0.08), gold, alpha * (0.08 + intensity * 0.03), 'screen', 1.05);
     drawParticlePass(ctx, p, x, y, s * (1.06 + intensity * 0.18), color, alpha * (0.06 + intensity * 0.04), 'screen', 1.1 + intensity * 0.04);
-    drawParticlePass(ctx, p, x, y, s, color, alpha, 'source-over', 1.05 + intensity * 0.04);
+    drawParticlePass(ctx, p, x, y, s, color, alpha, 'source-over', 1.05 + intensity * 0.04, true);
     return;
   }
 
@@ -221,14 +225,14 @@ function drawParticle(ctx, p) {
     drawParticlePass(ctx, p, x + shadowOffset, y + shadowOffset, s * (1.22 + intensity * 0.18), shadowRgb, alpha * (0.18 + intensity * 0.08), 'source-over', 0.55);
     drawParticlePass(ctx, p, x + Math.max(1, Math.floor(shadowOffset / 2)), y + Math.max(1, Math.floor(shadowOffset / 2)), s * (1.02 + intensity * 0.08), shadowRgb, alpha * (0.12 + intensity * 0.05), 'source-over', 0.82);
     drawParticlePass(ctx, p, x, y, s * (1 + intensity * 0.05), color, alpha * 0.16, 'lighter');
-    drawParticlePass(ctx, p, x, y, s, color, alpha, 'source-over');
+    drawParticlePass(ctx, p, x, y, s, color, alpha, 'source-over', 1, true);
     return;
   }
 
-  drawParticlePass(ctx, p, x, y, s, color, alpha, 'source-over');
+  drawParticlePass(ctx, p, x, y, s, color, alpha, 'source-over', 1, true);
 }
 
-function drawParticlePass(ctx, p, x, y, size, color, alpha, compositeOperation, brightness = 1) {
+function drawParticlePass(ctx, p, x, y, size, color, alpha, compositeOperation, brightness = 1, crisp = false) {
   if (alpha <= 0 || size <= 0.2) return;
 
   const drawSize = Math.max(1, Math.round(size));
@@ -254,7 +258,7 @@ function drawParticlePass(ctx, p, x, y, size, color, alpha, compositeOperation, 
     const m = fill.match(/\d+/g);
     drawImageParticle(ctx, x, y, drawSize, +m[0], +m[1], +m[2]);
   } else {
-    drawParticleShape(ctx, p.shape, x, y, drawSize);
+    drawParticleShape(ctx, p.shape, x, y, drawSize, crisp);
   }
   ctx.restore();
 }
@@ -279,10 +283,10 @@ function hexColorToRgbString(hex) {
   return `rgb(${r},${g},${b})`;
 }
 
-function drawParticleShape(ctx, shape, x, y, size) {
+function drawParticleShape(ctx, shape, x, y, size, crisp = true) {
   switch (shape) {
     case 'circle':
-      if (size <= 4) {
+      if (crisp && size <= 4) {
         pixelCircle(ctx, x, y, size);
       } else {
         ctx.beginPath();

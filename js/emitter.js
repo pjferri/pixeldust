@@ -183,11 +183,17 @@ function tickEmitter() {
   // ── Spawn death particles outside the update loop ─────────────────────
   // (avoids iterating over newly-added particles in the same frame)
   if (deathSparks) {
+    // Population cap: death sparks multiply fast (count × deathCount), so
+    // stop spawning sparks once the sim is already crowded. Prevents the
+    // freeze when huge bursts die all at once.
+    let sparkBudget = Math.max(0, 700 - liveCount());
     for (const { x, y } of deathSparks) {
-      const n = Math.min(cfg.deathCount, 8); // hard cap for safety
+      const n = Math.min(cfg.deathCount, 8, sparkBudget);
       for (let d = 0; d < n; d++) {
         _spawnDeathParticle(x, y);
       }
+      sparkBudget -= n;
+      if (sparkBudget <= 0) break;
     }
   }
 

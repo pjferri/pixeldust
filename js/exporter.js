@@ -706,9 +706,13 @@ function createLocalSimulator(emitCfg, frameSize) {
     }
 
     if (deathSparks) {
+      // Same spark population cap as the live sim (see emitter.js)
+      let sparkBudget = Math.max(0, 700 - liveCountLocal());
       for (const { x, y } of deathSparks) {
-        const n = Math.min(emitCfg.deathCount, 8);
+        const n = Math.min(emitCfg.deathCount, 8, sparkBudget);
         for (let d = 0; d < n; d++) spawnDeathParticle(x, y);
+        sparkBudget -= n;
+        if (sparkBudget <= 0) break;
       }
     }
 
