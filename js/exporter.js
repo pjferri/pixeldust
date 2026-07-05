@@ -784,7 +784,7 @@ function createLocalSimulator(emitCfg, frameSize) {
 
     if (target !== frameCtx) {
       frameCtx.save();
-      frameCtx.filter = `blur(${((softness / 100) * 3).toFixed(1)}px)`;
+      frameCtx.filter = `blur(${((softness / 100) * 8).toFixed(1)}px)`;
       frameCtx.drawImage(composeCanvas, 0, 0);
       frameCtx.restore();
     }

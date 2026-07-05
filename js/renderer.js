@@ -166,7 +166,7 @@ function renderFrame() {
 
   if (target !== ctx) {
     ctx.save();
-    ctx.filter = `blur(${((_softness / 100) * 3).toFixed(1)}px)`;
+    ctx.filter = `blur(${((_softness / 100) * 8).toFixed(1)}px)`;
     ctx.drawImage(_composeCanvas, 0, 0);
     ctx.restore();
   }

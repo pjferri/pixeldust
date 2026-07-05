@@ -992,8 +992,15 @@ function applyEffectPreset(name) {
   // Sync color-mode dropdown from preset flags, then update visibility
   syncColorUIFromMode(colorModeFromFlags(!!c.multiColor, !!c.useGradient));
 
-  // Apply palette
-  if (palette && PALETTES[palette]) applyPalette(palette);
+  // Apply palette (named, or a custom color array carried by the preset)
+  if (preset.paletteColors && preset.paletteColors.length) {
+    activePalette = [...preset.paletteColors];
+    buildPaletteGrid(activePalette);
+    _activePaletteIdx = 0;
+    updateGradientPreview();
+  } else if (palette && PALETTES[palette]) {
+    applyPalette(palette);
+  }
 
   // Re-sync all val-display spans
   refreshValDisplays();
