@@ -8,7 +8,10 @@
   <meta property="og:title" content="PixelDust — Pixel Particle FX Studio" />
   <meta property="og:description" content="Design pixel-art particle effects in your browser. Export game-ready spritesheets, GIFs, and video." />
   <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://pixeldust.io/og.png" />
+  <meta property="og:url" content="https://pixeldust.io/" />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://pixeldust.io/og.png" />
   <meta name="theme-color" content="#0c0c0e" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230c0c0e'/%3E%3Crect x='7' y='2' width='3' height='3' fill='%23ffd54a'/%3E%3Crect x='4' y='6' width='3' height='3' fill='%23ff7a00'/%3E%3Crect x='10' y='7' width='2' height='2' fill='%23b05fff'/%3E%3Crect x='6' y='10' width='3' height='3' fill='%23d61f00'/%3E%3Crect x='11' y='11' width='2' height='2' fill='%2350d0ff'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="style.css" />
@@ -16,6 +19,12 @@
 </head>
 <body>
   <div id="app">
+
+    <!-- Small-screen heads-up (dismissible) -->
+    <div id="mobile-notice" class="hidden">
+      <span>PixelDust is built for desktop &mdash; this screen may be cramped.</span>
+      <button id="mobile-notice-ok" class="btn btn-secondary btn-sm">Got it</button>
+    </div>
 
     <!-- ===== TOP BAR ===== -->
     <header id="topbar">
@@ -533,6 +542,7 @@
           <span id="particle-count-live">0 particles</span>
           <span id="emitter-pos-display">emitter: center</span>
           <button id="btn-center-emitter" class="btn btn-secondary" title="Center emitter (Home)">&#8982; Center</button>
+          <span id="app-credit">made by Peter Ferri &middot; <a href="https://github.com/pjferri/pixeldust/issues" target="_blank" rel="noopener">feedback</a></span>
         </div>
       </section>
 

@@ -1220,3 +1220,37 @@ kbd {
   flex: 1;
   padding: 6px 0;
 }
+
+
+/* ── App credit (canvas footer) ──────────────────────────────────────── */
+#app-credit {
+  margin-left: auto;
+  font-size: 11px;
+  color: #666;
+}
+#app-credit a {
+  color: #8a7fd4;
+  text-decoration: none;
+}
+#app-credit a:hover { text-decoration: underline; }
+
+/* ── Small-screen notice ─────────────────────────────────────────────── */
+#mobile-notice {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #1a1730;
+  border: 1px solid #3a3560;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #cfcae8;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+#mobile-notice.hidden { display: none; }

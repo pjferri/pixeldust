@@ -847,6 +847,24 @@ function initUI() {
     }
   });
 
+  // Share links opened while the app is ALREADY loaded only change the
+  // hash — no page reload happens, so listen and apply the config live.
+  window.addEventListener('hashchange', () => {
+    if (location.hash.startsWith('#cfg=')) loadFromHash();
+  });
+
+  // Small screens: friendly heads-up (dismissible, remembered)
+  if (window.innerWidth < 900 && !localStorage.getItem('pixeldust_mobile_ok')) {
+    const notice = document.getElementById('mobile-notice');
+    if (notice) {
+      notice.classList.remove('hidden');
+      document.getElementById('mobile-notice-ok')?.addEventListener('click', () => {
+        localStorage.setItem('pixeldust_mobile_ok', '1');
+        notice.classList.add('hidden');
+      });
+    }
+  }
+
   pushConfig();
   updateBurstRowVisibility();
   updateEmitterShapeRows();
@@ -1477,13 +1495,20 @@ function shareConfig() {
   const snap = getFullSnapshot();
   // Custom images are far too large for a URL — shared links fall back to squares
   delete snap.particleImage;
-  const encoded = btoa(JSON.stringify(snap));
-  const url     = `${location.origin}${location.pathname}#cfg=${encoded}`;
-  navigator.clipboard.writeText(url).then(() => {
+  // URL-safe base64 (+ → -, / → _, no padding): survives messengers and
+  // linkifiers that mangle +, / and trailing = characters.
+  const encoded = btoa(JSON.stringify(snap))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const url = `${location.origin}${location.pathname}#cfg=${encoded}`;
+  const flash = () => {
     const btn = document.getElementById('btn-share');
     const orig = btn.textContent;
     btn.textContent = '✓ Copied!';
     setTimeout(() => { btn.textContent = orig; }, 2000);
+  };
+  navigator.clipboard.writeText(url).then(flash).catch(() => {
+    // Clipboard unavailable — let the user copy it manually
+    window.prompt('Copy your share link:', url);
   });
 }
 
@@ -1491,8 +1516,14 @@ function loadFromHash() {
   const hash = location.hash;
   if (!hash.startsWith('#cfg=')) return false;
   try {
-    const snap = JSON.parse(atob(hash.slice(5)));
+    let raw = hash.slice(5);
+    // Tolerate percent-encoding, URL-safe base64, and stripped padding
+    try { raw = decodeURIComponent(raw); } catch (_) { /* already plain */ }
+    raw = raw.replace(/-/g, '+').replace(/_/g, '/');
+    while (raw.length % 4) raw += '=';
+    const snap = JSON.parse(atob(raw));
     applySnapshot(snap);
+    document.querySelectorAll('.effect-preset-btn').forEach(b => b.classList.remove('active'));
     return true;
   } catch {
     return false;
