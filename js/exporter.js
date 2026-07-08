@@ -345,24 +345,12 @@ async function exportGif() {
   const delay     = Math.round(1000 / fps);
   const quality   = parseInt(document.getElementById('render-gif-quality').value, 10) || 8;
 
-  // Fetch the worker script as a blob to avoid CORS issues
-  let workerBlobUrl;
-  try {
-    const resp = await fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js');
-    const workerText = await resp.text();
-    const blob = new Blob([workerText], { type: 'application/javascript' });
-    workerBlobUrl = URL.createObjectURL(blob);
-  } catch (e) {
-    encodeStatus.textContent = 'Error: Could not load GIF worker. Check internet connection.';
-    return;
-  }
-
   const gif = new GIF({
     workers:      2,
     quality:      quality,
     width:        frameSize,
     height:       frameSize,
-    workerScript: workerBlobUrl,
+    workerScript: 'js/vendor/gif.worker.js',   // vendored — works offline
     transparent:  _capturedTransparent ? 0x00000000 : null,
   });
 
@@ -402,7 +390,6 @@ async function exportGif() {
       setTimeout(() => {
         encodeProgress.classList.add('hidden');
         URL.revokeObjectURL(url);
-        URL.revokeObjectURL(workerBlobUrl);
       }, 2000);
 
       resolve();
