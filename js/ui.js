@@ -879,22 +879,15 @@ function initUI() {
   document.getElementById('btn-undo')?.addEventListener('click', undo);
   document.getElementById('btn-redo')?.addEventListener('click', redo);
 
-  // Mobile: topbar dice + preset bottom sheet
+  // Mobile: compact topbar + bottom sheets
   document.getElementById('btn-rand-top')?.addEventListener('click', randomizeSettings);
   document.getElementById('btn-presets-sheet')?.addEventListener('click', openPresetSheet);
   document.getElementById('btn-mobile-actions')?.addEventListener('click', openMobileActionSheet);
   document.getElementById('preset-sheet-backdrop')?.addEventListener('click', closePresetSheet);
-  document.getElementById('sheet-randomize')?.addEventListener('click', () => { randomizeSettings(); closePresetSheet(); });
   document.getElementById('sheet-save-preset')?.addEventListener('click', () => { closePresetSheet(); saveAsCustomPreset(); });
   document.getElementById('mobile-action-sheet-backdrop')?.addEventListener('click', closeMobileActionSheet);
-  document.getElementById('sheet-undo')?.addEventListener('click', () => { undo(); closeMobileActionSheet(); });
-  document.getElementById('sheet-redo')?.addEventListener('click', () => { redo(); closeMobileActionSheet(); });
   document.getElementById('sheet-save-cfg')?.addEventListener('click', () => { saveConfig(); closeMobileActionSheet(); });
   document.getElementById('sheet-load-cfg')?.addEventListener('click', () => setTimeout(closeMobileActionSheet, 0));
-  document.getElementById('sheet-share')?.addEventListener('click', () => { shareConfig(); closeMobileActionSheet(); });
-  document.getElementById('sheet-randomize-top')?.addEventListener('click', () => { randomizeSettings(); closeMobileActionSheet(); });
-  document.getElementById('sheet-presets')?.addEventListener('click', () => { closeMobileActionSheet(); openPresetSheet(); });
-  document.getElementById('sheet-shortcuts')?.addEventListener('click', () => { closeMobileActionSheet(); openShortcuts(); });
 
   pushConfig();
   updateBurstRowVisibility();
@@ -974,10 +967,51 @@ function buildEffectPresetBar() {
 
 // ── Mobile preset sheet ────────────────────────────────────────────────────
 
-function openPresetSheet()  { document.getElementById('preset-sheet')?.classList.remove('hidden'); }
-function closePresetSheet() { document.getElementById('preset-sheet')?.classList.add('hidden'); }
-function openMobileActionSheet()  { document.getElementById('mobile-action-sheet')?.classList.remove('hidden'); }
-function closeMobileActionSheet() { document.getElementById('mobile-action-sheet')?.classList.add('hidden'); }
+let _sheetScrollY = 0;
+
+function _anyMobileSheetOpen() {
+  return ['preset-sheet', 'mobile-action-sheet'].some(id => {
+    const el = document.getElementById(id);
+    return el && !el.classList.contains('hidden');
+  });
+}
+
+function _lockSheetScroll() {
+  if (document.body.classList.contains('sheet-open')) return;
+  _sheetScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+  document.body.style.top = `-${_sheetScrollY}px`;
+  document.documentElement.classList.add('sheet-open');
+  document.body.classList.add('sheet-open');
+}
+
+function _unlockSheetScroll() {
+  if (!document.body.classList.contains('sheet-open')) return;
+  document.documentElement.classList.remove('sheet-open');
+  document.body.classList.remove('sheet-open');
+  document.body.style.top = '';
+  window.scrollTo(0, _sheetScrollY);
+}
+
+function _syncSheetScrollLock() {
+  _anyMobileSheetOpen() ? _lockSheetScroll() : _unlockSheetScroll();
+}
+
+function openPresetSheet()  {
+  document.getElementById('preset-sheet')?.classList.remove('hidden');
+  _syncSheetScrollLock();
+}
+function closePresetSheet() {
+  document.getElementById('preset-sheet')?.classList.add('hidden');
+  _syncSheetScrollLock();
+}
+function openMobileActionSheet()  {
+  document.getElementById('mobile-action-sheet')?.classList.remove('hidden');
+  _syncSheetScrollLock();
+}
+function closeMobileActionSheet() {
+  document.getElementById('mobile-action-sheet')?.classList.add('hidden');
+  _syncSheetScrollLock();
+}
 
 /**
  * Apply a full effect preset by name.

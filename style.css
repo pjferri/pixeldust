@@ -189,6 +189,14 @@ body {
 #preset-sheet.hidden { display: none; }
 #mobile-action-sheet { position: fixed; inset: 0; z-index: 410; }
 #mobile-action-sheet.hidden { display: none; }
+html.sheet-open { overflow: hidden; }
+body.sheet-open {
+  position: fixed;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  width: 100%;
+}
 .sheet-backdrop {
   position: absolute;
   inset: 0;
@@ -1469,7 +1477,7 @@ kbd {
   }
 
   .logo-version {
-    font-size: 8px;
+    display: none;
   }
 
   #topbar-controls {
@@ -1477,7 +1485,7 @@ kbd {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 4px;
+    gap: 3px;
     min-width: 0;
     flex: 1 1 0;
     overflow: hidden;
@@ -1486,12 +1494,9 @@ kbd {
   #topbar .topbar-sep,
   #topbar-credit,
   #btn-shortcuts,
-  #btn-undo,
-  #btn-redo,
+  #btn-render-top,
   #btn-save-cfg,
-  #topbar-controls > label.btn,
-  #btn-share,
-  #btn-rand-top {
+  #topbar-controls > label.btn {
     display: none !important;
   }
 
@@ -1501,54 +1506,108 @@ kbd {
 
   #topbar .btn {
     min-width: 0;
-    height: 38px;
-    min-height: 38px;
+    height: 36px;
+    min-height: 36px;
     padding: 0 8px;
     border-radius: 6px;
     font-size: 12px;
     flex: 0 1 auto;
   }
 
-  #btn-play,
-  #btn-pause {
+  #topbar #btn-play,
+  #topbar #btn-pause {
     order: 1;
-    flex-basis: 64px;
+    width: 34px;
+    flex: 0 0 34px;
+    font-size: 0;
+    gap: 0;
   }
 
-  #btn-reset {
+  #topbar #btn-play::before {
+    content: "\25b6";
+    font-size: 17px;
+    line-height: 1;
+  }
+
+  #topbar #btn-pause::before {
+    content: "\23f8";
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  #topbar #btn-reset {
     order: 2;
-    flex-basis: 58px;
+    width: 34px;
+    flex: 0 0 34px;
+    font-size: 0;
+    gap: 0;
+  }
+
+  #topbar #btn-reset::before {
+    content: "\21bb";
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  #topbar #btn-undo {
+    order: 3;
+    width: 34px;
+    flex: 0 0 34px;
+  }
+
+  #topbar #btn-redo {
+    order: 4;
+    width: 34px;
+    flex: 0 0 34px;
+  }
+
+  #topbar #btn-rand-top {
+    order: 5;
+    width: 34px;
+    flex: 0 0 34px;
+    padding: 0;
+    font-size: 16px;
+  }
+
+  #topbar #btn-share {
+    order: 6;
+    width: 34px;
+    flex: 0 0 34px;
+    padding: 0;
+    font-size: 0;
+    gap: 0;
+  }
+
+  #topbar #btn-share::before {
+    content: "\21aa";
+    font-size: 18px;
+    line-height: 1;
   }
 
   #btn-render-top {
-    order: 3;
-    flex-basis: 76px;
+    order: 7;
   }
 
   #btn-presets-sheet {
-    order: 4;
+    order: 8;
+  }
+
+  #topbar #btn-mobile-actions {
+    order: 9;
   }
 
   #btn-mobile-actions {
-    order: 5;
-  }
-
-  #btn-presets-sheet,
-  #btn-mobile-actions {
-    width: 38px;
-    flex: 0 0 38px;
+    width: 34px;
+    flex: 0 0 34px;
     padding: 0;
   }
 
   #topbar #btn-presets-sheet {
-    gap: 0;
-    font-size: 0;
-  }
-
-  #topbar #btn-presets-sheet::before {
-    content: "\2630";
-    font-size: 18px;
-    line-height: 1;
+    width: 64px;
+    flex: 0 0 64px;
+    padding: 0 9px;
+    font-size: 12px;
+    font-weight: 600;
   }
 
   #btn-mobile-actions svg {
@@ -1639,6 +1698,19 @@ kbd {
 
   #panel-right {
     padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #mobile-footer-credit {
+    display: block;
+    margin: 8px 16px 26px;
+    color: var(--text-secondary);
+    font-size: 11px;
+    text-align: center;
+  }
+
+  #mobile-footer-credit a {
+    color: var(--accent-hover);
+    text-decoration: none;
   }
 
   .ctrl-group {
@@ -1765,8 +1837,13 @@ kbd {
   }
 
   .sheet-actions {
+    justify-content: center;
     gap: 8px;
     margin-bottom: 12px;
+  }
+
+  .sheet-actions .btn {
+    width: min(100%, 280px);
   }
 
   .sheet-actions .btn,
@@ -1801,35 +1878,38 @@ kbd {
   }
 
   #topbar-controls {
-    gap: 3px;
+    gap: 2px;
   }
 
-  #btn-play,
-  #btn-pause {
-    flex-basis: 60px;
+  #topbar #btn-play,
+  #topbar #btn-pause {
+    width: 32px;
+    flex-basis: 32px;
   }
 
   #topbar #btn-reset {
-    width: 36px;
-    flex: 0 0 36px;
-    font-size: 0;
-    gap: 0;
+    width: 32px;
+    flex-basis: 32px;
   }
 
-  #topbar #btn-reset::before {
-    content: "\21bb";
-    font-size: 18px;
-    line-height: 1;
+  #topbar #btn-undo,
+  #topbar #btn-redo,
+  #topbar #btn-rand-top,
+  #topbar #btn-share,
+  #topbar #btn-mobile-actions {
+    width: 32px;
+    flex-basis: 32px;
   }
 
-  #btn-render-top {
-    flex-basis: 70px;
+  #topbar #btn-presets-sheet {
+    width: 58px;
+    flex-basis: 58px;
+    padding: 0 6px;
+    font-size: 11px;
   }
 
-  #btn-presets-sheet,
-  #btn-mobile-actions {
-    width: 36px;
-    flex-basis: 36px;
+  .logo-version {
+    display: none;
   }
 }
 

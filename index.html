@@ -42,7 +42,7 @@
         </label>
         <button id="btn-share" class="btn btn-secondary" title="Copy shareable link"><span class="btn-glyph">&#128279;</span> Share</button>
         <button id="btn-rand-top" class="btn btn-secondary mobile-only" title="Randomize">&#127922;</button>
-        <button id="btn-presets-sheet" class="btn btn-secondary mobile-only" title="Presets">&#9776; Presets</button>
+        <button id="btn-presets-sheet" class="btn btn-secondary mobile-only" title="Presets">Presets</button>
         <button id="btn-mobile-actions" class="btn btn-secondary btn-icon mobile-only" title="More actions" aria-label="More actions"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
         <div class="topbar-sep"></div>
         <button id="btn-shortcuts" class="btn btn-secondary" title="Keyboard shortcuts">⌨ Keys</button>
@@ -702,6 +702,10 @@
           <button id="btn-render" class="btn btn-accent full-width">&#9654; Render</button>
         </section>
 
+        <div id="mobile-footer-credit" class="mobile-only">
+          Made by Peter Ferri &middot; <a href="https://docs.google.com/forms/d/e/1FAIpQLSeyNjz4fwhhYiHASlN-ysBMOTsH98lRxMj3vxlt1yH1lIzAjQ/viewform?usp=dialog" target="_blank" rel="noopener">Feedback</a>
+        </div>
+
       </aside>
     </main>
 
@@ -858,7 +862,6 @@
     <div class="sheet-panel">
       <div class="sheet-handle"></div>
       <div class="sheet-actions">
-        <button id="sheet-randomize" class="btn btn-secondary">&#127922; Randomize</button>
         <button id="sheet-save-preset" class="btn btn-secondary">&#11088; Save Preset</button>
       </div>
       <div id="sheet-preset-grid"></div>
@@ -872,14 +875,8 @@
       <div class="sheet-handle"></div>
       <div class="sheet-title">Actions</div>
       <div class="action-sheet-grid">
-        <button id="sheet-undo" class="btn btn-secondary" type="button">Undo</button>
-        <button id="sheet-redo" class="btn btn-secondary" type="button">Redo</button>
         <button id="sheet-save-cfg" class="btn btn-secondary" type="button">Save</button>
         <label id="sheet-load-cfg" class="btn btn-secondary" for="load-cfg-input">Load</label>
-        <button id="sheet-share" class="btn btn-secondary" type="button">Share</button>
-        <button id="sheet-randomize-top" class="btn btn-secondary" type="button">Randomize</button>
-        <button id="sheet-presets" class="btn btn-secondary" type="button">Presets</button>
-        <button id="sheet-shortcuts" class="btn btn-secondary" type="button">Keys</button>
       </div>
     </div>
   </div>
