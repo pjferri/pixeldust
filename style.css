@@ -1722,8 +1722,10 @@ kbd {
   }
 
   #canvas-footer {
-    width: min(calc(100vw - (var(--mobile-pad) * 2)), 380px);
-    max-width: 100%;
+    /* Exactly as wide as the canvas itself, so fps sits on its left edge
+       and Center on its right — not the screen's edges */
+    width: var(--canvas-display, min(calc(100vw - (var(--mobile-pad) * 2)), 380px));
+    max-width: calc(100vw - (var(--mobile-pad) * 2));
     display: flex;
     flex-wrap: nowrap;
     justify-content: flex-start;

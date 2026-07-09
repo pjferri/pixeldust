@@ -87,6 +87,9 @@ function sizeCanvas() {
 
   // The sticky canvas sits below the (possibly wrapped) top bar — measure
   // its real height so the offset is always right.
+  // Let CSS align the stats footer to the canvas edges exactly
+  document.documentElement.style.setProperty('--canvas-display', displaySize + 'px');
+
   const sel = document.getElementById('canvas-size')?.value || 'auto';
   if (sel === 'auto') {
     // Simulate at desktop resolution (720) even on phones, shown scaled to
