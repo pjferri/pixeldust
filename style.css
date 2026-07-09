@@ -187,6 +187,8 @@ body {
 /* ── Mobile preset bottom sheet ─────────────────────────────────────── */
 #preset-sheet { position: fixed; inset: 0; z-index: 400; }
 #preset-sheet.hidden { display: none; }
+#mobile-action-sheet { position: fixed; inset: 0; z-index: 410; }
+#mobile-action-sheet.hidden { display: none; }
 .sheet-backdrop {
   position: absolute;
   inset: 0;
@@ -202,9 +204,29 @@ body {
   overflow-y: auto;
   background: var(--bg-panel);
   border-top: 1px solid var(--border-light);
-  border-radius: 18px 18px 0 0;
+  border-radius: 8px 8px 0 0;
   padding: 6px 16px calc(24px + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.7);
+}
+.sheet-title {
+  margin: -2px 0 12px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  text-align: center;
+}
+.action-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.action-sheet-grid .btn {
+  min-height: 44px;
+  width: 100%;
+  padding: 12px 8px;
 }
 .sheet-handle {
   width: 44px;
@@ -233,7 +255,7 @@ body {
   font-size: 15px;
   background: var(--bg-group);
   border: 1px solid var(--border-light);
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--text-primary);
   cursor: pointer;
   text-align: center;
@@ -1394,6 +1416,423 @@ kbd {
 }
 
 /* ── Death sparks sub-controls (indented under death-count slider) ── */
+/* Mobile layout pass: compact command bar, smaller sticky stage, denser cards. */
+@media (max-width: 1000px), ((pointer: coarse) and (max-width: 1680px)) {
+  :root {
+    --topbar-h: 54px;
+    --mobile-pad: 10px;
+  }
+
+  html,
+  body {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    font-size: 14px;
+  }
+
+  #app {
+    min-height: 100dvh;
+    overflow-x: hidden;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #topbar {
+    width: 100%;
+    max-width: 100vw;
+    height: var(--topbar-h);
+    min-height: var(--topbar-h);
+    flex-wrap: nowrap;
+    align-items: center;
+    padding: 7px 8px;
+    gap: 6px;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.26);
+  }
+
+  #logo {
+    order: 1;
+    align-items: center;
+    gap: 4px;
+    margin-right: 0;
+  }
+
+  .logo-px {
+    font-size: 12px;
+    padding: 3px 5px;
+  }
+
+  .logo-name {
+    display: none;
+  }
+
+  .logo-version {
+    font-size: 8px;
+  }
+
+  #topbar-controls {
+    order: 2;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
+    min-width: 0;
+    flex: 1 1 0;
+    overflow: hidden;
+  }
+
+  #topbar .topbar-sep,
+  #topbar-credit,
+  #btn-shortcuts,
+  #btn-undo,
+  #btn-redo,
+  #btn-save-cfg,
+  #topbar-controls > label.btn,
+  #btn-share,
+  #btn-rand-top {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: inline-flex;
+  }
+
+  #topbar .btn {
+    min-width: 0;
+    height: 38px;
+    min-height: 38px;
+    padding: 0 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    flex: 0 1 auto;
+  }
+
+  #btn-play,
+  #btn-pause {
+    order: 1;
+    flex-basis: 64px;
+  }
+
+  #btn-reset {
+    order: 2;
+    flex-basis: 58px;
+  }
+
+  #btn-render-top {
+    order: 3;
+    flex-basis: 76px;
+  }
+
+  #btn-presets-sheet {
+    order: 4;
+  }
+
+  #btn-mobile-actions {
+    order: 5;
+  }
+
+  #btn-presets-sheet,
+  #btn-mobile-actions {
+    width: 38px;
+    flex: 0 0 38px;
+    padding: 0;
+  }
+
+  #topbar #btn-presets-sheet {
+    gap: 0;
+    font-size: 0;
+  }
+
+  #topbar #btn-presets-sheet::before {
+    content: "\2630";
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  #btn-mobile-actions svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  #preset-bar {
+    display: none;
+  }
+
+  #main {
+    flex-direction: column;
+    overflow: visible;
+    flex: none;
+    width: 100%;
+    max-width: 100vw;
+    background: var(--bg-app);
+  }
+
+  #canvas-area {
+    order: -1;
+    position: sticky;
+    top: var(--topbar-actual, var(--topbar-h));
+    z-index: 120;
+    flex: none;
+    width: 100%;
+    max-width: 100vw;
+    padding: 8px var(--mobile-pad) 7px;
+    gap: 7px;
+    border-bottom: 1px solid var(--border);
+    background-color: var(--bg-app);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.38);
+  }
+
+  #canvas-wrap {
+    max-width: calc(100vw - (var(--mobile-pad) * 2));
+  }
+
+  #preview-canvas {
+    max-width: 100%;
+    touch-action: none;
+  }
+
+  #canvas-footer {
+    width: min(calc(100vw - (var(--mobile-pad) * 2)), 380px);
+    max-width: 100%;
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    gap: 4px 8px;
+    flex-wrap: nowrap;
+    justify-content: normal;
+    align-items: center;
+    font-size: 10.5px;
+    letter-spacing: 0;
+    line-height: 1.2;
+  }
+
+  #fps-display,
+  #particle-count-live,
+  #emitter-pos-display {
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  #emitter-pos-display {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #btn-center-emitter {
+    min-height: 34px;
+    padding: 0 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    grid-column: 4;
+  }
+
+  #panel-left,
+  #panel-right {
+    width: 100%;
+    max-width: 100vw;
+    overflow: visible;
+    border: none;
+    background: transparent;
+    padding: 4px 0;
+  }
+
+  #panel-right {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ctrl-group {
+    margin: 10px var(--mobile-pad);
+    padding: 12px;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background: rgba(20, 20, 26, 0.96);
+  }
+
+  .ctrl-group:last-child {
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .group-label {
+    margin-bottom: 10px;
+    color: var(--accent-hover);
+    font-size: 11px;
+    letter-spacing: 1.4px;
+  }
+
+  .btn {
+    min-height: 42px;
+    padding: 11px 14px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+
+  .btn-sm {
+    min-height: 36px;
+    padding: 8px 11px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+
+  .btn-icon {
+    padding: 10px 12px;
+  }
+
+  .ctrl-row {
+    min-height: 42px;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+
+  .ctrl-row > span {
+    min-width: 88px;
+    font-size: 13px;
+  }
+
+  .slider-pair {
+    gap: 8px;
+  }
+
+  .val-display {
+    min-width: 44px;
+    font-size: 12px;
+  }
+
+  select {
+    min-width: 0;
+    min-height: 40px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 16px;
+  }
+
+  #preset-name-input {
+    font-size: 16px;
+  }
+
+  input[type="range"] {
+    height: 10px;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+  }
+
+  input[type="checkbox"].toggle {
+    transform: scale(1.35);
+    transform-origin: right center;
+  }
+
+  input[type="color"] {
+    min-width: 44px;
+    min-height: 36px;
+  }
+
+  .seg-btn {
+    padding: 9px 10px;
+    font-size: 11px;
+  }
+
+  #palette-grid .pal-swatch,
+  #gradient-stops .grad-stop {
+    width: 36px;
+    height: 36px;
+  }
+
+  .bg-swatch {
+    width: 28px;
+    height: 28px;
+  }
+
+  #palette-presets {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  #palette-presets .preset-btn {
+    padding: 10px 4px;
+    border-radius: 6px;
+    font-size: 11px;
+  }
+
+  .sheet-panel {
+    max-height: 76dvh;
+    padding: 6px 14px calc(18px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .sheet-actions {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .sheet-actions .btn,
+  .action-sheet-grid .btn {
+    min-height: 44px;
+    padding: 12px 8px;
+    font-size: 14px;
+  }
+
+  #sheet-preset-grid {
+    gap: 8px;
+  }
+
+  #sheet-preset-grid .sheet-preset {
+    padding: 12px 6px;
+    font-size: 14px;
+  }
+
+  .modal-box {
+    min-width: 0;
+    width: min(94vw, 520px);
+    max-height: 88dvh;
+    overflow-y: auto;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 380px) {
+  #topbar {
+    padding-inline: 6px;
+    gap: 4px;
+  }
+
+  #topbar-controls {
+    gap: 3px;
+  }
+
+  #btn-play,
+  #btn-pause {
+    flex-basis: 60px;
+  }
+
+  #topbar #btn-reset {
+    width: 36px;
+    flex: 0 0 36px;
+    font-size: 0;
+    gap: 0;
+  }
+
+  #topbar #btn-reset::before {
+    content: "\21bb";
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  #btn-render-top {
+    flex-basis: 70px;
+  }
+
+  #btn-presets-sheet,
+  #btn-mobile-actions {
+    width: 36px;
+    flex-basis: 36px;
+  }
+}
+
 #death-params-row,
 #effect-params-row {
   border-left: 2px solid rgba(255,255,255,0.10);

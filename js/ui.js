@@ -825,6 +825,7 @@ function initUI() {
     closeRenderModal();
     cancelSavePreset();
     closePresetSheet();
+    closeMobileActionSheet();
   };
   document.getElementById('btn-shortcuts').addEventListener('click', openShortcuts);
   document.getElementById('btn-close-shortcuts').addEventListener('click', closeShortcuts);
@@ -881,9 +882,19 @@ function initUI() {
   // Mobile: topbar dice + preset bottom sheet
   document.getElementById('btn-rand-top')?.addEventListener('click', randomizeSettings);
   document.getElementById('btn-presets-sheet')?.addEventListener('click', openPresetSheet);
+  document.getElementById('btn-mobile-actions')?.addEventListener('click', openMobileActionSheet);
   document.getElementById('preset-sheet-backdrop')?.addEventListener('click', closePresetSheet);
   document.getElementById('sheet-randomize')?.addEventListener('click', () => { randomizeSettings(); closePresetSheet(); });
   document.getElementById('sheet-save-preset')?.addEventListener('click', () => { closePresetSheet(); saveAsCustomPreset(); });
+  document.getElementById('mobile-action-sheet-backdrop')?.addEventListener('click', closeMobileActionSheet);
+  document.getElementById('sheet-undo')?.addEventListener('click', () => { undo(); closeMobileActionSheet(); });
+  document.getElementById('sheet-redo')?.addEventListener('click', () => { redo(); closeMobileActionSheet(); });
+  document.getElementById('sheet-save-cfg')?.addEventListener('click', () => { saveConfig(); closeMobileActionSheet(); });
+  document.getElementById('sheet-load-cfg')?.addEventListener('click', () => setTimeout(closeMobileActionSheet, 0));
+  document.getElementById('sheet-share')?.addEventListener('click', () => { shareConfig(); closeMobileActionSheet(); });
+  document.getElementById('sheet-randomize-top')?.addEventListener('click', () => { randomizeSettings(); closeMobileActionSheet(); });
+  document.getElementById('sheet-presets')?.addEventListener('click', () => { closeMobileActionSheet(); openPresetSheet(); });
+  document.getElementById('sheet-shortcuts')?.addEventListener('click', () => { closeMobileActionSheet(); openShortcuts(); });
 
   pushConfig();
   updateBurstRowVisibility();
@@ -965,6 +976,8 @@ function buildEffectPresetBar() {
 
 function openPresetSheet()  { document.getElementById('preset-sheet')?.classList.remove('hidden'); }
 function closePresetSheet() { document.getElementById('preset-sheet')?.classList.add('hidden'); }
+function openMobileActionSheet()  { document.getElementById('mobile-action-sheet')?.classList.remove('hidden'); }
+function closeMobileActionSheet() { document.getElementById('mobile-action-sheet')?.classList.add('hidden'); }
 
 /**
  * Apply a full effect preset by name.

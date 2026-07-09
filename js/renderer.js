@@ -54,6 +54,9 @@ function initRenderer(canvasEl) {
 function sizeCanvas() {
   const area = canvas.closest('#canvas-area') || canvas.parentElement.parentElement;
   const pad = 56;
+  const tb = document.getElementById('topbar');
+  const topbarHeight = tb ? tb.offsetHeight : 54;
+  if (tb) document.documentElement.style.setProperty('--topbar-actual', topbarHeight + 'px');
   // Mobile view = narrow window OR any touch-primary device (covers phones
   // stuck in "Desktop site" mode, which report inflated ~980px viewports).
   const coarse = window.matchMedia('(pointer: coarse)').matches;
@@ -61,19 +64,29 @@ function sizeCanvas() {
   // Mobile canvas size is WIDTH-driven only — mobile viewport heights lie
   // (URL bars collapse/expand), which previously made the canvas change
   // size mid-scroll. Capped so inflated viewports stay sane.
-  const displaySize = mobileView
-    ? Math.max(220, Math.min(Math.floor(window.innerWidth * 0.92), 480))
-    : Math.max(256, Math.min(
-        area.clientWidth - pad,
-        area.clientHeight - pad,
-        720
-      ));
+  let displaySize;
+  if (mobileView) {
+    const viewport = window.visualViewport || window;
+    const viewportW = viewport.width || window.innerWidth;
+    const viewportH = viewport.height || window.innerHeight;
+    const phoneView = viewportW < 600;
+    const footerReserve = phoneView ? 48 : 56;
+    const widthCap = Math.floor(viewportW * (phoneView ? 0.84 : 0.72));
+    const edgeCap = Math.floor(viewportW - 20);
+    const heightCap = Math.floor((viewportH - topbarHeight - footerReserve - 24) * (phoneView ? 0.58 : 0.66));
+    const maxSize = phoneView ? 340 : 480;
+    const minSize = phoneView ? 220 : 256;
+    displaySize = Math.max(minSize, Math.min(widthCap, edgeCap, heightCap, maxSize));
+  } else {
+    displaySize = Math.max(256, Math.min(
+      area.clientWidth - pad,
+      area.clientHeight - pad,
+      720
+    ));
+  }
 
   // The sticky canvas sits below the (possibly wrapped) top bar — measure
   // its real height so the offset is always right.
-  const tb = document.getElementById('topbar');
-  if (tb) document.documentElement.style.setProperty('--topbar-actual', tb.offsetHeight + 'px');
-
   const sel = document.getElementById('canvas-size')?.value || 'auto';
   if (sel === 'auto') {
     canvas.width  = displaySize;
