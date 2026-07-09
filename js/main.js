@@ -109,7 +109,11 @@ function loop(now) {
   }
 
   // ── Live particle count ──────────────────────────────────────────────────
-  document.getElementById('particle-count-live').textContent = liveCount() + ' / ' + cfg.count + ' particles';
+  // Compact stats on small screens — the full "x / y particles" gets clipped
+  window._pdCompactStats ??= window.matchMedia('(max-width: 1000px), ((pointer: coarse) and (max-width: 1680px))');
+  document.getElementById('particle-count-live').textContent = window._pdCompactStats.matches
+    ? liveCount() + ' particles'
+    : liveCount() + ' / ' + cfg.count + ' particles';
 
   // ── Simulate + Render ─────────────────────────────────────────────────────
   // Accumulate ticks so fractional speeds work (e.g. 0.5× = 1 tick per 2 frames)

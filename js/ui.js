@@ -826,6 +826,7 @@ function initUI() {
     cancelSavePreset();
     closePresetSheet();
     closeMobileActionSheet();
+    closePatchNotes();
   };
   document.getElementById('btn-shortcuts').addEventListener('click', openShortcuts);
   document.getElementById('btn-close-shortcuts').addEventListener('click', closeShortcuts);
@@ -884,10 +885,15 @@ function initUI() {
   document.getElementById('btn-presets-sheet')?.addEventListener('click', openPresetSheet);
   document.getElementById('btn-mobile-actions')?.addEventListener('click', openMobileActionSheet);
   document.getElementById('preset-sheet-backdrop')?.addEventListener('click', closePresetSheet);
+  document.getElementById('sheet-randomize')?.addEventListener('click', () => { randomizeSettings(); closePresetSheet(); });
   document.getElementById('sheet-save-preset')?.addEventListener('click', () => { closePresetSheet(); saveAsCustomPreset(); });
   document.getElementById('mobile-action-sheet-backdrop')?.addEventListener('click', closeMobileActionSheet);
   document.getElementById('sheet-save-cfg')?.addEventListener('click', () => { saveConfig(); closeMobileActionSheet(); });
   document.getElementById('sheet-load-cfg')?.addEventListener('click', () => setTimeout(closeMobileActionSheet, 0));
+
+  initPatchNotes();
+  initCollapsibleCards();
+  initSliderTouchGuard();
 
   pushConfig();
   updateBurstRowVisibility();
@@ -1011,6 +1017,74 @@ function openMobileActionSheet()  {
 function closeMobileActionSheet() {
   document.getElementById('mobile-action-sheet')?.classList.add('hidden');
   _syncSheetScrollLock();
+}
+
+// ── Patch notes ("What's new") ─────────────────────────────────────────────
+// Content lives in js/changelog.js — edit PATCH_NOTES there.
+function initPatchNotes() {
+  const notes = (typeof PATCH_NOTES !== 'undefined' && Array.isArray(PATCH_NOTES)) ? PATCH_NOTES : [];
+  if (!notes.length) return;
+  const vLabel = 'v' + notes[0].version;
+  const badge = document.getElementById('btn-version');
+  if (badge) badge.textContent = vLabel;
+  const footerV = document.getElementById('footer-version');
+  if (footerV) footerV.textContent = 'PixelDust ' + vLabel;
+
+  const list = document.getElementById('patch-notes-list');
+  if (list) {
+    list.innerHTML = notes.map(e =>
+      '<div class="pn-entry"><div class="pn-head"><span class="pn-version">v' + e.version +
+      '</span><span class="pn-date">' + e.date + '</span></div><ul>' +
+      e.notes.map(n => '<li>' + n + '</li>').join('') + '</ul></div>'
+    ).join('');
+  }
+
+  const open = () => document.getElementById('patch-notes-modal')?.classList.remove('hidden');
+  badge?.addEventListener('click', open);
+  footerV?.addEventListener('click', open);
+  document.getElementById('btn-close-patch-notes')?.addEventListener('click', closePatchNotes);
+  document.getElementById('patch-notes-modal')?.addEventListener('click', e => {
+    if (e.target.id === 'patch-notes-modal') closePatchNotes();
+  });
+}
+function closePatchNotes() { document.getElementById('patch-notes-modal')?.classList.add('hidden'); }
+
+// ── Collapsible control cards ──────────────────────────────────────────────
+// Tap a section header to fold the card. Collapsed set persists per device.
+function initCollapsibleCards() {
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem('pd-collapsed-cards')) || []; } catch (_) {}
+  document.querySelectorAll('.ctrl-group > .group-label').forEach(label => {
+    const group = label.parentElement;
+    const key = label.textContent.trim();
+    if (saved.includes(key)) group.classList.add('collapsed');
+    label.addEventListener('click', () => {
+      group.classList.toggle('collapsed');
+      const collapsed = [...document.querySelectorAll('.ctrl-group.collapsed > .group-label')]
+        .map(l => l.textContent.trim());
+      try { localStorage.setItem('pd-collapsed-cards', JSON.stringify(collapsed)); } catch (_) {}
+    });
+  });
+}
+
+// ── Slider touch guard ─────────────────────────────────────────────────────
+// On touch screens a tap anywhere on a range track jumps the value, so a
+// scrolling finger grazing a slider wrecks the effect. Only touches that
+// start near the thumb are allowed through; everything else is ignored
+// (page scrolling is unaffected — only the slider's own jump is blocked).
+function initSliderTouchGuard() {
+  document.addEventListener('touchstart', (e) => {
+    const t = e.target;
+    if (!(t instanceof HTMLInputElement) || t.type !== 'range') return;
+    const touch = e.touches[0];
+    const rect = t.getBoundingClientRect();
+    const min = Number(t.min) || 0;
+    const max = Number(t.max) || 100;
+    const frac = ((Number(t.value) || 0) - min) / ((max - min) || 1);
+    const thumbW = 26;
+    const thumbX = rect.left + thumbW / 2 + frac * (rect.width - thumbW);
+    if (Math.abs(touch.clientX - thumbX) > 32) e.preventDefault();
+  }, { capture: true, passive: false });
 }
 
 /**

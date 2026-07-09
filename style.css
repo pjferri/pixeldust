@@ -104,7 +104,12 @@ body {
   font-size: 9px;
   color: var(--text-secondary);
   font-family: var(--font-mono);
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
 }
+.logo-version:hover { color: var(--accent-hover); text-decoration: underline; }
 
 #topbar-controls {
   display: flex;
@@ -442,6 +447,41 @@ body.sheet-open {
   border-bottom: 1px solid var(--border);
 }
 .ctrl-group:last-child { border-bottom: none; }
+
+/* Collapsible cards: tap/click the header to fold */
+.ctrl-group > .group-label {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ctrl-group > .group-label::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--text-secondary);
+  border-bottom: 2px solid var(--text-secondary);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.15s ease;
+  margin-left: 8px;
+  flex: 0 0 auto;
+}
+.ctrl-group.collapsed > .group-label::after { transform: rotate(-45deg); }
+.ctrl-group.collapsed > :not(.group-label) { display: none !important; }
+.ctrl-group.collapsed > .group-label { margin-bottom: 0; }
+
+/* Patch notes modal */
+.patch-notes-box { width: min(94vw, 460px); }
+#patch-notes-list { max-height: 55dvh; overflow-y: auto; margin: 12px 0 14px; }
+.pn-entry { margin-bottom: 18px; }
+.pn-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.pn-version { font-family: var(--font-mono); font-weight: 700; color: var(--accent-hover); font-size: 14px; }
+.pn-date { font-size: 11px; color: var(--text-secondary); }
+.pn-entry ul { margin: 0; padding-left: 18px; }
+.pn-entry li { font-size: 12.5px; line-height: 1.55; color: var(--text-primary); margin-bottom: 5px; }
+.patch-notes-box > .btn { width: 100%; }
 
 .group-label {
   font-size: 9px;
@@ -994,7 +1034,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 350;
   backdrop-filter: blur(4px);
 }
 
@@ -1492,7 +1532,9 @@ kbd {
   }
 
   .logo-version {
-    display: none;
+    display: inline-block;
+    font-size: 10px;
+    padding: 3px 4px;
   }
 
   #topbar-controls {
@@ -1565,6 +1607,10 @@ kbd {
     width: 34px;
     flex: 0 0 34px;
     padding: 0;
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), #5a3fa0);
+    border-color: var(--accent-hover);
+    box-shadow: 0 0 8px var(--accent-glow);
   }
 
   #topbar #btn-share {
@@ -1664,35 +1710,28 @@ kbd {
   #canvas-footer {
     width: min(calc(100vw - (var(--mobile-pad) * 2)), 380px);
     max-width: 100%;
-    display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr) auto;
-    gap: 4px 8px;
-    flex-wrap: nowrap;
-    justify-content: normal;
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    font-size: 10.5px;
+    gap: 10px;
+    font-size: 12px;
     letter-spacing: 0;
     line-height: 1.2;
   }
 
   #fps-display,
-  #particle-count-live,
-  #emitter-pos-display {
+  #particle-count-live {
     min-width: 0;
     white-space: nowrap;
   }
 
-  #emitter-pos-display {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+  #emitter-pos-display { display: none; }
 
   #btn-center-emitter {
     min-height: 34px;
-    padding: 0 10px;
+    padding: 0 12px;
     border-radius: 6px;
     font-size: 12px;
-    grid-column: 4;
   }
 
   #panel-left,
@@ -1722,9 +1761,14 @@ kbd {
     text-decoration: none;
   }
 
+  #footer-version {
+    color: var(--accent-hover);
+    cursor: pointer;
+  }
+
   .ctrl-group {
-    margin: 10px var(--mobile-pad);
-    padding: 12px;
+    margin: 8px var(--mobile-pad);
+    padding: 11px 12px;
     border: 1px solid var(--border-light);
     border-radius: 8px;
     background: rgba(20, 20, 26, 0.96);
@@ -1736,6 +1780,7 @@ kbd {
 
   .group-label {
     margin-bottom: 10px;
+    padding: 2px 0 6px;
     color: var(--accent-hover);
     font-size: 11px;
     letter-spacing: 1.4px;
@@ -1760,9 +1805,9 @@ kbd {
   }
 
   .ctrl-row {
-    min-height: 42px;
+    min-height: 40px;
     gap: 10px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     font-size: 14px;
   }
 
@@ -1782,7 +1827,7 @@ kbd {
 
   select {
     min-width: 0;
-    min-height: 40px;
+    min-height: 38px;
     padding: 8px 10px;
     border-radius: 6px;
     font-size: 16px;
