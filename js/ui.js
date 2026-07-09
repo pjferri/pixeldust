@@ -1076,7 +1076,7 @@ function initSliderTouchGuard() {
   document.addEventListener('touchstart', (e) => {
     const t = e.target;
     if (!(t instanceof HTMLInputElement) || t.type !== 'range') return;
-    const touch = e.touches[0];
+    const touch = e.changedTouches[0]; // the finger that just landed, not the first one down
     const rect = t.getBoundingClientRect();
     const min = Number(t.min) || 0;
     const max = Number(t.max) || 100;

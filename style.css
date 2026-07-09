@@ -1492,6 +1492,20 @@ kbd {
     overflow-x: hidden;
   }
 
+  * { -webkit-tap-highlight-color: transparent; }
+
+  #topbar,
+  #canvas-footer,
+  #panel-left,
+  #panel-right {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Vertical swipes over a slider scroll the page; horizontal input still
+     reaches the slider (with the JS thumb guard filtering track taps). */
+  input[type="range"] { touch-action: pan-y; }
+
   body {
     font-size: 14px;
   }
@@ -1711,27 +1725,34 @@ kbd {
     width: min(calc(100vw - (var(--mobile-pad) * 2)), 380px);
     max-width: 100%;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
-    gap: 10px;
-    font-size: 12px;
+    gap: 9px;
+    font-size: 11px;
     letter-spacing: 0;
     line-height: 1.2;
   }
 
   #fps-display,
-  #particle-count-live {
+  #particle-count-live,
+  #emitter-pos-display {
     min-width: 0;
     white-space: nowrap;
   }
 
-  #emitter-pos-display { display: none; }
+  #emitter-pos-display {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 0 1 auto;
+  }
 
   #btn-center-emitter {
     min-height: 34px;
     padding: 0 12px;
     border-radius: 6px;
     font-size: 12px;
+    margin-left: auto;
+    flex: 0 0 auto;
   }
 
   #panel-left,
@@ -1741,8 +1762,14 @@ kbd {
     overflow: visible;
     border: none;
     background: transparent;
-    padding: 4px 0;
+    padding: 0;
   }
+
+  #panel-left { padding-top: 8px; }
+
+  /* #main is a flex column, so card margins can't collapse across the two
+     panels — drop one side or the Lifetime->Color seam doubles to 16px */
+  #panel-right .ctrl-group:first-child { margin-top: 0; }
 
   #panel-right {
     padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
@@ -1962,8 +1989,12 @@ kbd {
     font-size: 10.5px;
   }
 
+  /* 360px-wide phones: the version chip matters more than the PX square */
+  .logo-px { display: none; }
   .logo-version {
-    display: none;
+    display: inline-block;
+    font-size: 10px;
+    padding: 3px 2px;
   }
 }
 

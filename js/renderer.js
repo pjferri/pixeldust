@@ -89,22 +89,34 @@ function sizeCanvas() {
   // its real height so the offset is always right.
   const sel = document.getElementById('canvas-size')?.value || 'auto';
   if (sel === 'auto') {
-    canvas.width  = displaySize;
-    canvas.height = displaySize;
-    canvas.style.width  = displaySize + 'px';
-    canvas.style.height = displaySize + 'px';
-    // Crisp pixels on high-DPI screens (the mushy-blocks fix)
-    canvas.style.imageRendering = 'pixelated';
-  } else {
-    // Fixed sprite size — simulate at exactly this many pixels, shown
-    // enlarged with crisp pixels. The canvas IS the exported frame.
-    const logical = parseInt(sel, 10);
-    const scale = Math.max(1, Math.floor(displaySize / logical));
+    // Simulate at desktop resolution (720) even on phones, shown scaled to
+    // fit — the SAME effect everywhere. A small simulation canvas made
+    // effects behave differently on mobile (portal bounced off the walls)
+    // and exports came out tiny.
+    const logical = mobileView ? 720 : displaySize;
     canvas.width  = logical;
     canvas.height = logical;
-    canvas.style.width  = (logical * scale) + 'px';
-    canvas.style.height = (logical * scale) + 'px';
-    canvas.style.imageRendering = 'pixelated';
+    canvas.style.width  = displaySize + 'px';
+    canvas.style.height = displaySize + 'px';
+    // Crisp pixels when shown 1:1 or enlarged; smooth when scaled down
+    canvas.style.imageRendering = logical > displaySize ? 'auto' : 'pixelated';
+  } else {
+    // Fixed sprite size — simulate at exactly this many pixels. Shown
+    // enlarged (integer scale, crisp) when it fits, or scaled down to fit
+    // the screen when it's bigger than the viewport (512 on a phone).
+    const logical = parseInt(sel, 10);
+    canvas.width  = logical;
+    canvas.height = logical;
+    if (logical > displaySize) {
+      canvas.style.width  = displaySize + 'px';
+      canvas.style.height = displaySize + 'px';
+      canvas.style.imageRendering = 'auto';
+    } else {
+      const scale = Math.max(1, Math.floor(displaySize / logical));
+      canvas.style.width  = (logical * scale) + 'px';
+      canvas.style.height = (logical * scale) + 'px';
+      canvas.style.imageRendering = 'pixelated';
+    }
   }
 
   canvasW = canvas.width;
