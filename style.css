@@ -855,17 +855,15 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
 
 #canvas-footer {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+  gap: 20px;
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-secondary);
   letter-spacing: 0.3px;
   flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
 }
-
-.footer-sep { opacity: 0.5; }
 
 /* ============================================================
    MODALS (shared)
