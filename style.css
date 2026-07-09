@@ -1725,26 +1725,22 @@ kbd {
     width: min(calc(100vw - (var(--mobile-pad) * 2)), 380px);
     max-width: 100%;
     display: flex;
+    flex-wrap: nowrap;
     justify-content: flex-start;
     align-items: center;
-    gap: 9px;
-    font-size: 11px;
+    gap: 12px;
+    font-size: 12px;
     letter-spacing: 0;
     line-height: 1.2;
   }
 
   #fps-display,
-  #particle-count-live,
-  #emitter-pos-display {
+  #particle-count-live {
     min-width: 0;
     white-space: nowrap;
   }
 
-  #emitter-pos-display {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex: 0 1 auto;
-  }
+  #emitter-pos-display { display: none; }
 
   #btn-center-emitter {
     min-height: 34px;
@@ -1989,13 +1985,10 @@ kbd {
     font-size: 10.5px;
   }
 
-  /* 360px-wide phones: the version chip matters more than the PX square */
-  .logo-px { display: none; }
-  .logo-version {
-    display: inline-block;
-    font-size: 10px;
-    padding: 3px 2px;
-  }
+  /* 360px-wide phones: whole logo yields — every px goes to the buttons.
+     The version (and its patch-notes tap target) lives in the footer. */
+  #logo { display: none; }
+  #topbar-controls { justify-content: center; }
 }
 
 #death-params-row,

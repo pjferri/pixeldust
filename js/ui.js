@@ -1069,22 +1069,49 @@ function initCollapsibleCards() {
 
 // ── Slider touch guard ─────────────────────────────────────────────────────
 // On touch screens a tap anywhere on a range track jumps the value, so a
-// scrolling finger grazing a slider wrecks the effect. Only touches that
-// start near the thumb are allowed through; everything else is ignored
-// (page scrolling is unaffected — only the slider's own jump is blocked).
+// scrolling finger grazing a slider wrecks the effect.
+//
+// v1 called preventDefault() on touchstart, but that cancels the WHOLE
+// gesture — page scrolling died whenever a scroll began on a slider, and
+// some jump paths still slipped through. v2 never blocks the gesture:
+// scrolling stays fully native, and instead any value change from a touch
+// that didn't start on the thumb is swallowed before the app sees it and
+// the value is snapped back. Jumps become impossible; drags that begin on
+// the thumb work exactly as before.
 function initSliderTouchGuard() {
+  let blocked = null; // { el, val } while a non-thumb touch is down on a slider
+
+  const nearThumb = (el, touch) => {
+    const rect = el.getBoundingClientRect();
+    const min = Number(el.min) || 0;
+    const max = Number(el.max) || 100;
+    const frac = ((Number(el.value) || 0) - min) / ((max - min) || 1);
+    const thumbW = 26;
+    const thumbX = rect.left + thumbW / 2 + frac * (rect.width - thumbW);
+    return Math.abs(touch.clientX - thumbX) <= 26;
+  };
+
   document.addEventListener('touchstart', (e) => {
     const t = e.target;
     if (!(t instanceof HTMLInputElement) || t.type !== 'range') return;
-    const touch = e.changedTouches[0]; // the finger that just landed, not the first one down
-    const rect = t.getBoundingClientRect();
-    const min = Number(t.min) || 0;
-    const max = Number(t.max) || 100;
-    const frac = ((Number(t.value) || 0) - min) / ((max - min) || 1);
-    const thumbW = 26;
-    const thumbX = rect.left + thumbW / 2 + frac * (rect.width - thumbW);
-    if (Math.abs(touch.clientX - thumbX) > 32) e.preventDefault();
-  }, { capture: true, passive: false });
+    const touch = e.changedTouches[0]; // the finger that just landed
+    if (!nearThumb(t, touch)) blocked = { el: t, val: t.value };
+  }, { capture: true, passive: true });
+
+  const unblock = () => { blocked = null; };
+  document.addEventListener('touchend', unblock, { capture: true, passive: true });
+  document.addEventListener('touchcancel', unblock, { capture: true, passive: true });
+
+  // Runs before the app's own input/change listeners (document capture
+  // beats target listeners) — revert the value and stop the event cold.
+  const swallow = (e) => {
+    if (blocked && e.target === blocked.el) {
+      e.target.value = blocked.val;
+      e.stopImmediatePropagation();
+    }
+  };
+  document.addEventListener('input', swallow, { capture: true });
+  document.addEventListener('change', swallow, { capture: true });
 }
 
 /**
