@@ -180,6 +180,18 @@ function buildPaletteGrid(colors, activeIdx = 0) {
   const clampedIdx = colors.length
     ? Math.max(0, Math.min(activeIdx, colors.length - 1))
     : 0;
+  // Update in place when possible. Wiping innerHTML destroys the color
+  // inputs — and destroying an input while its native picker dialog is
+  // open orphans the dialog (Edge/Windows: modal dialog nobody can close).
+  const existing = grid.querySelectorAll('.pal-swatch');
+  if (existing.length === colors.length && colors.length > 0) {
+    existing.forEach((input, idx) => {
+      if (input.value !== colors[idx]) input.value = colors[idx];
+      input.classList.toggle('active', idx === clampedIdx);
+    });
+    _activePaletteIdx = clampedIdx;
+    return;
+  }
   grid.innerHTML = '';
   colors.forEach((hex, idx) => {
     const input = document.createElement('input');
@@ -288,6 +300,16 @@ function buildGradientStops(stops, activeIdx = _activeGradientIdx) {
   const clampedIdx = stops.length
     ? Math.max(0, Math.min(activeIdx, stops.length - 1))
     : 0;
+  // Same in-place rule as buildPaletteGrid — see comment there.
+  const existing = container.querySelectorAll('.grad-stop');
+  if (existing.length === stops.length && stops.length > 0) {
+    existing.forEach((input, idx) => {
+      if (input.value !== stops[idx]) input.value = stops[idx];
+      input.classList.toggle('active', idx === clampedIdx);
+    });
+    _activeGradientIdx = clampedIdx;
+    return;
+  }
   container.innerHTML = '';
   stops.forEach((hex, idx) => {
     const input = document.createElement('input');
@@ -827,6 +849,7 @@ function initUI() {
     closePresetSheet();
     closeMobileActionSheet();
     closePatchNotes();
+    if (typeof closeColorPopover === 'function') closeColorPopover(true);
   };
   document.getElementById('btn-shortcuts').addEventListener('click', openShortcuts);
   document.getElementById('btn-close-shortcuts').addEventListener('click', closeShortcuts);
@@ -895,6 +918,7 @@ function initUI() {
   initCollapsibleCards();
   initSliderTouchGuard();
   initColorLabelFix();
+  initCustomColorPicker();
 
   pushConfig();
   updateBurstRowVisibility();
@@ -1079,6 +1103,195 @@ function initCollapsibleCards() {
 // that didn't start on the thumb is swallowed before the app sees it and
 // the value is snapped back. Jumps become impossible; drags that begin on
 // the thumb work exactly as before.
+// ── Custom color picker (desktop) ──────────────────────────────────────────
+// Edge's native color dialog on Windows has a broken eyedropper that can
+// deadlock the whole browser window (only Task Manager helps). On fine-
+// pointer devices we intercept clicks on every <input type="color"> and use
+// our own popover instead: SV square + hue slider + hex field + an in-app
+// eyedropper (EyeDropper API — works great, can sample the canvas itself).
+// Phones/tablets keep their native pickers, which behave fine.
+let _ccpTarget = null;   // the input being edited
+let _ccpHue = 0;         // current hue 0-360
+let _ccpEl = null;       // popover root
+
+function _hexToHsv(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  let h = 0;
+  if (d) {
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
+    else if (max === g) h = ((b - r) / d + 2) * 60;
+    else h = ((r - g) / d + 4) * 60;
+  }
+  return { h, s: max ? d / max : 0, v: max };
+}
+
+function _hsvToHex(h, s, v) {
+  const f = (n) => {
+    const k = (n + h / 60) % 6;
+    const c = v - v * s * Math.max(0, Math.min(k, 4 - k, 1));
+    return Math.round(c * 255).toString(16).padStart(2, '0');
+  };
+  return '#' + f(5) + f(3) + f(1);
+}
+
+function _ccpApply(hex, fireChange) {
+  if (!_ccpTarget) return;
+  _ccpTarget.value = hex;
+  _ccpTarget.dispatchEvent(new Event('input', { bubbles: true }));
+  if (fireChange) _ccpTarget.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function _ccpRender() {
+  const sv = document.getElementById('ccp-sv');
+  const ctx2 = sv.getContext('2d');
+  const w = sv.width, hgt = sv.height;
+  const hueHex = _hsvToHex(_ccpHue, 1, 1);
+  const gx = ctx2.createLinearGradient(0, 0, w, 0);
+  gx.addColorStop(0, '#ffffff'); gx.addColorStop(1, hueHex);
+  ctx2.fillStyle = gx; ctx2.fillRect(0, 0, w, hgt);
+  const gy = ctx2.createLinearGradient(0, 0, 0, hgt);
+  gy.addColorStop(0, 'rgba(0,0,0,0)'); gy.addColorStop(1, '#000000');
+  ctx2.fillStyle = gy; ctx2.fillRect(0, 0, w, hgt);
+}
+
+function _ccpSync(hex) {
+  document.getElementById('ccp-hex').value = hex;
+  document.getElementById('ccp-swatch').style.background = hex;
+}
+
+function closeColorPopover(commit = true) {
+  if (!_ccpEl || _ccpEl.classList.contains('hidden')) return;
+  _ccpEl.classList.add('hidden');
+  if (commit && _ccpTarget) _ccpApply(_ccpTarget.value, true);
+  _ccpTarget = null;
+}
+
+function _openColorPopover(input) {
+  _ccpTarget = input;
+  const hex = /^#[0-9a-f]{6}$/i.test(input.value) ? input.value : '#ffffff';
+  const hsv = _hexToHsv(hex);
+  _ccpHue = hsv.h;
+  document.getElementById('ccp-hue').value = Math.round(hsv.h);
+  _ccpRender();
+  _ccpSync(hex);
+  const knob = document.getElementById('ccp-knob');
+  const sv = document.getElementById('ccp-sv');
+  knob.style.left = (hsv.s * sv.width) + 'px';
+  knob.style.top = ((1 - hsv.v) * sv.height) + 'px';
+
+  _ccpEl.classList.remove('hidden');
+  const r = input.getBoundingClientRect();
+  const pw = _ccpEl.offsetWidth, ph = _ccpEl.offsetHeight;
+  let x = Math.min(Math.max(8, r.left), window.innerWidth - pw - 8);
+  let y = r.bottom + 8;
+  if (y + ph > window.innerHeight - 8) y = Math.max(8, r.top - ph - 8);
+  _ccpEl.style.left = x + 'px';
+  _ccpEl.style.top = y + 'px';
+}
+
+function initCustomColorPicker() {
+  // Native pickers stay on touch devices — they're fine there
+  if (window.matchMedia('(pointer: coarse)').matches) return;
+
+  _ccpEl = document.createElement('div');
+  _ccpEl.id = 'ccp-pop';
+  _ccpEl.className = 'hidden';
+  _ccpEl.innerHTML =
+    '<div id="ccp-sv-wrap"><canvas id="ccp-sv" width="196" height="140"></canvas><div id="ccp-knob"></div></div>' +
+    '<input type="range" id="ccp-hue" min="0" max="360" step="1" value="0" />' +
+    '<div id="ccp-row">' +
+      '<span id="ccp-swatch"></span>' +
+      '<input type="text" id="ccp-hex" maxlength="7" spellcheck="false" autocomplete="off" />' +
+      (window.EyeDropper ? '<button id="ccp-eye" class="btn btn-secondary btn-sm" title="Pick a color from anywhere on screen">&#128269;</button>' : '') +
+      '<button id="ccp-ok" class="btn btn-accent btn-sm">OK</button>' +
+    '</div>';
+  document.body.appendChild(_ccpEl);
+
+  const sv = document.getElementById('ccp-sv');
+  const knob = document.getElementById('ccp-knob');
+  const hue = document.getElementById('ccp-hue');
+  const hexIn = document.getElementById('ccp-hex');
+
+  const pickSV = (e) => {
+    const r = sv.getBoundingClientRect();
+    const x = Math.max(0, Math.min(e.clientX - r.left, r.width));
+    const y = Math.max(0, Math.min(e.clientY - r.top, r.height));
+    knob.style.left = x + 'px';
+    knob.style.top = y + 'px';
+    const hex = _hsvToHex(_ccpHue, x / r.width, 1 - y / r.height);
+    _ccpSync(hex);
+    _ccpApply(hex, false);
+  };
+  sv.addEventListener('pointerdown', (e) => {
+    sv.setPointerCapture(e.pointerId);
+    pickSV(e);
+    const move = (ev) => pickSV(ev);
+    const up = () => { sv.removeEventListener('pointermove', move); sv.removeEventListener('pointerup', up); };
+    sv.addEventListener('pointermove', move);
+    sv.addEventListener('pointerup', up);
+  });
+
+  hue.addEventListener('input', () => {
+    _ccpHue = Number(hue.value);
+    _ccpRender();
+    const r = sv.getBoundingClientRect();
+    const x = parseFloat(knob.style.left) || 0, y = parseFloat(knob.style.top) || 0;
+    const hex = _hsvToHex(_ccpHue, x / r.width, 1 - y / r.height);
+    _ccpSync(hex);
+    _ccpApply(hex, false);
+  });
+
+  hexIn.addEventListener('change', () => {
+    let v = hexIn.value.trim();
+    if (!v.startsWith('#')) v = '#' + v;
+    if (/^#[0-9a-f]{6}$/i.test(v)) {
+      const hsv = _hexToHsv(v);
+      _ccpHue = hsv.h;
+      hue.value = Math.round(hsv.h);
+      _ccpRender();
+      knob.style.left = (hsv.s * sv.width) + 'px';
+      knob.style.top = ((1 - hsv.v) * sv.height) + 'px';
+      _ccpSync(v);
+      _ccpApply(v, false);
+    } else if (_ccpTarget) {
+      hexIn.value = _ccpTarget.value;
+    }
+  });
+
+  document.getElementById('ccp-eye')?.addEventListener('click', async () => {
+    try {
+      const res = await new EyeDropper().open();
+      const v = res.sRGBHex;
+      const hsv = _hexToHsv(v);
+      _ccpHue = hsv.h;
+      hue.value = Math.round(hsv.h);
+      _ccpRender();
+      knob.style.left = (hsv.s * sv.width) + 'px';
+      knob.style.top = ((1 - hsv.v) * sv.height) + 'px';
+      _ccpSync(v);
+      _ccpApply(v, false);
+    } catch (_) { /* user pressed Esc — fine */ }
+  });
+
+  document.getElementById('ccp-ok').addEventListener('click', () => closeColorPopover(true));
+
+  // Intercept native picker opening
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t instanceof HTMLInputElement && t.type === 'color') {
+      e.preventDefault();
+      if (_ccpTarget === t && !_ccpEl.classList.contains('hidden')) return;
+      closeColorPopover(true);
+      _openColorPopover(t);
+    } else if (_ccpEl && !_ccpEl.classList.contains('hidden') && !_ccpEl.contains(t)) {
+      closeColorPopover(true);
+    }
+  }, true);
+  window.addEventListener('resize', () => closeColorPopover(true));
+}
+
 // ── Edge color-picker fix ──────────────────────────────────────────────────
 // The standalone color inputs sit inside full-width <label class="ctrl-row">
 // rows. Labels forward ANY click in the row to the input — so on Windows,

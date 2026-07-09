@@ -9,6 +9,7 @@ const PATCH_NOTES = [
     version: '1.1',
     date: 'July 2026',
     notes: [
+      'New built-in color picker on desktop (with an eyedropper) — replaces the browser one, whose eyedropper could freeze Edge on Windows.',
       'Full mobile redesign — PixelDust now works great on your phone: compact toolbar, bottom-sheet presets, collapsible control cards, and touch-friendly sliders.',
       'Sliders on touch screens only respond to dragging the handle, so scrolling never nudges your settings by accident.',
       'Tap any section header to collapse it and get around faster.',
