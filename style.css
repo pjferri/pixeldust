@@ -1150,11 +1150,115 @@ kbd {
 /* ============================================================
    RESPONSIVE
    ============================================================ */
-@media (max-width: 900px) {
+
+/* Narrow desktop windows: slim the side panels instead of hiding them */
+@media (max-width: 1240px) and (min-width: 1001px) {
   :root { --panel-w: 190px; }
 }
-@media (max-width: 720px) {
-  #panel-right { display: none; }
+
+/* ── Phones & small tablets: single scrollable column ──────────────────
+   Layout: swipeable top bar (sticky) → swipeable preset bar → STICKY
+   canvas (always visible while tweaking) → all control groups stacked
+   full-width below. Nothing is hidden; everything scrolls. */
+@media (max-width: 1000px) {
+  html, body { height: auto; overflow: visible; }
+
+  #app {
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  /* Top bar: one swipeable row, pinned to the top */
+  #topbar {
+    position: sticky;
+    top: 0;
+    z-index: 130;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  #topbar::-webkit-scrollbar { display: none; }
+  #topbar-controls { flex-wrap: nowrap; }
+  #topbar-controls .btn { flex-shrink: 0; }
+  #topbar-credit { display: none; }
+
+  /* Preset bar: one swipeable row (scrolls away under the top bar) */
+  #preset-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  #preset-bar::-webkit-scrollbar { display: none; }
+  #effect-preset-btns {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  #preset-bar .btn,
+  .effect-preset-btn,
+  .custom-preset-wrap { flex-shrink: 0; }
+
+  /* Main becomes a column; the canvas moves to the top and sticks */
+  #main {
+    flex-direction: column;
+    overflow: visible;
+    flex: none;
+  }
+
+  #canvas-area {
+    order: -1;
+    position: sticky;
+    top: var(--topbar-h);
+    z-index: 120;
+    flex: none;
+    padding: 10px 0 8px;
+    gap: 6px;
+    border-bottom: 1px solid var(--border);
+    /* solid backdrop so scrolling controls never show through */
+    background-color: var(--bg-app);
+  }
+
+  #canvas-footer { font-size: 10px; }
+
+  /* Panels: full-width stacked sections */
+  #panel-left,
+  #panel-right {
+    width: 100%;
+    overflow: visible;
+    border-left: none;
+    border-right: none;
+  }
+  #panel-left { border-bottom: 1px solid var(--border); }
+
+  /* Finger-sized controls */
+  .btn { padding: 9px 13px; font-size: 12px; }
+  .btn-sm { padding: 6px 10px; font-size: 11px; }
+  .ctrl-group { padding: 12px 14px 14px; }
+  .ctrl-row { min-height: 36px; }
+  select { min-height: 32px; font-size: 13px; }
+  input[type="range"] { height: 6px; }
+  input[type="range"]::-webkit-slider-thumb { width: 22px; height: 22px; border-radius: 4px; }
+  input[type="checkbox"].toggle { transform: scale(1.3); transform-origin: right center; }
+  input[type="color"] { min-width: 40px; min-height: 30px; }
+
+  /* Modals: fit the screen, scroll internally */
+  .modal-box {
+    min-width: 0;
+    width: 94vw;
+    max-height: 88dvh;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  #render-preview-canvas,
+  #spritesheet-preview-img {
+    max-width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+  }
+
+  /* No hover on touch — avoid sticky hover states */
+  #app-credit a:hover { text-decoration: none; }
 }
 
 /* ── Death sparks sub-controls (indented under death-count slider) ── */

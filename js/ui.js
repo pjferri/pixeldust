@@ -853,17 +853,9 @@ function initUI() {
     if (location.hash.startsWith('#cfg=')) loadFromHash();
   });
 
-  // Small screens: friendly heads-up (dismissible, remembered)
-  if (window.innerWidth < 900 && !localStorage.getItem('pixeldust_mobile_ok')) {
-    const notice = document.getElementById('mobile-notice');
-    if (notice) {
-      notice.classList.remove('hidden');
-      document.getElementById('mobile-notice-ok')?.addEventListener('click', () => {
-        localStorage.setItem('pixeldust_mobile_ok', '1');
-        notice.classList.add('hidden');
-      });
-    }
-  }
+  // Undo / Redo buttons (same history as Ctrl+Z / Ctrl+Y)
+  document.getElementById('btn-undo')?.addEventListener('click', undo);
+  document.getElementById('btn-redo')?.addEventListener('click', redo);
 
   pushConfig();
   updateBurstRowVisibility();

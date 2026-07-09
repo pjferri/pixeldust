@@ -54,11 +54,15 @@ function initRenderer(canvasEl) {
 function sizeCanvas() {
   const area = canvas.closest('#canvas-area') || canvas.parentElement.parentElement;
   const pad = 56;
-  const displaySize = Math.max(256, Math.min(
-    area.clientWidth - pad,
-    area.clientHeight - pad,
-    720
-  ));
+  // Small screens use a compact single-column layout with a sticky canvas:
+  // size from the viewport (leaves ~half the screen for the controls below).
+  const displaySize = window.innerWidth <= 1000
+    ? Math.max(220, Math.min(window.innerWidth - 24, Math.floor(window.innerHeight * 0.42), 720))
+    : Math.max(256, Math.min(
+        area.clientWidth - pad,
+        area.clientHeight - pad,
+        720
+      ));
 
   const sel = document.getElementById('canvas-size')?.value || 'auto';
   if (sel === 'auto') {
