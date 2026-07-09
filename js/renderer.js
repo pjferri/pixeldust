@@ -58,19 +58,21 @@ function sizeCanvas() {
   // stuck in "Desktop site" mode, which report inflated ~980px viewports).
   const coarse = window.matchMedia('(pointer: coarse)').matches;
   const mobileView = window.innerWidth <= 1000 || (coarse && window.innerWidth <= 1680);
-  // On mobile, size from the viewport and cap at 520 so an inflated
-  // viewport can never produce a desktop-sized canvas on a phone.
+  // Mobile canvas size is WIDTH-driven only — mobile viewport heights lie
+  // (URL bars collapse/expand), which previously made the canvas change
+  // size mid-scroll. Capped so inflated viewports stay sane.
   const displaySize = mobileView
-    ? Math.max(220, Math.min(
-        Math.floor(window.innerWidth * 0.92),
-        Math.floor(window.innerHeight * 0.42),
-        520
-      ))
+    ? Math.max(220, Math.min(Math.floor(window.innerWidth * 0.92), 480))
     : Math.max(256, Math.min(
         area.clientWidth - pad,
         area.clientHeight - pad,
         720
       ));
+
+  // The sticky canvas sits below the (possibly wrapped) top bar — measure
+  // its real height so the offset is always right.
+  const tb = document.getElementById('topbar');
+  if (tb) document.documentElement.style.setProperty('--topbar-actual', tb.offsetHeight + 'px');
 
   const sel = document.getElementById('canvas-size')?.value || 'auto';
   if (sel === 'auto') {
@@ -78,7 +80,8 @@ function sizeCanvas() {
     canvas.height = displaySize;
     canvas.style.width  = displaySize + 'px';
     canvas.style.height = displaySize + 'px';
-    canvas.style.imageRendering = '';
+    // Crisp pixels on high-DPI screens (the mushy-blocks fix)
+    canvas.style.imageRendering = 'pixelated';
   } else {
     // Fixed sprite size — simulate at exactly this many pixels, shown
     // enlarged with crisp pixels. The canvas IS the exported frame.

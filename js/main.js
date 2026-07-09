@@ -31,8 +31,15 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-pause').addEventListener('click', pause);
   document.getElementById('btn-reset').addEventListener('click', reset);
 
-  // Resize: re-measure container and reset spawn coords
+  // Resize: re-measure container and reset spawn coords.
+  // Mobile browsers fire resize when the URL bar collapses during scroll —
+  // ignore height-only changes there, or the canvas resizes mid-scroll.
+  let _lastResizeW = window.innerWidth;
   window.addEventListener('resize', () => {
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    const widthChanged = Math.abs(window.innerWidth - _lastResizeW) > 2;
+    if (coarse && !widthChanged) return;
+    _lastResizeW = window.innerWidth;
     sizeCanvas();
     clearCanvas();
     resetParticles();

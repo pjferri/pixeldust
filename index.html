@@ -14,8 +14,8 @@
   <meta name="twitter:image" content="https://pixeldust.io/og.png" />
   <meta name="theme-color" content="#0c0c0e" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230c0c0e'/%3E%3Crect x='7' y='2' width='3' height='3' fill='%23ffd54a'/%3E%3Crect x='4' y='6' width='3' height='3' fill='%23ff7a00'/%3E%3Crect x='10' y='7' width='2' height='2' fill='%23b05fff'/%3E%3Crect x='6' y='10' width='3' height='3' fill='%23d61f00'/%3E%3Crect x='11' y='11' width='2' height='2' fill='%2350d0ff'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="style.css?v=113" />
-  <script src="js/vendor/gif.js?v=113"></script>
+  <link rel="stylesheet" href="style.css?v=115" />
+  <script src="js/vendor/gif.js?v=115"></script>
 </head>
 <body>
   <div id="app">
@@ -25,7 +25,7 @@
       <div id="logo">
         <span class="logo-px">PX</span>
         <span class="logo-name">PixelDust</span>
-        <span class="logo-version">v1.2</span>
+        <span class="logo-version">v1.3</span>
       </div>
       <div id="topbar-controls">
         <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
@@ -36,11 +36,11 @@
         <div class="topbar-sep"></div>
         <button id="btn-render-top" class="btn btn-accent" title="Render frames (E)">&#9654; Render</button>
         <div class="topbar-sep"></div>
-        <button id="btn-save-cfg" class="btn btn-secondary" title="Save config as JSON">&#128190; Save</button>
+        <button id="btn-save-cfg" class="btn btn-secondary" title="Save config as JSON"><span class="btn-glyph">&#128190;</span> Save</button>
         <label class="btn btn-secondary" title="Load config from JSON" style="cursor:pointer">
-          &#128193; Load <input type="file" id="load-cfg-input" accept=".json" style="display:none" />
+          <span class="btn-glyph">&#128193;</span> Load <input type="file" id="load-cfg-input" accept=".json" style="display:none" />
         </label>
-        <button id="btn-share" class="btn btn-secondary" title="Copy shareable link">&#128279; Share</button>
+        <button id="btn-share" class="btn btn-secondary" title="Copy shareable link"><span class="btn-glyph">&#128279;</span> Share</button>
         <button id="btn-rand-top" class="btn btn-secondary mobile-only" title="Randomize">&#127922;</button>
         <button id="btn-presets-sheet" class="btn btn-secondary mobile-only" title="Presets">&#9776; Presets</button>
         <div class="topbar-sep"></div>
@@ -877,15 +877,15 @@
   </div>
 
   <!-- JS modules (order matters: dependencies before dependents) -->
-  <script src="js/palettes.js?v=113"></script>
-  <script src="js/trails.js?v=113"></script>
-  <script src="js/particle.js?v=113"></script>
-  <script src="js/presets.js?v=113"></script>
-  <script src="js/emitter.js?v=113"></script>
-  <script src="js/renderer.js?v=113"></script>
-  <script src="js/exporter.js?v=113"></script>
-  <script src="js/ui.js?v=113"></script>
-  <script src="js/main.js?v=113"></script>
+  <script src="js/palettes.js?v=115"></script>
+  <script src="js/trails.js?v=115"></script>
+  <script src="js/particle.js?v=115"></script>
+  <script src="js/presets.js?v=115"></script>
+  <script src="js/emitter.js?v=115"></script>
+  <script src="js/renderer.js?v=115"></script>
+  <script src="js/exporter.js?v=115"></script>
+  <script src="js/ui.js?v=115"></script>
+  <script src="js/main.js?v=115"></script>
 
   </body>
 </html>

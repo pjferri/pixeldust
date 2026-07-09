@@ -1243,20 +1243,44 @@ kbd {
     min-height: 100dvh;
   }
 
-  /* Top bar: one swipeable row, pinned. Keys is desktop-only. */
+  /* Top bar: compact buttons wrapping into two tidy rows — nothing
+     hidden, nothing to swipe. Keys is desktop-only. */
   #topbar {
     position: sticky;
     top: 0;
     z-index: 130;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding: 0 10px;
-    gap: 8px;
+    height: auto;
+    min-height: 0;
+    flex-wrap: wrap;
+    padding: 8px 10px;
+    gap: 6px;
+    row-gap: 6px;
   }
-  #topbar::-webkit-scrollbar { display: none; }
-  #topbar-controls { flex-wrap: nowrap; gap: 8px; }
-  #topbar-controls .btn { flex-shrink: 0; }
+  #topbar-controls { display: contents; }
+  #topbar .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    text-align: center;
+    padding: 11px 7px;
+    font-size: 12.5px;
+  }
+  #topbar .btn-glyph { display: none; }
+  #topbar .btn-icon { flex-grow: 0; padding: 11px 13px; }
+  #topbar .btn-icon svg { width: 18px; height: 18px; }
+  #logo { flex: 0 0 auto; }
+  .logo-name { display: none; }
+  /* Row 1: transport + history + dice. Row 2: render + file ops + presets. */
+  #logo { order: 1; }
+  #btn-play, #btn-pause { order: 2; }
+  #btn-reset { order: 3; }
+  #btn-undo { order: 4; }
+  #btn-redo { order: 5; }
+  #btn-rand-top { order: 6; }
+  #btn-render-top { order: 7; }
+  #btn-save-cfg { order: 8; }
+  #topbar-controls label.btn { order: 9; }
+  #btn-share { order: 10; }
+  #btn-presets-sheet { order: 11; }
   #topbar-credit { display: none; }
   #btn-shortcuts { display: none; }
   #topbar .topbar-sep { display: none; }
@@ -1276,7 +1300,7 @@ kbd {
   #canvas-area {
     order: -1;
     position: sticky;
-    top: var(--topbar-h);
+    top: var(--topbar-actual, var(--topbar-h));
     z-index: 120;
     flex: none;
     padding: 10px 0 8px;
@@ -1367,23 +1391,6 @@ kbd {
 
   /* No hover states on touch */
   #app-credit a:hover { text-decoration: none; }
-}
-
-/* Narrow windows driven by a MOUSE: hidden horizontal scroll is unusable,
-   so the top bar wraps onto extra rows and stays fully clickable. The
-   canvas then sticks to the very top instead of below the bar. */
-@media (max-width: 1000px) and (pointer: fine), (max-width: 1000px) and (pointer: none) {
-  #topbar {
-    position: static;
-    height: auto;
-    min-height: var(--topbar-h);
-    flex-wrap: wrap;
-    overflow: visible;
-    row-gap: 6px;
-    padding: 8px 10px;
-  }
-  #topbar-controls { flex-wrap: wrap; row-gap: 6px; }
-  #canvas-area { top: 0; }
 }
 
 /* ── Death sparks sub-controls (indented under death-count slider) ── */
