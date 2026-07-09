@@ -14,8 +14,8 @@
   <meta name="twitter:image" content="https://pixeldust.io/og.png" />
   <meta name="theme-color" content="#0c0c0e" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230c0c0e'/%3E%3Crect x='7' y='2' width='3' height='3' fill='%23ffd54a'/%3E%3Crect x='4' y='6' width='3' height='3' fill='%23ff7a00'/%3E%3Crect x='10' y='7' width='2' height='2' fill='%23b05fff'/%3E%3Crect x='6' y='10' width='3' height='3' fill='%23d61f00'/%3E%3Crect x='11' y='11' width='2' height='2' fill='%2350d0ff'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="style.css" />
-  <script src="js/vendor/gif.js"></script>
+  <link rel="stylesheet" href="style.css?v=110" />
+  <script src="js/vendor/gif.js?v=110"></script>
 </head>
 <body>
   <div id="app">
@@ -31,8 +31,8 @@
         <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
         <button id="btn-pause" class="btn btn-secondary hidden" title="Pause (Space)">&#10074;&#10074; Pause</button>
         <button id="btn-reset" class="btn btn-secondary" title="Reset (R)">&#8635; Reset</button>
-        <button id="btn-undo" class="btn btn-secondary" title="Undo (Ctrl+Z)">&#8630;</button>
-        <button id="btn-redo" class="btn btn-secondary" title="Redo (Ctrl+Y)">&#8631;</button>
+        <button id="btn-undo" class="btn btn-secondary btn-icon" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+        <button id="btn-redo" class="btn btn-secondary btn-icon" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
         <div class="topbar-sep"></div>
         <button id="btn-render-top" class="btn btn-accent" title="Render frames (E)">&#9654; Render</button>
         <div class="topbar-sep"></div>
@@ -862,15 +862,15 @@
   </div>
 
   <!-- JS modules (order matters: dependencies before dependents) -->
-  <script src="js/palettes.js"></script>
-  <script src="js/trails.js"></script>
-  <script src="js/particle.js"></script>
-  <script src="js/presets.js"></script>
-  <script src="js/emitter.js"></script>
-  <script src="js/renderer.js"></script>
-  <script src="js/exporter.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/palettes.js?v=110"></script>
+  <script src="js/trails.js?v=110"></script>
+  <script src="js/particle.js?v=110"></script>
+  <script src="js/presets.js?v=110"></script>
+  <script src="js/emitter.js?v=110"></script>
+  <script src="js/renderer.js?v=110"></script>
+  <script src="js/exporter.js?v=110"></script>
+  <script src="js/ui.js?v=110"></script>
+  <script src="js/main.js?v=110"></script>
 
   </body>
 </html>

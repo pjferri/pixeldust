@@ -171,6 +171,11 @@ body {
   cursor: pointer;
 }
 .btn-sm:hover { background: var(--border); }
+
+.btn-icon {
+  padding: 5px 8px;
+}
+.btn-icon svg { display: block; }
 .btn-sm.active {
   background: var(--accent);
   color: #000;
@@ -1157,11 +1162,14 @@ kbd {
 }
 
 /* ── Phones & small tablets: single scrollable column ──────────────────
-   Layout: swipeable top bar (sticky) → swipeable preset bar → STICKY
-   canvas (always visible while tweaking) → all control groups stacked
-   full-width below. Nothing is hidden; everything scrolls. */
+   Layout: swipeable top bar (sticky) → swipeable preset row (Randomize
+   first) → STICKY canvas → control groups as clearly separated cards.
+   Everything is bigger; nothing is hidden. */
 @media (max-width: 1000px) {
+  :root { --topbar-h: 56px; }
+
   html, body { height: auto; overflow: visible; }
+  body { font-size: 14px; }
 
   #app {
     height: auto;
@@ -1176,34 +1184,45 @@ kbd {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    padding: 0 10px;
+    gap: 6px;
   }
   #topbar::-webkit-scrollbar { display: none; }
-  #topbar-controls { flex-wrap: nowrap; }
+  #topbar-controls { flex-wrap: nowrap; gap: 6px; }
   #topbar-controls .btn { flex-shrink: 0; }
   #topbar-credit { display: none; }
 
-  /* Preset bar: one swipeable row (scrolls away under the top bar) */
+  /* Preset row: Randomize & Save Preset pinned FIRST, presets scroll after */
   #preset-bar {
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    padding: 8px 10px;
+    gap: 8px;
   }
   #preset-bar::-webkit-scrollbar { display: none; }
+  .preset-bar-label { display: none; }
+  #preset-bar .topbar-sep { display: none; }
+  #btn-randomize { order: -2; }
+  #btn-save-preset { order: -1; }
   #effect-preset-btns {
+    order: 1;
     display: flex;
     flex-wrap: nowrap;
-    gap: 4px;
+    gap: 6px;
   }
   #preset-bar .btn,
   .effect-preset-btn,
   .custom-preset-wrap { flex-shrink: 0; }
+  .effect-preset-btn { padding: 9px 13px; font-size: 13px; }
 
   /* Main becomes a column; the canvas moves to the top and sticks */
   #main {
     flex-direction: column;
     overflow: visible;
     flex: none;
+    background: var(--bg-app);
   }
 
   #canvas-area {
@@ -1214,33 +1233,55 @@ kbd {
     flex: none;
     padding: 10px 0 8px;
     gap: 6px;
-    border-bottom: 1px solid var(--border);
-    /* solid backdrop so scrolling controls never show through */
+    border-bottom: 1px solid var(--border-light);
     background-color: var(--bg-app);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
   }
 
-  #canvas-footer { font-size: 10px; }
+  #canvas-footer { font-size: 11px; }
 
-  /* Panels: full-width stacked sections */
+  /* Panels: full-width, transparent — groups become separated cards */
   #panel-left,
   #panel-right {
     width: 100%;
     overflow: visible;
-    border-left: none;
-    border-right: none;
+    border: none;
+    background: transparent;
+    padding: 4px 0;
   }
-  #panel-left { border-bottom: 1px solid var(--border); }
+  #panel-right { padding-bottom: 28px; }
 
-  /* Finger-sized controls */
-  .btn { padding: 9px 13px; font-size: 12px; }
-  .btn-sm { padding: 6px 10px; font-size: 11px; }
-  .ctrl-group { padding: 12px 14px 14px; }
-  .ctrl-row { min-height: 36px; }
-  select { min-height: 32px; font-size: 13px; }
-  input[type="range"] { height: 6px; }
-  input[type="range"]::-webkit-slider-thumb { width: 22px; height: 22px; border-radius: 4px; }
-  input[type="checkbox"].toggle { transform: scale(1.3); transform-origin: right center; }
-  input[type="color"] { min-width: 40px; min-height: 30px; }
+  .ctrl-group {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    margin: 10px 12px;
+    padding: 14px 16px 16px;
+  }
+  .ctrl-group:last-child { border-bottom: 1px solid var(--border-light); }
+
+  .group-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  /* Big, comfortable controls */
+  .btn { padding: 10px 14px; font-size: 13px; }
+  .btn-sm { padding: 7px 11px; font-size: 12px; }
+  .btn-icon { padding: 10px 11px; }
+  .btn-icon svg { width: 18px; height: 18px; }
+
+  .ctrl-row { min-height: 44px; font-size: 14px; gap: 12px; }
+  .ctrl-row > span { font-size: 13px; }
+  .val-display { font-size: 12px; min-width: 42px; }
+
+  select { min-height: 40px; font-size: 15px; padding: 6px 10px; }
+  input[type="range"] { height: 8px; }
+  input[type="range"]::-webkit-slider-thumb { width: 26px; height: 26px; border-radius: 6px; }
+  input[type="checkbox"].toggle { transform: scale(1.5); transform-origin: right center; }
+  input[type="color"] { min-width: 46px; min-height: 34px; }
 
   /* Modals: fit the screen, scroll internally */
   .modal-box {
@@ -1257,7 +1298,7 @@ kbd {
     image-rendering: pixelated;
   }
 
-  /* No hover on touch — avoid sticky hover states */
+  /* No hover states on touch */
   #app-credit a:hover { text-decoration: none; }
 }
 

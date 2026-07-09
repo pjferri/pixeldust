@@ -30,19 +30,39 @@ function _commitHistory() {
   _historyIdx = _history.length - 1;
 }
 
+let _pushPending = false;
+
 function _schedulePush() {
   if (_restoringHistory) return;  // ignore pushConfig calls triggered by applySnapshot
   clearTimeout(_pushDebounceTimer);
-  _pushDebounceTimer = setTimeout(_commitHistory, 400);
+  _pushPending = true;
+  _pushDebounceTimer = setTimeout(() => {
+    _pushPending = false;
+    _commitHistory();
+  }, 400);
+}
+
+/**
+ * Commit any pending (debounced) change right now. Without this, hitting
+ * Undo within ~400ms of moving a slider silently did nothing, because the
+ * change hadn't been committed to history yet.
+ */
+function _flushPendingHistory() {
+  if (!_pushPending) return;
+  clearTimeout(_pushDebounceTimer);
+  _pushPending = false;
+  _commitHistory();
 }
 
 function undo() {
+  _flushPendingHistory();
   if (_historyIdx <= 0) return;
   _historyIdx--;
   _applyHistoryEntry(_history[_historyIdx]);
 }
 
 function redo() {
+  _flushPendingHistory();
   if (_historyIdx >= _history.length - 1) return;
   _historyIdx++;
   _applyHistoryEntry(_history[_historyIdx]);
