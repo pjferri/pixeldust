@@ -1596,14 +1596,26 @@ function shareConfig() {
   const url = `${location.origin}${location.pathname}#cfg=${encoded}`;
   const flash = () => {
     const btn = document.getElementById('btn-share');
-    const orig = btn.textContent;
-    btn.textContent = '✓ Copied!';
-    setTimeout(() => { btn.textContent = orig; }, 2000);
+    flashShareButton(btn);
   };
   navigator.clipboard.writeText(url).then(flash).catch(() => {
     // Clipboard unavailable — let the user copy it manually
     window.prompt('Copy your share link:', url);
   });
+}
+
+function flashShareButton(btn) {
+  if (!btn) return;
+  const label = btn.querySelector('.btn-label');
+  const originalLabel = label ? label.textContent : '';
+  btn.classList.add('is-copied');
+  btn.title = 'Copied share link';
+  if (label) label.textContent = 'Copied';
+  setTimeout(() => {
+    btn.classList.remove('is-copied');
+    btn.title = 'Copy shareable link';
+    if (label) label.textContent = originalLabel || 'Share';
+  }, 1600);
 }
 
 function loadFromHash() {

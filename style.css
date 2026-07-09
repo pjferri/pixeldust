@@ -1469,8 +1469,8 @@ kbd {
     min-height: var(--topbar-h);
     flex-wrap: nowrap;
     align-items: center;
-    padding: 7px 8px;
-    gap: 6px;
+    padding: 7px 6px;
+    gap: 4px;
     overflow: hidden;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.26);
   }
@@ -1500,7 +1500,7 @@ kbd {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 3px;
+    gap: 2px;
     min-width: 0;
     flex: 1 1 0;
     overflow: hidden;
@@ -1524,7 +1524,7 @@ kbd {
     height: 36px;
     min-height: 36px;
     padding: 0 8px;
-    border-radius: 6px;
+    border-radius: 5px;
     font-size: 12px;
     flex: 0 1 auto;
   }
@@ -1594,10 +1594,10 @@ kbd {
   }
 
   #topbar #btn-presets-sheet {
-    width: 64px;
-    flex: 0 0 64px;
-    padding: 0 9px;
-    font-size: 12px;
+    width: 56px;
+    flex: 0 0 56px;
+    padding: 0 5px;
+    font-size: 11px;
     font-weight: 600;
   }
 
@@ -1610,6 +1610,18 @@ kbd {
     width: 17px;
     height: 17px;
     stroke-width: 2.25;
+  }
+
+  #topbar #btn-share.is-copied .btn-symbol,
+  #topbar #btn-share.is-copied .btn-label {
+    display: none;
+  }
+
+  #topbar #btn-share.is-copied::before {
+    content: "\2713";
+    color: #aaffaa;
+    font-size: 17px;
+    line-height: 1;
   }
 
   #preset-bar {
@@ -1870,8 +1882,8 @@ kbd {
 
 @media (max-width: 380px) {
   #topbar {
-    padding-inline: 6px;
-    gap: 4px;
+    padding-inline: 4px;
+    gap: 3px;
   }
 
   #topbar-controls {
@@ -1899,10 +1911,10 @@ kbd {
   }
 
   #topbar #btn-presets-sheet {
-    width: 58px;
-    flex-basis: 58px;
-    padding: 0 6px;
-    font-size: 11px;
+    width: 52px;
+    flex-basis: 52px;
+    padding: 0 4px;
+    font-size: 10.5px;
   }
 
   .logo-version {
