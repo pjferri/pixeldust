@@ -41,6 +41,10 @@
 
 html, body { height: 100%; overflow: hidden; }
 
+/* Stop mobile browsers from silently rescaling text (source of
+   phone-vs-small-window inconsistencies) */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
 body {
   font-family: var(--font-ui);
   font-size: 12px;
@@ -1229,10 +1233,10 @@ kbd {
 /* ── Phones & small tablets: single scrollable column ──────────────────
    v3: hamburger→bottom-sheet presets, big touch chrome, inset cards. */
 @media (max-width: 1000px) {
-  :root { --topbar-h: 62px; }
+  :root { --topbar-h: 66px; }
 
   html, body { height: auto; overflow: visible; }
-  body { font-size: 15px; }
+  body { font-size: 16px; }
 
   #app {
     height: auto;
@@ -1282,8 +1286,8 @@ kbd {
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
   }
 
-  #canvas-footer { font-size: 12px; gap: 14px; }
-  #btn-center-emitter { padding: 10px 16px; font-size: 13px; }
+  #canvas-footer { font-size: 13px; gap: 16px; }
+  #btn-center-emitter { padding: 12px 18px; font-size: 14px; }
 
   /* Panels: transparent page, groups become inset cards */
   #panel-left,
@@ -1306,29 +1310,29 @@ kbd {
   .ctrl-group:last-child { border-bottom: 1px solid var(--border-light); }
 
   .group-label {
-    font-size: 12px;
+    font-size: 13px;
     letter-spacing: 2px;
     color: var(--accent);
     margin-bottom: 14px;
   }
 
   /* Big, comfortable controls */
-  .btn { padding: 12px 16px; font-size: 14px; }
-  .btn-sm { padding: 9px 13px; font-size: 13px; }
-  .btn-icon { padding: 12px 13px; }
-  .btn-icon svg { width: 20px; height: 20px; }
+  .btn { padding: 14px 18px; font-size: 15px; }
+  .btn-sm { padding: 11px 15px; font-size: 14px; }
+  .btn-icon { padding: 14px 15px; }
+  .btn-icon svg { width: 22px; height: 22px; }
 
-  .ctrl-row { min-height: 48px; font-size: 15px; gap: 12px; }
-  .ctrl-row > span { font-size: 14px; }
-  .val-display { font-size: 13px; min-width: 46px; }
+  .ctrl-row { min-height: 52px; font-size: 16px; gap: 12px; }
+  .ctrl-row > span { font-size: 15px; }
+  .val-display { font-size: 14px; min-width: 50px; }
 
   /* 16px font on form controls prevents iOS auto-zoom on focus */
-  select { min-height: 44px; font-size: 16px; padding: 8px 12px; }
+  select { min-height: 48px; font-size: 16px; padding: 10px 14px; }
   #preset-name-input { font-size: 16px; }
-  input[type="range"] { height: 10px; }
-  input[type="range"]::-webkit-slider-thumb { width: 28px; height: 28px; border-radius: 7px; }
+  input[type="range"] { height: 12px; }
+  input[type="range"]::-webkit-slider-thumb { width: 32px; height: 32px; border-radius: 8px; }
   input[type="checkbox"].toggle { transform: scale(1.6); transform-origin: right center; }
-  input[type="color"] { min-width: 48px; min-height: 38px; }
+  input[type="color"] { min-width: 52px; min-height: 42px; }
 
   /* Color pickers: real tap targets */
   #palette-grid .pal-swatch { width: 42px; height: 42px; }
@@ -1341,8 +1345,8 @@ kbd {
     margin-top: 10px;
   }
   #palette-presets .preset-btn {
-    padding: 12px 6px;
-    font-size: 12px;
+    padding: 14px 6px;
+    font-size: 13px;
     border-radius: 8px;
   }
 
