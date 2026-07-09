@@ -14,8 +14,8 @@
   <meta name="twitter:image" content="https://pixeldust.io/og.png" />
   <meta name="theme-color" content="#0c0c0e" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230c0c0e'/%3E%3Crect x='7' y='2' width='3' height='3' fill='%23ffd54a'/%3E%3Crect x='4' y='6' width='3' height='3' fill='%23ff7a00'/%3E%3Crect x='10' y='7' width='2' height='2' fill='%23b05fff'/%3E%3Crect x='6' y='10' width='3' height='3' fill='%23d61f00'/%3E%3Crect x='11' y='11' width='2' height='2' fill='%2350d0ff'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="style.css?v=110" />
-  <script src="js/vendor/gif.js?v=110"></script>
+  <link rel="stylesheet" href="style.css?v=111" />
+  <script src="js/vendor/gif.js?v=111"></script>
 </head>
 <body>
   <div id="app">
@@ -28,20 +28,20 @@
         <span class="logo-version">v1.1</span>
       </div>
       <div id="topbar-controls">
-        <button id="btn-play"  class="btn btn-primary" title="Play (Space)">&#9654; Play</button>
-        <button id="btn-pause" class="btn btn-secondary hidden" title="Pause (Space)">&#10074;&#10074; Pause</button>
-        <button id="btn-reset" class="btn btn-secondary" title="Reset (R)">&#8635; Reset</button>
-        <button id="btn-undo" class="btn btn-secondary btn-icon" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
-        <button id="btn-redo" class="btn btn-secondary btn-icon" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+        <button id="btn-play"  class="btn btn-primary" title="Play (Space)"><svg class="btn-symbol btn-symbol-fill" viewBox="0 0 24 24" aria-hidden="true"><polygon points="6 4 20 12 6 20 6 4"/></svg><span class="btn-label">Play</span></button>
+        <button id="btn-pause" class="btn btn-secondary hidden" title="Pause (Space)"><svg class="btn-symbol btn-symbol-fill" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg><span class="btn-label">Pause</span></button>
+        <button id="btn-reset" class="btn btn-secondary" title="Reset (R)"><svg class="btn-symbol" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 4 3 10 9 10"/></svg><span class="btn-label">Reset</span></button>
+        <button id="btn-undo" class="btn btn-secondary btn-icon" title="Undo (Ctrl+Z)"><svg class="btn-symbol" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-2"/></svg></button>
+        <button id="btn-redo" class="btn btn-secondary btn-icon" title="Redo (Ctrl+Y)"><svg class="btn-symbol" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h2"/></svg></button>
         <div class="topbar-sep"></div>
-        <button id="btn-render-top" class="btn btn-accent" title="Render frames (E)">&#9654; Render</button>
+        <button id="btn-render-top" class="btn btn-accent" title="Render frames (E)"><svg class="btn-symbol btn-symbol-fill" viewBox="0 0 24 24" aria-hidden="true"><polygon points="6 4 20 12 6 20 6 4"/></svg><span class="btn-label">Render</span></button>
         <div class="topbar-sep"></div>
         <button id="btn-save-cfg" class="btn btn-secondary" title="Save config as JSON"><span class="btn-glyph">&#128190;</span> Save</button>
         <label class="btn btn-secondary" title="Load config from JSON" style="cursor:pointer">
           <span class="btn-glyph">&#128193;</span> Load <input type="file" id="load-cfg-input" accept=".json" style="display:none" />
         </label>
-        <button id="btn-share" class="btn btn-secondary" title="Copy shareable link"><span class="btn-glyph">&#128279;</span> Share</button>
-        <button id="btn-rand-top" class="btn btn-secondary mobile-only" title="Randomize">&#127922;</button>
+        <button id="btn-share" class="btn btn-secondary" title="Copy shareable link"><svg class="btn-symbol" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4"/><path d="m8.6 13.5 6.8 4"/></svg><span class="btn-label">Share</span></button>
+        <button id="btn-rand-top" class="btn btn-secondary mobile-only" title="Randomize"><svg class="btn-symbol" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="m4 4 5 5"/></svg></button>
         <button id="btn-presets-sheet" class="btn btn-secondary mobile-only" title="Presets">Presets</button>
         <button id="btn-mobile-actions" class="btn btn-secondary btn-icon mobile-only" title="More actions" aria-label="More actions"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
         <div class="topbar-sep"></div>
@@ -894,15 +894,15 @@
   </div>
 
   <!-- JS modules (order matters: dependencies before dependents) -->
-  <script src="js/palettes.js?v=110"></script>
-  <script src="js/trails.js?v=110"></script>
-  <script src="js/particle.js?v=110"></script>
-  <script src="js/presets.js?v=110"></script>
-  <script src="js/emitter.js?v=110"></script>
-  <script src="js/renderer.js?v=110"></script>
-  <script src="js/exporter.js?v=110"></script>
-  <script src="js/ui.js?v=110"></script>
-  <script src="js/main.js?v=110"></script>
+  <script src="js/palettes.js?v=111"></script>
+  <script src="js/trails.js?v=111"></script>
+  <script src="js/particle.js?v=111"></script>
+  <script src="js/presets.js?v=111"></script>
+  <script src="js/emitter.js?v=111"></script>
+  <script src="js/renderer.js?v=111"></script>
+  <script src="js/exporter.js?v=111"></script>
+  <script src="js/ui.js?v=111"></script>
+  <script src="js/main.js?v=111"></script>
 
   </body>
 </html>

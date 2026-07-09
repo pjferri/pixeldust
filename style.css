@@ -180,6 +180,21 @@ body {
   padding: 5px 8px;
 }
 .btn-icon svg { display: block; }
+.btn-symbol {
+  display: block;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.btn-symbol-fill {
+  fill: currentColor;
+  stroke: none;
+}
 
 /* Elements that only exist in the phone layout */
 .mobile-only { display: none; }
@@ -1519,34 +1534,18 @@ kbd {
     order: 1;
     width: 34px;
     flex: 0 0 34px;
-    font-size: 0;
     gap: 0;
   }
 
-  #topbar #btn-play::before {
-    content: "\25b6";
-    font-size: 17px;
-    line-height: 1;
-  }
-
-  #topbar #btn-pause::before {
-    content: "\23f8";
-    font-size: 18px;
-    line-height: 1;
+  #topbar .btn-label {
+    display: none;
   }
 
   #topbar #btn-reset {
     order: 2;
     width: 34px;
     flex: 0 0 34px;
-    font-size: 0;
     gap: 0;
-  }
-
-  #topbar #btn-reset::before {
-    content: "\21bb";
-    font-size: 18px;
-    line-height: 1;
   }
 
   #topbar #btn-undo {
@@ -1566,7 +1565,6 @@ kbd {
     width: 34px;
     flex: 0 0 34px;
     padding: 0;
-    font-size: 16px;
   }
 
   #topbar #btn-share {
@@ -1574,14 +1572,7 @@ kbd {
     width: 34px;
     flex: 0 0 34px;
     padding: 0;
-    font-size: 0;
     gap: 0;
-  }
-
-  #topbar #btn-share::before {
-    content: "\21aa";
-    font-size: 18px;
-    line-height: 1;
   }
 
   #btn-render-top {
@@ -1613,6 +1604,12 @@ kbd {
   #btn-mobile-actions svg {
     width: 18px;
     height: 18px;
+  }
+
+  #topbar .btn-symbol {
+    width: 17px;
+    height: 17px;
+    stroke-width: 2.25;
   }
 
   #preset-bar {
