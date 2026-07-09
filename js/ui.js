@@ -1111,6 +1111,17 @@ function initCollapsibleCards() {
 // eyedropper (EyeDropper API — works great, can sample the canvas itself).
 // Phones/tablets keep their native pickers, which behave fine.
 let _ccpTarget = null;   // the input being edited
+
+// Edge's Chromium screen sampler deadlocks the whole browser window on
+// Windows (confirmed with hardware acceleration on AND off; Chrome is
+// fine). No page-side mitigation worked, so Edge just doesn't get the
+// eyedropper button — everything else in the popover works there.
+function _eyedropperUsable() {
+  if (!window.EyeDropper) return false;
+  const brands = navigator.userAgentData?.brands?.map(b => b.brand) || [];
+  if (brands.includes('Microsoft Edge')) return false;
+  return !navigator.userAgent.includes(' Edg/');
+}
 let _ccpHue = 0;         // current hue 0-360
 let _ccpEl = null;       // popover root
 
@@ -1204,7 +1215,7 @@ function initCustomColorPicker() {
     '<div id="ccp-row">' +
       '<span id="ccp-swatch"></span>' +
       '<input type="text" id="ccp-hex" maxlength="7" spellcheck="false" autocomplete="off" />' +
-      (window.EyeDropper ? '<button id="ccp-eye" class="btn btn-secondary btn-sm" title="Pick a color from anywhere on screen">&#128269;</button>' : '') +
+      (_eyedropperUsable() ? '<button id="ccp-eye" class="btn btn-secondary btn-sm" title="Pick a color from anywhere on screen">&#128269;</button>' : '') +
       '<button id="ccp-ok" class="btn btn-accent btn-sm">OK</button>' +
     '</div>';
   document.body.appendChild(_ccpEl);
@@ -1306,6 +1317,9 @@ function initCustomColorPicker() {
     }
   }, true);
   window.addEventListener('resize', () => closeColorPopover(true));
+  document.addEventListener('scroll', () => {
+    if (!window._pdEyedropperActive) closeColorPopover(true);
+  }, { capture: true, passive: true });
 }
 
 // ── Edge color-picker fix ──────────────────────────────────────────────────
