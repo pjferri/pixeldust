@@ -1232,7 +1232,7 @@ kbd {
 
 /* ── Phones & small tablets: single scrollable column ──────────────────
    v3: hamburger→bottom-sheet presets, big touch chrome, inset cards. */
-@media (max-width: 1000px) {
+@media (max-width: 1000px), ((pointer: coarse) and (max-width: 1680px)) {
   :root { --topbar-h: 66px; }
 
   html, body { height: auto; overflow: visible; }
@@ -1367,6 +1367,23 @@ kbd {
 
   /* No hover states on touch */
   #app-credit a:hover { text-decoration: none; }
+}
+
+/* Narrow windows driven by a MOUSE: hidden horizontal scroll is unusable,
+   so the top bar wraps onto extra rows and stays fully clickable. The
+   canvas then sticks to the very top instead of below the bar. */
+@media (max-width: 1000px) and (pointer: fine), (max-width: 1000px) and (pointer: none) {
+  #topbar {
+    position: static;
+    height: auto;
+    min-height: var(--topbar-h);
+    flex-wrap: wrap;
+    overflow: visible;
+    row-gap: 6px;
+    padding: 8px 10px;
+  }
+  #topbar-controls { flex-wrap: wrap; row-gap: 6px; }
+  #canvas-area { top: 0; }
 }
 
 /* ── Death sparks sub-controls (indented under death-count slider) ── */

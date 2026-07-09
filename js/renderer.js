@@ -54,10 +54,18 @@ function initRenderer(canvasEl) {
 function sizeCanvas() {
   const area = canvas.closest('#canvas-area') || canvas.parentElement.parentElement;
   const pad = 56;
-  // Small screens use a compact single-column layout with a sticky canvas:
-  // size from the viewport (leaves ~half the screen for the controls below).
-  const displaySize = window.innerWidth <= 1000
-    ? Math.max(220, Math.min(window.innerWidth - 24, Math.floor(window.innerHeight * 0.42), 720))
+  // Mobile view = narrow window OR any touch-primary device (covers phones
+  // stuck in "Desktop site" mode, which report inflated ~980px viewports).
+  const coarse = window.matchMedia('(pointer: coarse)').matches;
+  const mobileView = window.innerWidth <= 1000 || (coarse && window.innerWidth <= 1680);
+  // On mobile, size from the viewport and cap at 520 so an inflated
+  // viewport can never produce a desktop-sized canvas on a phone.
+  const displaySize = mobileView
+    ? Math.max(220, Math.min(
+        Math.floor(window.innerWidth * 0.92),
+        Math.floor(window.innerHeight * 0.42),
+        520
+      ))
     : Math.max(256, Math.min(
         area.clientWidth - pad,
         area.clientHeight - pad,
