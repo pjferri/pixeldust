@@ -856,21 +856,13 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
 #canvas-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  width: 100%;
-  max-width: 720px;
+  justify-content: center;
+  gap: 10px;
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-secondary);
   letter-spacing: 0.3px;
   flex-wrap: wrap;
-}
-
-.footer-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .footer-sep { opacity: 0.5; }
@@ -1233,17 +1225,18 @@ kbd {
 }
 
 
-/* ── App credit (canvas footer) ──────────────────────────────────────── */
-#app-credit {
+/* ── App credit (top bar, far right) ─────────────────────────────────── */
+#topbar-credit {
+  margin-left: auto;
   font-size: 11px;
   color: #666;
   white-space: nowrap;
 }
-#app-credit a {
+#topbar-credit a {
   color: #8a7fd4;
   text-decoration: none;
 }
-#app-credit a:hover { text-decoration: underline; }
+#topbar-credit a:hover { text-decoration: underline; }
 
 /* ── Small-screen notice ─────────────────────────────────────────────── */
 #mobile-notice {
