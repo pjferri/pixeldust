@@ -894,6 +894,7 @@ function initUI() {
   initPatchNotes();
   initCollapsibleCards();
   initSliderTouchGuard();
+  initColorLabelFix();
 
   pushConfig();
   updateBurstRowVisibility();
@@ -1078,6 +1079,21 @@ function initCollapsibleCards() {
 // that didn't start on the thumb is swallowed before the app sees it and
 // the value is snapped back. Jumps become impossible; drags that begin on
 // the thumb work exactly as before.
+// ── Edge color-picker fix ──────────────────────────────────────────────────
+// The standalone color inputs sit inside full-width <label class="ctrl-row">
+// rows. Labels forward ANY click in the row to the input — so on Windows,
+// where Edge's color dialog is window-modal, clicking away to dismiss it
+// often lands in the row and instantly re-opens the picker. The result:
+// "the picker won't close" + the Windows error ding (and re-opens can
+// stack). Only clicks on the swatch itself may open the picker now.
+function initColorLabelFix() {
+  document.addEventListener('click', (e) => {
+    if (e.target instanceof HTMLInputElement) return; // direct swatch click: fine
+    const label = e.target.closest ? e.target.closest('label') : null;
+    if (label && label.querySelector('input[type="color"]')) e.preventDefault();
+  }, true);
+}
+
 function initSliderTouchGuard() {
   let blocked = null; // { el, val } while a non-thumb touch is down on a slider
 
