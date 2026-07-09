@@ -1261,8 +1261,19 @@ function initCustomColorPicker() {
   });
 
   document.getElementById('ccp-eye')?.addEventListener('click', async () => {
+    // The Chromium screen-sampler on Windows can deadlock when the screen
+    // underneath keeps changing — freeze the simulation while sampling, and
+    // give the session an abort timeout so a stuck picker cancels itself
+    // instead of requiring Task Manager.
+    const pauseBtn = document.getElementById('btn-pause');
+    const wasRunning = pauseBtn && !pauseBtn.classList.contains('hidden');
+    window._pdEyedropperActive = true;
     try {
-      const res = await new EyeDropper().open();
+      if (wasRunning) pauseBtn.click();
+      await new Promise(r => setTimeout(r, 150)); // let the last frame settle
+      const opts = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout)
+        ? { signal: AbortSignal.timeout(25000) } : undefined;
+      const res = await new EyeDropper().open(opts);
       const v = res.sRGBHex;
       const hsv = _hexToHsv(v);
       _ccpHue = hsv.h;
@@ -1272,13 +1283,18 @@ function initCustomColorPicker() {
       knob.style.top = ((1 - hsv.v) * sv.height) + 'px';
       _ccpSync(v);
       _ccpApply(v, false);
-    } catch (_) { /* user pressed Esc — fine */ }
+    } catch (_) { /* canceled, timed out, or Esc — all fine */ }
+    finally {
+      if (wasRunning) document.getElementById('btn-play')?.click();
+      window._pdEyedropperActive = false;
+    }
   });
 
   document.getElementById('ccp-ok').addEventListener('click', () => closeColorPopover(true));
 
   // Intercept native picker opening
   document.addEventListener('click', (e) => {
+    if (window._pdEyedropperActive) return; // pause/resume clicks during sampling
     const t = e.target;
     if (t instanceof HTMLInputElement && t.type === 'color') {
       e.preventDefault();
@@ -1519,6 +1535,7 @@ function startEmitterPosHUD() {
   const el = document.getElementById('emitter-pos-display');
   if (!el) return;
   setInterval(() => {
+    if (window._pdEyedropperActive) return;
     el.textContent = (emitterX >= 0 && emitterY >= 0)
       ? `emitter: ${emitterX}, ${emitterY}`
       : 'emitter: center';
