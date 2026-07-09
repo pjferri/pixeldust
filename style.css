@@ -176,6 +176,71 @@ body {
   padding: 5px 8px;
 }
 .btn-icon svg { display: block; }
+
+/* Elements that only exist in the phone layout */
+.mobile-only { display: none; }
+
+/* ── Mobile preset bottom sheet ─────────────────────────────────────── */
+#preset-sheet { position: fixed; inset: 0; z-index: 400; }
+#preset-sheet.hidden { display: none; }
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(2px);
+}
+.sheet-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 74dvh;
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-light);
+  border-radius: 18px 18px 0 0;
+  padding: 6px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.7);
+}
+.sheet-handle {
+  width: 44px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-light);
+  margin: 10px auto 16px;
+}
+.sheet-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.sheet-actions .btn {
+  flex: 1;
+  padding: 14px 8px;
+  font-size: 15px;
+}
+#sheet-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+#sheet-preset-grid .sheet-preset {
+  padding: 14px 8px;
+  font-size: 15px;
+  background: var(--bg-group);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#sheet-preset-grid .sheet-preset.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
 .btn-sm.active {
   background: var(--accent);
   color: #000;
@@ -1162,21 +1227,19 @@ kbd {
 }
 
 /* ── Phones & small tablets: single scrollable column ──────────────────
-   Layout: swipeable top bar (sticky) → swipeable preset row (Randomize
-   first) → STICKY canvas → control groups as clearly separated cards.
-   Everything is bigger; nothing is hidden. */
+   v3: hamburger→bottom-sheet presets, big touch chrome, inset cards. */
 @media (max-width: 1000px) {
-  :root { --topbar-h: 56px; }
+  :root { --topbar-h: 62px; }
 
   html, body { height: auto; overflow: visible; }
-  body { font-size: 14px; }
+  body { font-size: 15px; }
 
   #app {
     height: auto;
     min-height: 100dvh;
   }
 
-  /* Top bar: one swipeable row, pinned to the top */
+  /* Top bar: one swipeable row, pinned. Keys is desktop-only. */
   #topbar {
     position: sticky;
     top: 0;
@@ -1185,37 +1248,18 @@ kbd {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     padding: 0 10px;
-    gap: 6px;
-  }
-  #topbar::-webkit-scrollbar { display: none; }
-  #topbar-controls { flex-wrap: nowrap; gap: 6px; }
-  #topbar-controls .btn { flex-shrink: 0; }
-  #topbar-credit { display: none; }
-
-  /* Preset row: Randomize & Save Preset pinned FIRST, presets scroll after */
-  #preset-bar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding: 8px 10px;
     gap: 8px;
   }
-  #preset-bar::-webkit-scrollbar { display: none; }
-  .preset-bar-label { display: none; }
-  #preset-bar .topbar-sep { display: none; }
-  #btn-randomize { order: -2; }
-  #btn-save-preset { order: -1; }
-  #effect-preset-btns {
-    order: 1;
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 6px;
-  }
-  #preset-bar .btn,
-  .effect-preset-btn,
-  .custom-preset-wrap { flex-shrink: 0; }
-  .effect-preset-btn { padding: 9px 13px; font-size: 13px; }
+  #topbar::-webkit-scrollbar { display: none; }
+  #topbar-controls { flex-wrap: nowrap; gap: 8px; }
+  #topbar-controls .btn { flex-shrink: 0; }
+  #topbar-credit { display: none; }
+  #btn-shortcuts { display: none; }
+  #topbar .topbar-sep { display: none; }
+  .mobile-only { display: inline-flex; }
+
+  /* The desktop preset strip is replaced by the ☰ Presets bottom sheet */
+  #preset-bar { display: none; }
 
   /* Main becomes a column; the canvas moves to the top and sticks */
   #main {
@@ -1232,56 +1276,75 @@ kbd {
     z-index: 120;
     flex: none;
     padding: 10px 0 8px;
-    gap: 6px;
+    gap: 8px;
     border-bottom: 1px solid var(--border-light);
     background-color: var(--bg-app);
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
   }
 
-  #canvas-footer { font-size: 11px; }
+  #canvas-footer { font-size: 12px; gap: 14px; }
+  #btn-center-emitter { padding: 10px 16px; font-size: 13px; }
 
-  /* Panels: full-width, transparent — groups become separated cards */
+  /* Panels: transparent page, groups become inset cards */
   #panel-left,
   #panel-right {
     width: 100%;
     overflow: visible;
     border: none;
     background: transparent;
-    padding: 4px 0;
+    padding: 6px 0;
   }
-  #panel-right { padding-bottom: 28px; }
+  #panel-right { padding-bottom: 32px; }
 
   .ctrl-group {
     background: var(--bg-panel);
     border: 1px solid var(--border-light);
-    border-radius: 12px;
-    margin: 10px 12px;
-    padding: 14px 16px 16px;
+    border-radius: 14px;
+    margin: 12px 16px;
+    padding: 16px 16px 18px;
   }
   .ctrl-group:last-child { border-bottom: 1px solid var(--border-light); }
 
   .group-label {
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: 2px;
     color: var(--accent);
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
 
   /* Big, comfortable controls */
-  .btn { padding: 10px 14px; font-size: 13px; }
-  .btn-sm { padding: 7px 11px; font-size: 12px; }
-  .btn-icon { padding: 10px 11px; }
-  .btn-icon svg { width: 18px; height: 18px; }
+  .btn { padding: 12px 16px; font-size: 14px; }
+  .btn-sm { padding: 9px 13px; font-size: 13px; }
+  .btn-icon { padding: 12px 13px; }
+  .btn-icon svg { width: 20px; height: 20px; }
 
-  .ctrl-row { min-height: 44px; font-size: 14px; gap: 12px; }
-  .ctrl-row > span { font-size: 13px; }
-  .val-display { font-size: 12px; min-width: 42px; }
+  .ctrl-row { min-height: 48px; font-size: 15px; gap: 12px; }
+  .ctrl-row > span { font-size: 14px; }
+  .val-display { font-size: 13px; min-width: 46px; }
 
-  select { min-height: 40px; font-size: 15px; padding: 6px 10px; }
-  input[type="range"] { height: 8px; }
-  input[type="range"]::-webkit-slider-thumb { width: 26px; height: 26px; border-radius: 6px; }
-  input[type="checkbox"].toggle { transform: scale(1.5); transform-origin: right center; }
-  input[type="color"] { min-width: 46px; min-height: 34px; }
+  /* 16px font on form controls prevents iOS auto-zoom on focus */
+  select { min-height: 44px; font-size: 16px; padding: 8px 12px; }
+  #preset-name-input { font-size: 16px; }
+  input[type="range"] { height: 10px; }
+  input[type="range"]::-webkit-slider-thumb { width: 28px; height: 28px; border-radius: 7px; }
+  input[type="checkbox"].toggle { transform: scale(1.6); transform-origin: right center; }
+  input[type="color"] { min-width: 48px; min-height: 38px; }
+
+  /* Color pickers: real tap targets */
+  #palette-grid .pal-swatch { width: 42px; height: 42px; }
+  #gradient-stops .grad-stop { width: 42px; height: 42px; }
+  .bg-swatch { width: 32px; height: 32px; }
+  #palette-presets {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+  }
+  #palette-presets .preset-btn {
+    padding: 12px 6px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
 
   /* Modals: fit the screen, scroll internally */
   .modal-box {

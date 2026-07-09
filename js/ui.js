@@ -824,6 +824,7 @@ function initUI() {
     closeShortcuts();
     closeRenderModal();
     cancelSavePreset();
+    closePresetSheet();
   };
   document.getElementById('btn-shortcuts').addEventListener('click', openShortcuts);
   document.getElementById('btn-close-shortcuts').addEventListener('click', closeShortcuts);
@@ -877,6 +878,13 @@ function initUI() {
   document.getElementById('btn-undo')?.addEventListener('click', undo);
   document.getElementById('btn-redo')?.addEventListener('click', redo);
 
+  // Mobile: topbar dice + preset bottom sheet
+  document.getElementById('btn-rand-top')?.addEventListener('click', randomizeSettings);
+  document.getElementById('btn-presets-sheet')?.addEventListener('click', openPresetSheet);
+  document.getElementById('preset-sheet-backdrop')?.addEventListener('click', closePresetSheet);
+  document.getElementById('sheet-randomize')?.addEventListener('click', () => { randomizeSettings(); closePresetSheet(); });
+  document.getElementById('sheet-save-preset')?.addEventListener('click', () => { closePresetSheet(); saveAsCustomPreset(); });
+
   pushConfig();
   updateBurstRowVisibility();
   updateEmitterShapeRows();
@@ -929,7 +937,34 @@ function buildEffectPresetBar() {
       container.appendChild(wrap);
     });
   }
+
+  // ── Mobile preset sheet mirrors the same list ────────────────────────
+  const grid = document.getElementById('sheet-preset-grid');
+  if (grid) {
+    grid.innerHTML = '';
+    Object.entries(EFFECT_PRESETS).forEach(([key, preset]) => {
+      const b = document.createElement('button');
+      b.className = 'effect-preset-btn sheet-preset';
+      b.textContent = preset.label;
+      b.dataset.key = key;
+      b.addEventListener('click', () => { applyEffectPreset(key); closePresetSheet(); });
+      grid.appendChild(b);
+    });
+    Object.entries(getCustomPresets()).forEach(([key, p]) => {
+      const b = document.createElement('button');
+      b.className = 'effect-preset-btn sheet-preset';
+      b.textContent = '\u2b50 ' + p.label;
+      b.dataset.key = key;
+      b.addEventListener('click', () => { applyCustomPreset(key); closePresetSheet(); });
+      grid.appendChild(b);
+    });
+  }
 }
+
+// ── Mobile preset sheet ────────────────────────────────────────────────────
+
+function openPresetSheet()  { document.getElementById('preset-sheet')?.classList.remove('hidden'); }
+function closePresetSheet() { document.getElementById('preset-sheet')?.classList.add('hidden'); }
 
 /**
  * Apply a full effect preset by name.
