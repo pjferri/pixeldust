@@ -52,6 +52,8 @@ function initRenderer(canvasEl) {
 }
 
 function sizeCanvas() {
+  const oldW = canvas ? canvas.width : 0;
+  const oldH = canvas ? canvas.height : 0;
   const area = canvas.closest('#canvas-area') || canvas.parentElement.parentElement;
   const pad = 56;
   const tb = document.getElementById('topbar');
@@ -122,6 +124,11 @@ function sizeCanvas() {
     }
   }
 
+  // Preserve the emitter's relative position across the resize — it used
+  // to snap back to center every time the window changed size.
+  const fx = (oldW > 0 && emitterX >= 0) ? emitterX / oldW : -1;
+  const fy = (oldH > 0 && emitterY >= 0) ? emitterY / oldH : -1;
+
   canvasW = canvas.width;
   canvasH = canvas.height;
   ctx.imageSmoothingEnabled = false;
@@ -129,7 +136,12 @@ function sizeCanvas() {
   _composeCanvas = null;
   _composeCtx = null;
   _liveTrails.reset();
-  centerEmitter();
+  if (fx >= 0 && fy >= 0) {
+    emitterX = Math.round(fx * canvasW);
+    emitterY = Math.round(fy * canvasH);
+  } else {
+    centerEmitter();
+  }
 }
 
 /**

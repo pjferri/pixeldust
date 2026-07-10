@@ -876,6 +876,9 @@ function initUI() {
     if (e.code === 'Escape') { e.preventDefault(); closeOverlays(); return; }
 
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    // Plain-key app shortcuts must not swallow browser combos —
+    // Ctrl+F was triggering the F fullscreen toggle (all panels vanish)
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.code === 'Space')  { e.preventDefault(); document.getElementById(isRunning ? 'btn-pause' : 'btn-play').click(); }
     if (e.code === 'KeyR')   document.getElementById('btn-reset').click();
     if (e.code === 'KeyB')   document.getElementById('btn-burst')?.click();
