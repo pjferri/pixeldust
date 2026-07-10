@@ -9,19 +9,19 @@ const PATCH_NOTES = [
     version: '1.1',
     date: 'July 2026',
     notes: [
-      'New built-in color picker on desktop (with an eyedropper) — replaces the browser one, whose eyedropper could freeze Edge on Windows.',
-      'Full mobile redesign — PixelDust now works great on your phone: compact toolbar, bottom-sheet presets, collapsible control cards, and touch-friendly sliders.',
+      'Full mobile layout redesign! PixelDust now works great on your phone: compact toolbar, bottom-sheet presets, collapsible control cards, and touch-friendly sliders.',
+      'New custom color picker tool for desktop - replaces the browser one which has an eyedropper that could freeze Edge on Windows.',
       'Sliders on touch screens only respond to dragging the handle, so scrolling never nudges your settings by accident.',
-      'Tap any section header to collapse it and get around faster.',
-      'This version number is clickable — patch notes live here from now on.',
+      'Section headers are now collapsible, so you can hide the controls you don’t need and focus on the ones you do.',
+      'Made the version number clickable - patch notes live here from now on.',
     ],
   },
   {
     version: '1.0',
     date: 'July 2026',
     notes: [
-      'First public release at pixeldust.io — design pixel-art particle effects and export game-ready spritesheets, GIFs, video, and PNG frames.',
-      '24 hand-tuned presets, a Randomize button with real chaos in it, paint-mode trails, custom image particles, and shareable config links.',
+      'First public release of pixeldust.io - design pixel-art particle effects and export game-ready spritesheets, GIFs, video, and PNG frames.',
+      'Complete with 24 hand-tuned presets, a fun and chaotic randomize button, particle trails, custom image particles, and shareable config links.',
     ],
   },
 ];

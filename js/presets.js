@@ -79,22 +79,25 @@ const EFFECT_PRESETS = {
 
   sparkle: {
     label: 'Sparkle',
-    palette: 'mono',
+    paletteColors: ['#ffff00', '#ffdd00', '#ffaa00', '#ff7700', '#ff4400', '#ff6622'],
     cfg: {
+      // Peter's hand-tuned sparkle (2026-07-10 config)
       emitterShape: 'disk', emitterMode: 'continuous', speedMult: 1,
-      emitterSize: 26, emitterAngle: 0, emitterPX: 0.5, emitterPY: 0.5,
-      count: 150, spawnRate: 100, speed: 0.5, spread: 360, direction: 270,
-      gravity: 0.03, turbulence: 0.3, drag: 0.996, wind: 0, orbit: 0,
+      emitterSize: 22, emitterAngle: 243, emitterArc: 160, emitterPX: 0.5, emitterPY: 0.5,
+      count: 150, spawnRate: 100, speed: 0.50176, spread: 360, direction: 270,
+      gravity: 0.05, turbulence: 0.3, drag: 0.995, wind: 0, orbit: 0,
+      bounce: false,
       particleSize: 4, particleShape: 'sparkle', sizeVariance: 2, hueVariation: 0,
-      blendMode: 'prism', effectStrength: 1.2, startAlpha: 1, twinkle: 1.6, rotation: 10,
-      lifetime: 90, fade: 1, shrink: 0.3,
+      blendMode: 'prism', effectStrength: 3, startAlpha: 1, twinkle: 1.6, rotation: 10,
+      lifetime: 111, fade: 1, shrink: 0.3,
       speedVariance: 0.4, velocityDecay: 0,
       deathCount: 0, deathSpeed: 2, deathSize: 1,
       multiColor: true, useGradient: true,
-      gradientStart: '#ffffff', gradientEnd: '#909098',
-      gradientStops: ['#ffffff', '#e8e8f0', '#909098'],
+      singleColor: '#ff2a2a', gradientStart: '#ff2a2a', gradientEnd: '#ffffff',
+      gradientStops: ['#ffffff'],
       bgColor: '#0a0a10',
-      trailEnabled: true, trailSec: 0.05, trailOpacity: 50, trailSoftness: 0,
+      trailEnabled: true, trailSec: 0, trailOpacity: 50, trailSoftness: 0,
+      softness: 0, pulseInterval: 2,
     },
   },
 
@@ -122,20 +125,24 @@ const EFFECT_PRESETS = {
   smoke: {
     label: 'Smoke',
     cfg: {
+      // Peter's hand-tuned smoke (2026-07-10 config — softness rebalanced)
       emitterShape: 'line', emitterMode: 'continuous', speedMult: 1,
-      emitterSize: 8, emitterAngle: 0, emitterPX: 0.5, emitterPY: 0.92,
-      count: 110, spawnRate: 22, speed: 0.5, spread: 10, direction: 268,
+      emitterSize: 8, emitterAngle: 0, emitterArc: 120, emitterPX: 0.5, emitterPY: 0.91944,
+      count: 110, spawnRate: 22, speed: 0.50176, spread: 10, direction: 268,
       gravity: -0.3, turbulence: 0.35, drag: 0.985, wind: 0.06, orbit: 0,
+      bounce: false,
       particleSize: 14, particleShape: 'circle', sizeVariance: 4, hueVariation: 0,
       blendMode: 'shadow', effectStrength: 1.2, shadowColor: '#1a1520',
-      startAlpha: 0.16, twinkle: 0, rotation: 0,
+      startAlpha: 0.15, twinkle: 0, rotation: 0,
       lifetime: 300, fade: 0.85, shrink: -0.6,
       speedVariance: 0.2, velocityDecay: 0.25,
       deathCount: 0, deathSpeed: 2, deathSize: 2,
       multiColor: false, useGradient: false,
       singleColor: '#b8b2c0', gradientStart: '#b8b2c0', gradientEnd: '#3a3440',
-      bgColor: '#08080c', softness: 45,
-      trailEnabled: true, trailSec: 0.25, trailOpacity: 60, trailSoftness: 55,
+      gradientStops: ['#3a3440'],
+      bgColor: '#08080c', softness: 0,
+      trailEnabled: true, trailSec: 0.24, trailOpacity: 60, trailSoftness: 35,
+      pulseInterval: 2,
     },
   },
 
@@ -228,24 +235,27 @@ const EFFECT_PRESETS = {
   },
 
   electric: {
-    label: 'Electric',
-    palette: 'neon',
+    label: 'Plasma',
+    paletteColors: ['#ff00ff', '#00ffff', '#ff0066', '#00ff66',
+                    '#6600ff', '#ff6600', '#ffff00', '#0066ff'],
     cfg: {
-      // Restored from v0.1.9 — the version that was "awesome"
+      // Peter's hand-tuned config (2026-07-10) — relabeled Electric -> Plasma
       emitterShape: 'point', emitterMode: 'continuous', speedMult: 1.5,
-      emitterSize: 18, emitterAngle: 0, emitterPX: 0.5, emitterPY: 0.5,
-      count: 150, spawnRate: 120, speed: 5, spread: 360, direction: 270,
+      emitterSize: 18, emitterAngle: 0, emitterArc: 120, emitterPX: 0.5, emitterPY: 0.5,
+      count: 150, spawnRate: 120, speed: 4.99849, spread: 360, direction: 270,
       gravity: 0, turbulence: 2.4, drag: 0.88, wind: 0, orbit: 0,
+      bounce: false,
       particleSize: 2, particleShape: 'square', sizeVariance: 1, hueVariation: 20,
       blendMode: 'prism', effectStrength: 1.4, startAlpha: 1, twinkle: 0, rotation: 0,
-      lifetime: 20, fade: 1, shrink: 0,
+      lifetime: 50, fade: 1, shrink: 0,
       speedVariance: 0.6, velocityDecay: 0,
       deathCount: 0, deathSpeed: 2, deathSize: 2,
       multiColor: true, useGradient: true,
-      gradientStart: '#ffffff', gradientEnd: '#0088ff',
+      singleColor: '#b8b2c0', gradientStart: '#ffffff', gradientEnd: '#ffffff',
       gradientStops: ['#ffffff', '#0088ff'],
       bgColor: '#020210',
-      trailEnabled: true, trailSec: 0.47, trailOpacity: 100, trailSoftness: 0,
+      trailEnabled: true, trailSec: 0.4704, trailOpacity: 100, trailSoftness: 0,
+      softness: 0, pulseInterval: 2,
     },
   },
 
@@ -315,23 +325,26 @@ const EFFECT_PRESETS = {
 
   comet: {
     label: 'Comet',
-    palette: 'ice',
+    paletteColors: ['#ffffff', '#cce8ff', '#88ccff', '#44aaee',
+                    '#2288cc', '#1166aa', '#0044aa', '#aaddff'],
     cfg: {
-      // Meteor shower: sparse spawns, long bright trails, full diagonal
+      // Peter's hand-tuned comet (2026-07-10 config)
       emitterShape: 'point', emitterMode: 'continuous', speedMult: 1,
-      emitterSize: 18, emitterAngle: 0, emitterPX: 0.06, emitterPY: 0.08,
-      count: 40, spawnRate: 18, speed: 5.5, spread: 8, direction: 135,
-      gravity: 0.02, turbulence: 0.1, drag: 0.998, wind: 0, orbit: 0,
-      particleSize: 4, particleShape: 'circle', sizeVariance: 2, hueVariation: 10,
-      blendMode: 'glow', effectStrength: 2.0, startAlpha: 1, twinkle: 0.2, rotation: 0,
-      lifetime: 130, fade: 1, shrink: 0.5,
+      emitterSize: 18, emitterAngle: 0, emitterArc: 120, emitterPX: 0.5, emitterPY: 0.24861,
+      count: 201, spawnRate: 34, speed: 0.87616, spread: 8, direction: 135,
+      gravity: 0, turbulence: 0.55, drag: 1, wind: 0, orbit: 0,
+      bounce: false,
+      particleSize: 9, particleShape: 'circle', sizeVariance: 2, hueVariation: 10,
+      blendMode: 'glow', effectStrength: 2, startAlpha: 1, twinkle: 0.2, rotation: 0,
+      lifetime: 130, fade: 1, shrink: 1,
       speedVariance: 0.35, velocityDecay: 0,
-      deathCount: 2, deathSpeed: 1.5, deathSize: 1,
+      deathCount: 1, deathSpeed: 1.5, deathSize: 1,
       multiColor: true, useGradient: true,
-      gradientStart: '#ffffff', gradientEnd: '#12307a',
+      singleColor: '#b8b2c0', gradientStart: '#b8b2c0', gradientEnd: '#ffffff',
       gradientStops: ['#ffffff', '#90e0ff', '#3a70dd', '#12307a'],
       bgColor: '#020408',
-      trailEnabled: true, trailSec: 0.7, trailOpacity: 95, trailSoftness: 5,
+      trailEnabled: true, trailSec: 0.6936, trailOpacity: 95, trailSoftness: 5,
+      softness: 0, pulseInterval: 2,
     },
   },
 
@@ -447,7 +460,7 @@ const EFFECT_PRESETS = {
   },
 
   galaxy: {
-    label: 'Galaxy',
+    label: 'Wormhole',
     palette: 'royal',
     cfg: {
       emitterShape: 'disk', emitterMode: 'continuous', speedMult: 1,
@@ -491,7 +504,7 @@ const EFFECT_PRESETS = {
   },
 
   plasma: {
-    label: 'Plasma',
+    label: 'Galaxy',
     palette: 'neon',
     cfg: {
       // Plasma ball: arcs whipping around a bright core
